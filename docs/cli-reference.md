@@ -32,7 +32,7 @@ planpilot \
 - `--priority` (default `P1`) -- Project priority option name
 - `--iteration` (default `active`) -- Iteration title, or `active` / `none`
 - `--size-field` (default `Size`) -- Project size field name (empty to skip)
-- `--size-from-tshirt` (`true`/`false`) -- Use estimate.tshirt for size
+- `--no-size-from-tshirt` -- Disable t-shirt size mapping (enabled by default)
 - `--verbose`, `-v` -- Enable verbose logging
 
 ## planpilot-slice

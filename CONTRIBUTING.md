@@ -28,6 +28,20 @@ poetry run ruff format .
 poetry run planpilot --help
 ```
 
+## Architecture
+
+planpilot follows SOLID principles with a modular, provider-agnostic design:
+
+- **`models/`** -- Pydantic domain models (`Plan`, `Epic`, `Story`, `Task`, `SyncMap`, …)
+- **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
+- **`providers/`** -- `Provider` ABC defining the adapter interface; `github/` implements it using the `gh` CLI
+- **`rendering/`** -- `BodyRenderer` Protocol for issue body generation; `MarkdownRenderer` is the default
+- **`sync/`** -- `SyncEngine` orchestrates the 5-phase sync pipeline, depends only on `Provider` and `BodyRenderer` abstractions
+- **`config.py`** -- Pydantic `SyncConfig` built from CLI arguments
+- **`exceptions.py`** -- Custom exception hierarchy (`PlanPilotError` → specific errors)
+
+To add a new provider (e.g. Jira), implement the `Provider` ABC in `providers/jira/` -- no changes to the sync engine needed.
+
 ## Commit messages
 
 We use [Conventional Commits](https://www.conventionalcommits.org/) to drive automated versioning and changelog generation. All commits must follow this format:

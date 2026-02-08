@@ -16,6 +16,17 @@ def _write_json(path: Path, data: Any) -> None:
 
 
 def slice_epics_for_sync(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir: Path) -> None:
+    """Slice plan files into per-epic sync inputs.
+
+    Reads epics, stories, and tasks JSON files and writes per-epic slices
+    to the output directory. Filters cross-epic dependencies from tasks.
+
+    Args:
+        epics_path: Path to epics.json file.
+        stories_path: Path to stories.json file.
+        tasks_path: Path to tasks.json file.
+        out_dir: Output directory for per-epic slice files.
+    """
     epics = _read_json(epics_path)
     stories = _read_json(stories_path)
     tasks = _read_json(tasks_path)

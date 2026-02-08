@@ -26,6 +26,30 @@ flowchart LR
 - **Idempotent**: safe to rerun -- updates existing issues via markers
 - **Dry-run first**: preview all changes before applying
 - **Multi-epic**: slice large plans and sync each epic sequentially
+- **Provider-agnostic**: adapter pattern supports GitHub today, with Jira/Linear planned
+- **Async-first**: built on asyncio for fast, concurrent sync operations
+
+## Architecture
+
+planpilot follows SOLID principles with a modular, provider-agnostic design:
+
+```
+src/planpilot/
+├── models/          # Pydantic domain models (Plan, Epic, Story, Task, …)
+├── plan/            # Plan loading, validation, and hashing
+├── providers/       # Provider adapter pattern (ABC + implementations)
+│   └── github/      # GitHub adapter (gh CLI)
+├── rendering/       # Issue body rendering (Protocol + Markdown impl)
+├── sync/            # Sync engine orchestrator + relation logic
+├── config.py        # SyncConfig (pydantic)
+├── exceptions.py    # Custom exception hierarchy
+├── cli.py           # CLI entry point
+└── slice.py         # Multi-epic plan slicing
+```
+
+The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
+
+See [docs/architecture/v1-scope.md](docs/architecture/v1-scope.md) for more details.
 
 ## Requirements
 
@@ -110,7 +134,7 @@ done
 | `--priority` | `P1` | Project priority field value |
 | `--iteration` | `active` | Iteration title, `active`, or `none` |
 | `--size-field` | `Size` | Project size field name |
-| `--size-from-tshirt` | `true` | Map `estimate.tshirt` to size field |
+| `--no-size-from-tshirt` | off | Disable t-shirt size mapping |
 | `--verbose` | off | Enable verbose logging |
 
 Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
@@ -127,7 +151,6 @@ A complete working example is in the [examples/](examples/) directory.
 - [CLI Reference](docs/cli-reference.md) -- all flags and commands
 - [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
 - [Architecture / v1 Scope](docs/architecture/v1-scope.md) -- what's in and out of scope
-- [Migration Guide](docs/migration.md) -- upgrading from previous versions
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
 ## Contributing
