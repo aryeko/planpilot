@@ -4,6 +4,8 @@ All notable changes to this project will be documented in this file.
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-02-08
+
 ### Added
 - **Provider adapter pattern**: `Provider` ABC (`providers/base.py`) enabling future Jira/Linear integrations without touching the sync engine.
 - **Async-first `SyncEngine`**: 5-phase pipeline (setup, discovery, upsert, enrich, relations) replaces the monolithic `run_sync()`.
@@ -31,26 +33,6 @@ All notable changes to this project will be documented in this file.
 ### Removed
 - `run_sync()` function -- replaced by `SyncEngine.sync()`.
 - `types.py`, `github_api.py`, `body_render.py`, `utils.py`, `relations.py`, `project_fields.py`, `sync.py` (monolithic modules replaced by modular packages).
-
-## [0.2.0] - Unreleased
-
-### Changed
-- Renamed project from `plan-gh-project-sync` to `planpilot`.
-- Migrated build system from setuptools to Poetry.
-- CLI command renamed from `plan-gh-project-sync` to `planpilot`.
-- Added `planpilot-slice` as a standalone CLI entry point.
-- Switched test runner to pytest.
-- Added ruff for linting and formatting.
-- Added mypy for type checking.
-- Updated CI workflows with lint step and Poetry.
-- Added PyPI publishing via Trusted Publisher (OIDC).
-- Added TestPyPI workflow for pre-release validation.
-- **Strict required-field validation**: all required fields on epics, stories, and tasks are now validated upfront with clear error messages.
-- **Removed silent fallbacks**: missing `epic_id` on stories, missing `story_ids` on epics, and missing `task_ids` on stories now fail validation instead of guessing defaults.
-- Removed confusing `story.get("story_ids")` fallback on stories (was a typo-based fallback for `task_ids`).
-
-### Removed
-- Removed `tools/` directory (functionality available via `planpilot-slice` CLI).
 
 ## [0.1.0] - 2026-02-08
 
