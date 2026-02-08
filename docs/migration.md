@@ -43,6 +43,19 @@ PYTHONPATH=src python3 tools/slice_epics_for_sync.py --epics-path ...
 planpilot-slice --epics-path ...
 ```
 
+### Stricter validation (v0.2.0)
+
+v0.2.0 enforces all required fields and removes silent fallbacks:
+
+| What changed | Old behavior | New behavior |
+|---|---|---|
+| Missing `epic_id` on story | Fell back to first epic's ID | Validation error |
+| Missing `story_ids` on epic | Used all stories in order | Validation error |
+| Missing `task_ids` on story | Fell back to `story_ids` key (typo) | Validation error |
+| Missing `goal`, `spec_ref`, etc. | Silent empty section in issue body | Validation error |
+
+If your existing plan files relied on these fallbacks, add the missing fields before upgrading. See [schemas.md](schemas.md) for the full list of required fields.
+
 ## From skill-local module (pre-v0.1.0)
 
 If you previously invoked the tool via skill-local path:

@@ -8,7 +8,9 @@ planpilot reads structured plan files (JSON) and creates a fully linked project 
 
 ```mermaid
 flowchart TD
-    A[Load and validate plan files] --> B[Check GitHub auth]
+    A[Load plan files] --> A1[Validate required fields]
+    A1 --> A2[Validate relational integrity]
+    A2 --> B[Check GitHub auth]
     B --> C[Resolve project fields]
     C --> D[Look up existing issues]
     D --> E[Create/update Epics]
@@ -20,6 +22,16 @@ flowchart TD
     J --> K[Add blocked-by relations]
     K --> L[Write sync map]
 ```
+
+## Validation
+
+planpilot validates plan files in two phases before touching GitHub:
+
+1. **Required fields** -- every epic, story, and task must contain all required fields defined in the [schema](schemas.md). Missing fields produce clear error messages (e.g. `epic[0] missing required field 'goal'`). Validation stops immediately if any fields are missing.
+
+2. **Relational integrity** -- cross-references are checked: `epic_id` on stories must match an epic, `story_id` on tasks must match a story, `depends_on` must reference valid task IDs, and parent `story_ids`/`task_ids` lists must be complete and consistent.
+
+There are no silent fallbacks -- if a required field or relationship is missing, the tool fails with an actionable error rather than guessing defaults.
 
 ## Idempotency
 

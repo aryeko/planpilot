@@ -15,6 +15,9 @@ All notable changes to this project will be documented in this file.
 - Updated CI workflows with lint step and Poetry.
 - Added PyPI publishing via Trusted Publisher (OIDC).
 - Added TestPyPI workflow for pre-release validation.
+- **Strict required-field validation**: all required fields on epics, stories, and tasks are now validated upfront with clear error messages.
+- **Removed silent fallbacks**: missing `epic_id` on stories, missing `story_ids` on epics, and missing `task_ids` on stories now fail validation instead of guessing defaults.
+- Removed confusing `story.get("story_ids")` fallback on stories (was a typo-based fallback for `task_ids`).
 
 ### Removed
 - Removed `tools/` directory (functionality available via `planpilot-slice` CLI).

@@ -73,54 +73,76 @@ def run_sync(config: SyncConfig) -> None:
         raise RuntimeError("GitHub authentication failed. Run `gh auth login` and retry.")
 
     # validation
-    epic_ids = {e["id"] for e in epics}
-    story_ids = {s["id"] for s in stories}
-    story_ids_in_order = [s["id"] for s in stories]
-    task_ids = {t["id"] for t in tasks}
     errors: list[str] = []
     if len(epics) != 1:
         errors.append("plan must contain exactly one epic")
 
+    # required fields on epics
+    _EPIC_REQUIRED = ("id", "title", "goal", "spec_ref", "story_ids")
+    for i, epic in enumerate(epics):
+        for field in _EPIC_REQUIRED:
+            if field not in epic:
+                errors.append(f"epic[{i}] missing required field '{field}'")
+
+    # required fields on stories
+    _STORY_REQUIRED = ("id", "epic_id", "title", "goal", "spec_ref", "task_ids")
+    for i, story in enumerate(stories):
+        for field in _STORY_REQUIRED:
+            if field not in story:
+                errors.append(f"story[{i}] missing required field '{field}'")
+
+    # required fields on tasks
+    _TASK_REQUIRED = (
+        "id", "story_id", "title", "motivation", "spec_ref",
+        "requirements", "acceptance_criteria", "verification", "artifacts", "depends_on",
+    )
+    for i, task in enumerate(tasks):
+        for field in _TASK_REQUIRED:
+            if field not in task:
+                errors.append(f"task[{i}] missing required field '{field}'")
+
+    # bail early on missing fields before relational checks
+    if errors:
+        raise RuntimeError("Validation errors:\n" + "\n".join(errors))
+
+    # relational validation
+    epic_ids = {e["id"] for e in epics}
+    story_ids = {s["id"] for s in stories}
+    task_ids = {t["id"] for t in tasks}
+
     story_tasks: dict[str, list[str]] = {sid: [] for sid in story_ids}
     for task in tasks:
-        story_id = task.get("story_id")
+        story_id = task["story_id"]
         if story_id not in story_ids:
-            errors.append(f"task {task.get('id')} story_id {story_id} not found in stories")
+            errors.append(f"task {task['id']} story_id '{story_id}' not found in stories")
             continue
-        story_tasks.setdefault(story_id, []).append(task.get("id"))
+        story_tasks[story_id].append(task["id"])
         for dep in task.get("depends_on", []):
             if dep not in task_ids:
-                errors.append(f"task {task.get('id')} depends_on {dep} not found in tasks")
+                errors.append(f"task {task['id']} depends_on '{dep}' not found in tasks")
 
     for story in stories:
-        epic_id = story.get("epic_id") or (epics[0].get("id") if epics else None)
-        if epic_id not in epic_ids:
-            errors.append(f"story {story.get('id')} epic_id {epic_id} not found in epics")
-        task_list = story.get("task_ids") or story.get("story_ids") or []
-        if task_list:
-            missing = [tid for tid in task_list if tid not in task_ids]
-            if missing:
-                errors.append(f"story {story.get('id')} references unknown task_ids {missing}")
-            extras = set(story_tasks.get(story.get("id"), [])) - set(task_list)
-            if extras:
-                errors.append(f"story {story.get('id')} missing task_ids for {sorted(extras)}")
-        if (
-            story.get("task_ids") is None
-            and story.get("story_ids") is None
-            and story_tasks.get(story.get("id"), []) == []
-        ):
-            errors.append(f"story {story.get('id')} has no tasks")
+        if story["epic_id"] not in epic_ids:
+            errors.append(f"story {story['id']} epic_id '{story['epic_id']}' not found in epics")
+        task_list = story["task_ids"]
+        missing = [tid for tid in task_list if tid not in task_ids]
+        if missing:
+            errors.append(f"story {story['id']} references unknown task_ids {missing}")
+        extras = set(story_tasks.get(story["id"], [])) - set(task_list)
+        if extras:
+            errors.append(f"story {story['id']} missing task_ids for {sorted(extras)}")
+        if not task_list and not story_tasks.get(story["id"]):
+            errors.append(f"story {story['id']} has no tasks")
 
-    if epics:
-        epic = epics[0]
-        epic_story_ids = epic.get("story_ids") or []
-        missing_stories = [sid for sid in epic_story_ids if sid not in story_ids]
-        if missing_stories:
-            errors.append(f"epic {epic.get('id')} references unknown story_ids {missing_stories}")
-        if epic_story_ids:
-            extras = set(story_ids) - set(epic_story_ids)
-            if extras:
-                errors.append(f"epic {epic.get('id')} missing story_ids for {sorted(extras)}")
+    epic = epics[0]
+    epic_story_ids = epic["story_ids"]
+    missing_stories = [sid for sid in epic_story_ids if sid not in story_ids]
+    if missing_stories:
+        errors.append(f"epic {epic['id']} references unknown story_ids {missing_stories}")
+    extras = set(story_ids) - set(epic_story_ids)
+    if extras:
+        errors.append(f"epic {epic['id']} missing story_ids for {sorted(extras)}")
+
     if errors:
         raise RuntimeError("Validation errors:\n" + "\n".join(errors))
 
@@ -375,8 +397,7 @@ def run_sync(config: SyncConfig) -> None:
         issue_number = existing_story["number"] if existing_story else None
         issue_id = existing_story["id"] if existing_story else None
         issue_url = None
-        epic_id = story.get("epic_id") or (epics[0].get("id") if epics else None)
-        epic_issue = sync_map["epics"][epic_id]["issue_number"]
+        epic_issue = sync_map["epics"][story["epic_id"]]["issue_number"]
         epic_link = f"#{epic_issue}"
         if not issue_number:
             body = story_body(story, plan_id, epic_link)
@@ -511,11 +532,10 @@ def run_sync(config: SyncConfig) -> None:
 
         # update story bodies with tasks list
         for story in stories:
-            epic_id = story.get("epic_id") or (epics[0].get("id") if epics else None)
-            epic_issue = sync_map["epics"][epic_id]["issue_number"]
+            epic_issue = sync_map["epics"][story["epic_id"]]["issue_number"]
             epic_link = f"#{epic_issue}"
             task_items = []
-            task_ids_for_story = story.get("task_ids") or story.get("story_ids") or story_tasks.get(story["id"], [])
+            task_ids_for_story = story["task_ids"]
             for tid in task_ids_for_story:
                 tdata = sync_map["tasks"].get(tid)
                 if tdata:
@@ -530,7 +550,7 @@ def run_sync(config: SyncConfig) -> None:
         # update epic bodies with stories list
         for epic in epics:
             story_items = []
-            story_ids_for_epic = epic.get("story_ids") or story_ids_in_order
+            story_ids_for_epic = epic["story_ids"]
             for sid in story_ids_for_epic:
                 sdata = sync_map["stories"].get(sid)
                 if sdata:
@@ -567,7 +587,7 @@ def run_sync(config: SyncConfig) -> None:
 
         # roll up blocked-by to epic if multiple epics exist
         epic_blocked_by = set()
-        story_epic = {s["id"]: (s.get("epic_id") or (epics[0].get("id") if epics else None)) for s in stories}
+        story_epic = {s["id"]: s["epic_id"] for s in stories}
         for story_id, blocked_by_story_id in sorted(story_blocked_by):
             epic_id = story_epic.get(story_id)
             blocked_by_epic_id = story_epic.get(blocked_by_story_id)
@@ -581,8 +601,7 @@ def run_sync(config: SyncConfig) -> None:
 
         # sub-issues: stories under epic
         for story in stories:
-            epic_id = story.get("epic_id") or (epics[0].get("id") if epics else None)
-            epic_node_id = sync_map["epics"][epic_id]["node_id"]
+            epic_node_id = sync_map["epics"][story["epic_id"]]["node_id"]
             story_node_id = sync_map["stories"][story["id"]]["node_id"]
             parent_id = parent_map.get(story_node_id)
             if parent_id:

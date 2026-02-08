@@ -181,7 +181,13 @@ Only `path` is required in the object format. All other fields are optional.
 
 ## Validation rules
 
-planpilot validates the following before syncing:
+planpilot runs two-phase validation before syncing:
+
+### Phase 1: Required fields
+
+Every object must contain all required fields listed in the schema tables above. Missing fields produce clear error messages (e.g. `epic[0] missing required field 'goal'`). Validation stops here if any fields are missing.
+
+### Phase 2: Relational integrity
 
 1. Exactly one epic per run (use `planpilot-slice` for multi-epic plans)
 2. Every story's `epic_id` matches an epic in the file
@@ -190,3 +196,5 @@ planpilot validates the following before syncing:
 5. Every `story_ids` entry in an epic matches a story
 6. Every `task_ids` entry in a story matches a task
 7. No stories or tasks are orphaned (missing from parent's ID list)
+
+> **Note:** There are no silent fallbacks. If `epic_id` is missing from a story or `story_ids` is missing from an epic, validation fails immediately rather than guessing defaults.

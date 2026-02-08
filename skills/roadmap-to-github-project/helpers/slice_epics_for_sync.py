@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Create per-epic .plans slices for plan_gh_project_sync.
+Create per-epic .plans slices for planpilot.
 
 Why this exists:
-- plan_gh_project_sync currently validates exactly one epic per run.
+- planpilot validates exactly one epic per run.
 - This helper emits one epics/stories/tasks JSON triplet per epic.
 - Task depends_on is filtered to local slice task IDs to keep validation closed.
 """
@@ -55,20 +55,21 @@ def build_slices(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir
         if not isinstance(epic, dict):
             raise ValueError(f"Epic at index {index} must be an object: {epic!r}")
 
-        eid = epic.get("id")
-        if eid is None:
-            raise ValueError(f"Epic at index {index} missing required 'id': {epic!r}")
+        for field in ("id", "story_ids"):
+            if field not in epic:
+                raise ValueError(f"Epic at index {index} missing required '{field}': {epic!r}")
 
+        eid = epic["id"]
         file_eid = safe_epic_id_for_filename(eid)
-        story_ids = epic.get("story_ids", [])
+        story_ids = epic["story_ids"]
         epic_stories = [stories_by_id[sid] for sid in story_ids if sid in stories_by_id]
         epic_story_set = {s["id"] for s in epic_stories}
 
-        epic_tasks = [dict(t) for t in tasks if t.get("story_id") in epic_story_set]
+        epic_tasks = [dict(t) for t in tasks if t["story_id"] in epic_story_set]
         epic_task_ids = {t["id"] for t in epic_tasks}
 
         for t in epic_tasks:
-            deps = t.get("depends_on") or []
+            deps = t.get("depends_on", [])
             t["depends_on"] = [d for d in deps if d in epic_task_ids]
 
         write_json(out_dir / f"epics.{file_eid}.json", [epic])
