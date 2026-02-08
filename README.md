@@ -28,7 +28,7 @@ flowchart LR
 - **One-way sync**: local plan files -> GitHub
 - **Idempotent**: safe to rerun -- updates existing issues via markers
 - **Dry-run first**: preview all changes before applying
-- **Multi-epic**: slice large plans and sync each epic sequentially
+- **Multi-epic**: sync multiple epics natively (with optional per-epic slicing)
 - **Provider-agnostic**: adapter pattern supports GitHub today, with Jira/Linear planned
 - **Async-first**: built on asyncio for fast, concurrent sync operations
 

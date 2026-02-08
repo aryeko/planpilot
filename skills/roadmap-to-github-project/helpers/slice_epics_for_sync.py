@@ -2,10 +2,11 @@
 """
 Create per-epic .plans slices for planpilot.
 
-DEPRECATED: prefer `planpilot-slice` (packaged CLI) and `planpilot sync-all`.
+DEPRECATED: prefer native `planpilot` multi-epic sync. Use `planpilot-slice`
+only for manual per-epic workflows.
 
 Why this exists:
-- planpilot validates exactly one epic per run.
+- Some teams prefer explicit per-epic sync files.
 - This helper emits one epics/stories/tasks JSON triplet per epic.
 - Task depends_on is filtered to local slice task IDs to keep validation closed.
 """

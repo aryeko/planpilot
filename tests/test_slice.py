@@ -344,3 +344,48 @@ def test_slice_rejects_missing_task_story_id_key():
 
         with pytest.raises(ValueError, match=r"tasks\[0\]: missing required key 'story_id'"):
             slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")
+
+
+def test_slice_rejects_filename_collision_after_sanitization() -> None:
+    """Different epic IDs that sanitize to same token should fail fast."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+
+        epics = [
+            {"id": "E/2", "story_ids": ["S-1"]},
+            {"id": "E?2", "story_ids": ["S-2"]},
+        ]
+        stories = [
+            {"id": "S-1", "epic_id": "E/2", "task_ids": ["T-1"]},
+            {"id": "S-2", "epic_id": "E?2", "task_ids": ["T-2"]},
+        ]
+        tasks = [
+            {"id": "T-1", "story_id": "S-1", "depends_on": []},
+            {"id": "T-2", "story_id": "S-2", "depends_on": []},
+        ]
+
+        epics_path.write_text(json.dumps(epics), encoding="utf-8")
+        stories_path.write_text(json.dumps(stories), encoding="utf-8")
+        tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="filename collision"):
+            slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")
+
+
+def test_slice_rejects_non_list_depends_on_even_if_falsy() -> None:
+    """Falsy non-list depends_on values should still be rejected."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+
+        epics_path.write_text(json.dumps([{"id": "E-1", "story_ids": ["S-1"]}]), encoding="utf-8")
+        stories_path.write_text(json.dumps([{"id": "S-1", "epic_id": "E-1", "task_ids": ["T-1"]}]), encoding="utf-8")
+        tasks_path.write_text(json.dumps([{"id": "T-1", "story_id": "S-1", "depends_on": ""}]), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="depends_on must be a list"):
+            slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")

@@ -325,3 +325,47 @@ def test_validate_plan_multi_epic_cross_references_are_validated() -> None:
     assert "story story2 epic_id 'missing-epic' not found in epics" in message
     assert "task task2 story_id 'missing-story' not found in stories" in message
     assert "exactly one epic" not in message
+
+
+def test_validate_plan_rejects_epic_story_ids_owned_by_other_epic() -> None:
+    """An epic cannot list a story owned by another epic."""
+    plan = create_valid_multi_epic_plan()
+    plan.epics[0].story_ids = ["story1", "story2"]
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    assert "references story_ids owned by a different epic" in str(exc_info.value)
+
+
+def test_validate_plan_rejects_duplicate_entity_ids() -> None:
+    """Duplicate epic/story/task IDs are invalid."""
+    plan = create_minimal_plan()
+    plan.epics.append(Epic(id="epic1", title="Epic dup", goal="Goal", spec_ref="spec.md", story_ids=["story1"]))
+    plan.stories.append(
+        Story(id="story1", epic_id="epic1", title="Story dup", goal="Goal", spec_ref="spec.md", task_ids=["task1"])
+    )
+    plan.tasks.append(
+        Task(
+            id="task1",
+            story_id="story1",
+            title="Task dup",
+            motivation="Motivation",
+            spec_ref="spec.md",
+            requirements=[],
+            acceptance_criteria=[],
+            verification=Verification(),
+            artifacts=[],
+            depends_on=[],
+            estimate=Estimate(),
+            scope=Scope(),
+        )
+    )
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    error_str = str(exc_info.value)
+    assert "duplicate epic ids" in error_str
+    assert "duplicate story ids" in error_str
+    assert "duplicate task ids" in error_str

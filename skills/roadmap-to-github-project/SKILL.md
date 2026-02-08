@@ -36,7 +36,7 @@ Required for `sync` mode:
 Recommended defaults:
 - `plans_dir=.plans`
 - `sync_path=.plans/github-sync-map.json`
-- `label=codex`
+- `label=planpilot`
 - `status=Backlog`
 - `priority=P1`
 - `iteration=active`
@@ -121,7 +121,7 @@ planpilot \
   --stories-path .plans/stories.json \
   --tasks-path .plans/tasks.json \
   --sync-path .plans/github-sync-map.json \
-  --label codex \
+  --label planpilot \
   --status Backlog \
   --priority P1 \
   --iteration active \
@@ -141,7 +141,7 @@ Must report:
 - Any warnings/fallbacks
 - Sync map artifact paths
 
-`sync-all` writes merged sync map plus per-epic sync maps.
+If you choose orchestration mode (`planpilot sync-all`), it writes merged sync map plus per-epic sync maps.
 
 ## Common Mistakes
 

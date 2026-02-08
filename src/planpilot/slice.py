@@ -74,12 +74,21 @@ def slice_epics_for_sync(epics_path: Path, stories_path: Path, tasks_path: Path,
     tasks = _validate_list(_read_json(tasks_path), "tasks", ["id", "story_id"])
 
     results: list[SliceResult] = []
+    safe_id_owners: dict[str, str] = {}
 
     stories_by_id = {s["id"]: s for s in stories}
 
     for epic in epics:
         eid = str(epic["id"])
         safe_eid = _safe_epic_id(eid)
+        if safe_eid in safe_id_owners and safe_id_owners[safe_eid] != eid:
+            owner = safe_id_owners[safe_eid]
+            raise ValueError(
+                "epic id filename collision after sanitization: "
+                f"{owner!r} and {eid!r} both map to {safe_eid!r}"
+            )
+        safe_id_owners[safe_eid] = eid
+
         story_ids = epic["story_ids"]
         if not isinstance(story_ids, list):
             raise ValueError(f"epic '{eid}': story_ids must be a list, got {type(story_ids).__name__}")
@@ -92,10 +101,14 @@ def slice_epics_for_sync(epics_path: Path, stories_path: Path, tasks_path: Path,
         dropped_deps: list[tuple[str, str]] = []
 
         for task in epic_tasks:
-            deps = task.get("depends_on") or []
-            if not isinstance(deps, list):
+            raw_deps = task.get("depends_on", [])
+            if raw_deps is None:
+                deps: list[Any] = []
+            elif isinstance(raw_deps, list):
+                deps = raw_deps
+            else:
                 raise ValueError(
-                    f"task '{task['id']}': depends_on must be a list, got {type(deps).__name__}"
+                    f"task '{task['id']}': depends_on must be a list, got {type(raw_deps).__name__}"
                 )
 
             kept = [dep for dep in deps if dep in epic_task_ids]
