@@ -139,6 +139,69 @@ async def test_get_repo_context_creates_label_if_missing(provider, mock_client):
 
 
 @pytest.mark.asyncio
+async def test_get_repo_context_handles_label_creation_provider_error(provider, mock_client):
+    """Test that get_repo_context handles ProviderError during label creation."""
+    repo = "owner/repo"
+    label = "planpilot"
+
+    mock_client.graphql.return_value = {
+        "data": {
+            "repository": {
+                "id": "repo_node_id",
+                "issueTypes": {"nodes": []},
+                "labels": {"nodes": []},
+            }
+        }
+    }
+    mock_client.run.side_effect = ProviderError("label create failed")
+
+    result = await provider.get_repo_context(repo, label)
+
+    assert isinstance(result, RepoContext)
+    assert result.repo_id == "repo_node_id"
+    assert result.label_id is None  # label creation failed
+
+
+@pytest.mark.asyncio
+async def test_get_repo_context_handles_label_creation_unexpected_error(provider, mock_client):
+    """Test that get_repo_context handles unexpected errors during label creation."""
+    repo = "owner/repo"
+    label = "planpilot"
+
+    mock_client.graphql.return_value = {
+        "data": {
+            "repository": {
+                "id": "repo_node_id",
+                "issueTypes": {"nodes": []},
+                "labels": {"nodes": []},
+            }
+        }
+    }
+    mock_client.run.side_effect = OSError("unexpected")
+
+    result = await provider.get_repo_context(repo, label)
+
+    assert isinstance(result, RepoContext)
+    assert result.label_id is None
+
+
+@pytest.mark.asyncio
+async def test_set_project_field_text_value(provider, mock_client):
+    """Test that set_project_field handles text values."""
+    mock_client.graphql_raw.return_value = {
+        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "item_id"}}}
+    }
+
+    value = FieldValue(text="some text")
+    await provider.set_project_field("project_id", "item_id", "field_id", value)
+
+    mock_client.graphql_raw.assert_called_once()
+    call_args = mock_client.graphql_raw.call_args[0][0]
+    value_str = " ".join(call_args)
+    assert "text" in value_str
+
+
+@pytest.mark.asyncio
 async def test_get_project_context_success(provider, mock_client):
     """Test that get_project_context returns ProjectContext with resolved fields."""
     project_url = "https://github.com/orgs/myorg/projects/1"
@@ -269,6 +332,7 @@ async def test_search_issues_single_page(provider, mock_client):
     """Test that search_issues handles single-page results."""
     repo = "owner/repo"
     plan_id = "plan123"
+    label = "planpilot"
 
     mock_client.graphql.return_value = {
         "data": {
@@ -282,7 +346,7 @@ async def test_search_issues_single_page(provider, mock_client):
         }
     }
 
-    result = await provider.search_issues(repo, plan_id)
+    result = await provider.search_issues(repo, plan_id, label)
 
     assert len(result) == 2
     assert all(isinstance(issue, ExistingIssue) for issue in result)
@@ -297,6 +361,7 @@ async def test_search_issues_paginates(provider, mock_client):
     """Test that search_issues handles multi-page results."""
     repo = "owner/repo"
     plan_id = "plan123"
+    label = "planpilot"
 
     mock_client.graphql.side_effect = [
         {
@@ -321,7 +386,7 @@ async def test_search_issues_paginates(provider, mock_client):
         },
     ]
 
-    result = await provider.search_issues(repo, plan_id)
+    result = await provider.search_issues(repo, plan_id, label)
 
     assert len(result) == 2
     assert mock_client.graphql.call_count == 2
@@ -547,3 +612,98 @@ async def test_add_blocked_by_calls_graphql(provider, mock_client):
     assert "ADD_BLOCKED_BY" in call_args[0][0] or "addBlockedBy" in call_args[0][0]
     assert call_args[1]["variables"]["issueId"] == issue_id
     assert call_args[1]["variables"]["blockingIssueId"] == blocker_id
+
+
+def test_build_issue_map_basic(provider):
+    """Test that build_issue_map extracts entity markers into nested dict."""
+    issues = [
+        ExistingIssue(
+            id="i1",
+            number=1,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
+        ),
+        ExistingIssue(
+            id="i2",
+            number=2,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- STORY_ID: S-1 -->",
+        ),
+        ExistingIssue(
+            id="i3",
+            number=3,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- TASK_ID: T-1 -->",
+        ),
+    ]
+    result = provider.build_issue_map(issues, "plan1")
+    assert result["epics"] == {"E-1": {"id": "i1", "number": 1}}
+    assert result["stories"] == {"S-1": {"id": "i2", "number": 2}}
+    assert result["tasks"] == {"T-1": {"id": "i3", "number": 3}}
+
+
+def test_build_issue_map_filters_by_plan_id(provider):
+    """Test that build_issue_map skips issues with non-matching plan_id."""
+    issues = [
+        ExistingIssue(
+            id="i1",
+            number=1,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
+        ),
+        ExistingIssue(
+            id="i2",
+            number=2,
+            body="<!-- PLAN_ID: other -->\n<!-- EPIC_ID: E-2 -->",
+        ),
+    ]
+    result = provider.build_issue_map(issues, "plan1")
+    assert "E-1" in result["epics"]
+    assert "E-2" not in result["epics"]
+
+
+def test_resolve_option_id_found(provider):
+    """Test that resolve_option_id returns matching option ID (case-insensitive)."""
+    options = [
+        {"id": "opt1", "name": "High"},
+        {"id": "opt2", "name": "Low"},
+    ]
+    assert provider.resolve_option_id(options, "high") == "opt1"
+    assert provider.resolve_option_id(options, "LOW") == "opt2"
+
+
+def test_resolve_option_id_not_found(provider):
+    """Test that resolve_option_id returns None when no match."""
+    options = [{"id": "opt1", "name": "High"}]
+    assert provider.resolve_option_id(options, "Medium") is None
+
+
+def test_resolve_option_id_none_name(provider):
+    """Test that resolve_option_id returns None when name is None."""
+    options = [{"id": "opt1", "name": "High"}]
+    assert provider.resolve_option_id(options, None) is None
+
+
+@pytest.mark.asyncio
+async def test_get_project_context_returns_none_on_unexpected_error(provider, mock_client):
+    """Test that get_project_context returns None on unexpected (non-Provider) errors."""
+    with patch(
+        "planpilot.providers.github.provider.parse_project_url",
+        return_value=("myorg", 1),
+    ):
+        mock_client.graphql.side_effect = RuntimeError("Unexpected")
+        result = await provider.get_project_context("https://github.com/orgs/myorg/projects/1", FieldConfig())
+        assert result is None
+
+
+@pytest.mark.asyncio
+async def test_set_project_field_iteration_value(provider, mock_client):
+    """Test that set_project_field handles iteration_id values."""
+    mock_client.graphql_raw.return_value = {
+        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "item_id"}}}
+    }
+
+    value = FieldValue(iteration_id="iter-123")
+    await provider.set_project_field("project_id", "item_id", "field_id", value)
+
+    mock_client.graphql_raw.assert_called_once()
+    call_args = mock_client.graphql_raw.call_args[0][0]
+    # Verify the iteration value was serialized
+    value_str = " ".join(call_args)
+    assert "iterationId" in value_str

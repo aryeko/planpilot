@@ -7,6 +7,7 @@ import asyncio
 import logging
 import sys
 
+from planpilot import __version__
 from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig
@@ -24,13 +25,18 @@ def build_parser() -> argparse.ArgumentParser:
         Configured ArgumentParser.
     """
     parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
     parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
     parser.add_argument("--project-url", required=True, help="GitHub Project URL")
     parser.add_argument("--epics-path", required=True, help="Path to epics.json")
     parser.add_argument("--stories-path", required=True, help="Path to stories.json")
     parser.add_argument("--tasks-path", required=True, help="Path to tasks.json")
     parser.add_argument("--sync-path", required=True, help="Path to write sync map")
-    parser.add_argument("--label", default="codex", help="Label to apply")
+    parser.add_argument("--label", default="planpilot", help="Label to apply")
     parser.add_argument("--status", default="Backlog", help="Project status option name")
     parser.add_argument("--priority", default="P1", help="Project priority option name")
     parser.add_argument(

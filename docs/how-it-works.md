@@ -128,7 +128,7 @@ When `--project-url` points to a GitHub Projects v2 board, each issue is:
 
 ### Labels
 
-A label (default: `codex`) is applied to all created issues. If the label doesn't exist, planpilot creates it.
+A label (default: `planpilot`) is applied to all created issues. If the label doesn't exist, planpilot creates it.
 
 ## Sync map output
 
@@ -162,10 +162,9 @@ This file enables idempotent reruns and can be used by other tools to reference 
 
 When `--dry-run` is passed, planpilot:
 - Validates all input files
-- Checks GitHub authentication
 - Logs every action it **would** take (prefixed with `[dry-run]`)
 - Writes a sync map with placeholder values
-- Makes **zero** API calls that modify state
+- Makes **zero** API calls (completely offline)
 
 Always dry-run first before using `--apply`.
 

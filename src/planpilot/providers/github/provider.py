@@ -25,6 +25,7 @@ from planpilot.providers.github.mapper import (
     build_blocked_by_map,
     build_parent_map,
     build_project_item_map,
+    parse_markers,
     parse_project_url,
     resolve_option_id,
 )
@@ -104,7 +105,7 @@ class GitHubProvider(Provider):
             label_id = labels[0].get("id")
         else:
             # Label not found, try to create it
-            logger.info(f"Label '{label}' not found in {repo}, attempting to create it")
+            logger.info("Label '%s' not found in %s, attempting to create it", label, repo)
             try:
                 await self.client.run(
                     ["label", "create", label, "--repo", repo],
@@ -120,9 +121,9 @@ class GitHubProvider(Provider):
                 if labels:
                     label_id = labels[0].get("id")
             except ProviderError as e:
-                logger.warning(f"Failed to create label '{label}': {e}")
-            except Exception as e:
-                logger.warning(f"Unexpected error creating label '{label}': {type(e).__name__}: {e}")
+                logger.warning("Failed to create label '%s': %s", label, e)
+            except (OSError, TypeError, KeyError, AttributeError) as e:
+                logger.warning("Unexpected error creating label '%s': %s: %s", label, type(e).__name__, e)
 
         return RepoContext(
             repo_id=repo_id,
@@ -147,7 +148,7 @@ class GitHubProvider(Provider):
         try:
             org, number = parse_project_url(project_url)
         except ProjectURLError:
-            logger.error(f"Invalid project URL: {project_url}")
+            logger.error("Invalid project URL: %s", project_url)
             return None
 
         try:
@@ -159,7 +160,7 @@ class GitHubProvider(Provider):
 
             project_data = response.get("data", {}).get("organization", {}).get("projectV2")
             if not project_data:
-                logger.error(f"Project {org}/{number} not found")
+                logger.error("Project %s/%s not found", org, number)
                 return None
 
             project_id = project_data.get("id")
@@ -272,21 +273,25 @@ class GitHubProvider(Provider):
                 item_map=item_map,
             )
 
+        except (ProviderError, ProjectURLError) as e:
+            logger.error("Failed to fetch project context: %s", e)
+            return None
         except Exception as e:
-            logger.error(f"Failed to fetch project context: {e}", exc_info=True)
+            logger.error("Unexpected error fetching project context: %s", e, exc_info=True)
             return None
 
-    async def search_issues(self, repo: str, plan_id: str) -> list[ExistingIssue]:
+    async def search_issues(self, repo: str, plan_id: str, label: str) -> list[ExistingIssue]:
         """Search for issues belonging to *plan_id*.
 
         Args:
             repo: Repository identifier.
             plan_id: Deterministic plan hash embedded in issue bodies.
+            label: Label name to filter search results.
 
         Returns:
             List of matching :class:`ExistingIssue` instances.
         """
-        search_query = f'repo:{repo} label:planpilot "{plan_id}" in:body'
+        search_query = f'repo:{repo} label:{label} "{plan_id}" in:body'
         issues: list[ExistingIssue] = []
         after: str | None = None
 
@@ -314,6 +319,39 @@ class GitHubProvider(Provider):
             after = page_info.get("endCursor")
 
         return issues
+
+    def build_issue_map(
+        self, existing_issues: list[ExistingIssue], plan_id: str
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """Build a mapping of entity IDs to issue metadata, filtered by plan_id.
+
+        Args:
+            existing_issues: Raw issue instances from the search API.
+            plan_id: Only include issues matching this plan_id.
+
+        Returns:
+            Nested dict: ``{"epics": {id: {id, number}}, "stories": ..., "tasks": ...}``.
+        """
+        mapping: dict[str, dict[str, dict[str, Any]]] = {"epics": {}, "stories": {}, "tasks": {}}
+        for issue in existing_issues:
+            markers = parse_markers(issue.body)
+            if plan_id and markers.get("plan_id") != plan_id:
+                continue
+            entry = {"id": issue.id, "number": issue.number}
+            if markers.get("epic_id"):
+                mapping["epics"][markers["epic_id"]] = entry
+            if markers.get("story_id"):
+                mapping["stories"][markers["story_id"]] = entry
+            if markers.get("task_id"):
+                mapping["tasks"][markers["task_id"]] = entry
+        return mapping
+
+    def resolve_option_id(self, options: list[dict[str, str]], name: str | None) -> str | None:
+        """Find the option ID matching *name* (case-insensitive).
+
+        Delegates to :func:`planpilot.providers.github.mapper.resolve_option_id`.
+        """
+        return resolve_option_id(options, name)
 
     async def create_issue(self, issue_input: CreateIssueInput) -> IssueRef:
         """Create a new issue.
@@ -426,7 +464,7 @@ class GitHubProvider(Provider):
             item_data = response.get("data", {}).get("addProjectV2ItemById", {}).get("item", {})
             return item_data.get("id")
         except Exception as e:
-            logger.warning(f"Failed to add issue to project: {e}")
+            logger.warning("Failed to add issue to project: %s", e)
             return None
 
     async def set_project_field(
@@ -446,9 +484,9 @@ class GitHubProvider(Provider):
         """
         # Build the value object
         value_obj: dict[str, Any] = {}
-        if value.single_select_option_id:
+        if value.single_select_option_id is not None:
             value_obj["singleSelectOptionId"] = value.single_select_option_id
-        elif value.iteration_id:
+        elif value.iteration_id is not None:
             value_obj["iterationId"] = value.iteration_id
         elif value.text is not None:
             value_obj["text"] = value.text

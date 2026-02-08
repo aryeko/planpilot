@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -62,13 +63,23 @@ def _build_slice_parser() -> argparse.ArgumentParser:
 def slice_cli() -> int:
     """CLI entry point for the planpilot-slice command."""
     args = _build_slice_parser().parse_args()
-    slice_epics_for_sync(
-        epics_path=Path(args.epics_path),
-        stories_path=Path(args.stories_path),
-        tasks_path=Path(args.tasks_path),
-        out_dir=Path(args.out_dir),
-    )
-    return 0
+    try:
+        slice_epics_for_sync(
+            epics_path=Path(args.epics_path),
+            stories_path=Path(args.stories_path),
+            tasks_path=Path(args.tasks_path),
+            out_dir=Path(args.out_dir),
+        )
+        return 0
+    except FileNotFoundError as e:
+        print(f"Error: File not found: {e.filename}", file=sys.stderr)
+        return 1
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        print(f"Error: Invalid input format: {e}", file=sys.stderr)
+        return 1
+    except Exception as e:
+        print(f"Error: {e}", file=sys.stderr)
+        return 1
 
 
 if __name__ == "__main__":

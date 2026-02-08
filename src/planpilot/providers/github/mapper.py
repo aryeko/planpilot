@@ -8,17 +8,20 @@ from typing import Any
 from planpilot.exceptions import ProjectURLError
 
 # Regex for project URL: https://github.com/orgs/{org}/projects/{number}
-_PROJECT_URL_RE = re.compile(r"https://github\.com/orgs/([^/]+)/projects/(\d+)/?$")
+# or https://github.com/users/{user}/projects/{number}
+_PROJECT_URL_RE = re.compile(r"https://github\.com/(?:orgs|users)/([^/]+)/projects/(\d+)/?$")
 
 
 def parse_project_url(url: str) -> tuple[str, int]:
-    """Parse a GitHub project URL into (org, number).
+    """Parse a GitHub project URL into (owner, number).
+
+    Supports both organization and user-level projects.
 
     Args:
-        url: Full GitHub project URL.
+        url: Full GitHub project URL (org or user).
 
     Returns:
-        Tuple of (organization, project_number).
+        Tuple of (owner, project_number).
 
     Raises:
         ProjectURLError: If the URL format is invalid.
@@ -27,7 +30,7 @@ def parse_project_url(url: str) -> tuple[str, int]:
     if not m:
         raise ProjectURLError(
             f"Invalid project URL: {url!r}. "
-            "Expected format: https://github.com/orgs/{{org}}/projects/{{number}}"
+            "Expected format: https://github.com/{{orgs|users}}/{{owner}}/projects/{{number}}"
         )
     return m.group(1), int(m.group(2))
 

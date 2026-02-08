@@ -17,6 +17,7 @@ from planpilot.models.project import (
     ProjectContext,
     RelationMap,
     RepoContext,
+    ResolvedField,
 )
 from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 
@@ -34,6 +35,7 @@ __all__ = [
     "ProjectContext",
     "RelationMap",
     "RepoContext",
+    "ResolvedField",
     "Scope",
     "SpecRef",
     "Story",

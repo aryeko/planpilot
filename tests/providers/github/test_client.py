@@ -226,3 +226,18 @@ async def test_run_with_empty_stdout_stderr():
     assert result.returncode == 0
     assert result.stdout == ""
     assert result.stderr == ""
+
+
+@pytest.mark.asyncio
+async def test_run_raises_on_none_returncode():
+    """Test that run() raises ProviderError when returncode is None (interrupted)."""
+    client = GhClient()
+    mock_proc = AsyncMock()
+    mock_proc.returncode = None
+    mock_proc.communicate = AsyncMock(return_value=(b"", b""))
+
+    with (
+        patch("asyncio.create_subprocess_exec", return_value=mock_proc),
+        pytest.raises(ProviderError, match="gh command did not terminate"),
+    ):
+        await client.run(["repo", "view"])

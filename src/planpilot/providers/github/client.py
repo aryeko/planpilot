@@ -49,8 +49,10 @@ class GhClient:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_bytes, stderr_bytes = await proc.communicate()
+        if proc.returncode is None:
+            raise ProviderError(f"gh command did not terminate: {' '.join(cmd)}")
         result = CompletedProcess(
-            returncode=proc.returncode or 0,
+            returncode=proc.returncode,
             stdout=stdout_bytes.decode() if stdout_bytes else "",
             stderr=stderr_bytes.decode() if stderr_bytes else "",
         )

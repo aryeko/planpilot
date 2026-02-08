@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from itertools import chain
 from pathlib import Path
 from typing import Any
 
@@ -18,11 +19,30 @@ from planpilot.models.project import (
 from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan, validate_plan
 from planpilot.providers.base import Provider
-from planpilot.providers.github.mapper import build_issue_mapping, resolve_option_id
 from planpilot.rendering.base import BodyRenderer
 from planpilot.sync.relations import compute_epic_blocked_by, compute_story_blocked_by
 
 logger = logging.getLogger(__name__)
+
+
+def _get_sync_entry(sync_map: dict[str, SyncEntry], entity_id: str, entity_type: str) -> SyncEntry:
+    """Guard a sync_map lookup and raise descriptive SyncError on miss.
+
+    Args:
+        sync_map: Dictionary of entity IDs to SyncEntry objects.
+        entity_id: The entity ID to look up.
+        entity_type: Human-readable type name (e.g., "task", "story", "epic").
+
+    Returns:
+        The SyncEntry if found.
+
+    Raises:
+        SyncError: If entity_id is not in sync_map.
+    """
+    try:
+        return sync_map[entity_id]
+    except KeyError:
+        raise SyncError(f"Missing {entity_type} in sync map: {entity_id!r}") from None
 
 
 class SyncEngine:
@@ -147,9 +167,8 @@ class SyncEngine:
         project_ctx = await self._provider.get_project_context(cfg.project_url, cfg.field_config)
 
         # Phase 2: Discovery
-        existing_issues = await self._provider.search_issues(cfg.repo, plan_id)
-        existing_raw = [{"id": e.id, "number": e.number, "body": e.body} for e in existing_issues]
-        existing_map = build_issue_mapping(existing_raw, plan_id=plan_id)
+        existing_issues = await self._provider.search_issues(cfg.repo, plan_id, cfg.label)
+        existing_map = self._provider.build_issue_map(existing_issues, plan_id)
 
         sync_map = SyncMap(
             plan_id=plan_id,
@@ -324,7 +343,7 @@ class SyncEngine:
                 size_option_id = None
                 if self._config.field_config.size_from_tshirt and project_ctx.size_field_id:
                     tshirt = task.estimate.tshirt if task.estimate else None
-                    size_option_id = resolve_option_id(project_ctx.size_options, tshirt)
+                    size_option_id = self._provider.resolve_option_id(project_ctx.size_options, tshirt)
                 await self._set_project_fields(project_ctx, item_id, size_option_id=size_option_id)
 
         return SyncEntry(issue_number=ref.number, url=ref.url, node_id=ref.id, project_item_id=item_id)
@@ -367,16 +386,18 @@ class SyncEngine:
 
         # Update task bodies with dependencies
         for task in plan.tasks:
-            story_num = sync_map.stories[task.story_id].issue_number
-            deps = {dep: f"#{sync_map.tasks[dep].issue_number}" for dep in task.depends_on}
+            story_entry = _get_sync_entry(sync_map.stories, task.story_id, "story")
+            story_num = story_entry.issue_number
+            deps = {dep: f"#{_get_sync_entry(sync_map.tasks, dep, 'task').issue_number}" for dep in task.depends_on}
             deps_block = self._renderer.render_deps_block(deps)
             body = self._renderer.render_task(task, plan_id, f"#{story_num}", deps_block)
-            entry = sync_map.tasks[task.id]
+            entry = _get_sync_entry(sync_map.tasks, task.id, "task")
             await self._provider.update_issue(repo, entry.issue_number, task.title, body)
 
         # Update story bodies with task checklists
         for story in plan.stories:
-            epic_num = sync_map.epics[story.epic_id].issue_number
+            epic_entry = _get_sync_entry(sync_map.epics, story.epic_id, "epic")
+            epic_num = epic_entry.issue_number
             task_items = []
             for tid in story.task_ids:
                 tentry = sync_map.tasks.get(tid)
@@ -384,7 +405,7 @@ class SyncEngine:
                     task_items.append((tentry.issue_number, task_by_id[tid].title))
             tasks_list = self._renderer.render_checklist(task_items)
             body = self._renderer.render_story(story, plan_id, f"#{epic_num}", tasks_list)
-            entry = sync_map.stories[story.id]
+            entry = _get_sync_entry(sync_map.stories, story.id, "story")
             await self._provider.update_issue(repo, entry.issue_number, story.title, body)
 
         # Update epic bodies with story checklists
@@ -396,7 +417,7 @@ class SyncEngine:
                     story_items.append((sentry.issue_number, story_by_id[sid].title))
             stories_list = self._renderer.render_checklist(story_items)
             body = self._renderer.render_epic(epic, plan_id, stories_list)
-            entry = sync_map.epics[epic.id]
+            entry = _get_sync_entry(sync_map.epics, epic.id, "epic")
             await self._provider.update_issue(repo, entry.issue_number, epic.title, body)
 
     async def _set_relations(
@@ -405,26 +426,28 @@ class SyncEngine:
         sync_map: SyncMap,
     ) -> None:
         """Phase 5: Set up sub-issue and blocked-by relationships."""
-        all_ids = (
-            [e.node_id for e in sync_map.tasks.values()]
-            + [e.node_id for e in sync_map.stories.values()]
-            + [e.node_id for e in sync_map.epics.values()]
+        all_ids = list(
+            chain(
+                (e.node_id for e in sync_map.tasks.values()),
+                (e.node_id for e in sync_map.stories.values()),
+                (e.node_id for e in sync_map.epics.values()),
+            )
         )
         relation_map = await self._provider.get_issue_relations(all_ids)
 
         # Task blocked-by
         for task in plan.tasks:
-            task_node = sync_map.tasks[task.id].node_id
+            task_node = _get_sync_entry(sync_map.tasks, task.id, "task").node_id
             for dep in task.depends_on:
-                dep_node = sync_map.tasks[dep].node_id
+                dep_node = _get_sync_entry(sync_map.tasks, dep, "task").node_id
                 if dep_node not in relation_map.blocked_by.get(task_node, set()):
                     await self._provider.add_blocked_by(task_node, dep_node)
 
         # Story blocked-by (roll-up)
         story_blocked = compute_story_blocked_by(plan.tasks)
         for story_id, blocked_by_id in sorted(story_blocked):
-            snode = sync_map.stories[story_id].node_id
-            bnode = sync_map.stories[blocked_by_id].node_id
+            snode = _get_sync_entry(sync_map.stories, story_id, "story").node_id
+            bnode = _get_sync_entry(sync_map.stories, blocked_by_id, "story").node_id
             if bnode not in relation_map.blocked_by.get(snode, set()):
                 await self._provider.add_blocked_by(snode, bnode)
 
@@ -432,15 +455,15 @@ class SyncEngine:
         story_epic = {s.id: s.epic_id for s in plan.stories}
         epic_blocked = compute_epic_blocked_by(story_blocked, story_epic)
         for epic_id, blocked_by_id in sorted(epic_blocked):
-            enode = sync_map.epics[epic_id].node_id
-            bnode = sync_map.epics[blocked_by_id].node_id
+            enode = _get_sync_entry(sync_map.epics, epic_id, "epic").node_id
+            bnode = _get_sync_entry(sync_map.epics, blocked_by_id, "epic").node_id
             if bnode not in relation_map.blocked_by.get(enode, set()):
                 await self._provider.add_blocked_by(enode, bnode)
 
         # Sub-issues: stories under epics
         for story in plan.stories:
-            epic_node = sync_map.epics[story.epic_id].node_id
-            story_node = sync_map.stories[story.id].node_id
+            epic_node = _get_sync_entry(sync_map.epics, story.epic_id, "epic").node_id
+            story_node = _get_sync_entry(sync_map.stories, story.id, "story").node_id
             parent = relation_map.parents.get(story_node)
             if parent == epic_node:
                 continue
@@ -450,8 +473,8 @@ class SyncEngine:
 
         # Sub-issues: tasks under stories
         for task in plan.tasks:
-            story_node = sync_map.stories[task.story_id].node_id
-            task_node = sync_map.tasks[task.id].node_id
+            story_node = _get_sync_entry(sync_map.stories, task.story_id, "story").node_id
+            task_node = _get_sync_entry(sync_map.tasks, task.id, "task").node_id
             parent = relation_map.parents.get(task_node)
             if parent == story_node:
                 continue

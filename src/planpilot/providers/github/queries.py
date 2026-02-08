@@ -29,14 +29,6 @@ query($owner: String!, $name: String!, $label: String!) {
 }
 """
 
-FETCH_LABEL = """
-query($owner: String!, $name: String!, $label: String!) {
-  repository(owner: $owner, name: $name) {
-    labels(query: $label, first: 1) { nodes { id name } }
-  }
-}
-"""
-
 SEARCH_ISSUES = """
 query($searchQuery: String!, $after: String) {
   search(query: $searchQuery, type: ISSUE, first: 100, after: $after) {

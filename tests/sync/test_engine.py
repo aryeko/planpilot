@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from planpilot.config import SyncConfig
+from planpilot.exceptions import SyncError
 from planpilot.models.plan import Epic, Plan, Story, Task
 from planpilot.models.project import (
     CreateIssueInput,
@@ -24,7 +25,7 @@ from planpilot.models.sync import SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan
 from planpilot.providers.base import Provider
 from planpilot.rendering.base import BodyRenderer
-from planpilot.sync.engine import SyncEngine
+from planpilot.sync.engine import SyncEngine, _get_sync_entry
 
 
 @pytest.fixture
@@ -35,11 +36,13 @@ def mock_provider() -> AsyncMock:
     provider.get_repo_context = AsyncMock()
     provider.get_project_context = AsyncMock()
     provider.search_issues = AsyncMock(return_value=[])
+    provider.build_issue_map = MagicMock(return_value={"epics": {}, "stories": {}, "tasks": {}})
     provider.create_issue = AsyncMock()
     provider.update_issue = AsyncMock()
     provider.set_issue_type = AsyncMock()
     provider.add_to_project = AsyncMock()
     provider.set_project_field = AsyncMock()
+    provider.resolve_option_id = MagicMock(return_value=None)
     provider.get_issue_relations = AsyncMock()
     provider.add_sub_issue = AsyncMock()
     provider.add_blocked_by = AsyncMock()
@@ -350,6 +353,12 @@ async def test_sync_skips_existing_issues(
         body=f"<!-- PLAN_ID: {plan_id} -->\n<!-- EPIC_ID: E-1 -->",
     )
     mock_provider.search_issues.return_value = [existing_issue]
+    # Mock the issue mapping
+    mock_provider.build_issue_map.return_value = {
+        "epics": {"E-1": {"id": "existing-123", "number": 99}},
+        "stories": {},
+        "tasks": {},
+    }
     # Need to create story and task issues since epic exists
     story_ref = IssueRef(id="story-456", number=100, url="https://github.com/owner/repo/issues/100")
     task_ref = IssueRef(id="task-789", number=101, url="https://github.com/owner/repo/issues/101")
@@ -574,3 +583,9 @@ async def test_sync_writes_sync_map(
     assert "epics" in data
     assert "stories" in data
     assert "tasks" in data
+
+
+def test_get_sync_entry_raises_on_missing_key():
+    """_get_sync_entry raises SyncError when entity_id is not in the map."""
+    with pytest.raises(SyncError, match="Missing task in sync map: 'T-999'"):
+        _get_sync_entry({}, "T-999", "task")
