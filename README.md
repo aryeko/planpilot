@@ -127,6 +127,7 @@ A complete working example is in the [examples/](examples/) directory.
 - [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
 - [Architecture / v1 Scope](docs/architecture/v1-scope.md) -- what's in and out of scope
 - [Migration Guide](docs/migration.md) -- upgrading from previous versions
+- [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
 ## Contributing
 

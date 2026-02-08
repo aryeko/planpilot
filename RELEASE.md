@@ -2,15 +2,24 @@
 
 ## How releases work
 
-planpilot uses [python-semantic-release](https://python-semantic-release.readthedocs.io/) for fully automated versioning and publishing. When commits are merged to `main`, the release workflow:
+planpilot uses [python-semantic-release](https://python-semantic-release.readthedocs.io/) for fully automated versioning and publishing. When commits are merged to `main`, the release workflow runs automatically:
 
-1. Analyzes commit messages using [Conventional Commits](https://www.conventionalcommits.org/)
-2. Determines the next version (major/minor/patch) based on commit types
-3. Bumps the version in `pyproject.toml` and `src/planpilot/__init__.py`
-4. Updates `CHANGELOG.md`, creates a git tag
-5. **Publishes to TestPyPI** and verifies the package installs correctly
-6. **Publishes to PyPI** (only after TestPyPI succeeds)
-7. Creates a **GitHub Release** with release notes
+```mermaid
+flowchart TD
+    A[Push to main] --> B[Semantic Release]
+    B --> B1{Version bump\nneeded?}
+    B1 -->|No| Z[Done - no release]
+    B1 -->|Yes| C[Bump version in\npyproject.toml + __init__.py]
+    C --> D[Update CHANGELOG.md]
+    D --> E[Create git tag]
+    E --> F[Build package]
+    F --> G[Publish to TestPyPI]
+    G --> H{Install test\npasses?}
+    H -->|No| X[❌ Release blocked]
+    H -->|Yes| I[Publish to PyPI]
+    I --> J[Create GitHub Release]
+    J --> K[✅ Released]
+```
 
 TestPyPI acts as a gate -- if the package fails to publish or install from TestPyPI, the production PyPI publish and GitHub Release are blocked.
 
