@@ -10,6 +10,7 @@ import sys
 from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig
+from planpilot.models.sync import SyncResult
 from planpilot.providers.github.client import GhClient
 from planpilot.providers.github.provider import GitHubProvider
 from planpilot.rendering.markdown import MarkdownRenderer
@@ -94,6 +95,64 @@ def _build_config(args: argparse.Namespace) -> SyncConfig:
     )
 
 
+def _format_summary(result: SyncResult, config: SyncConfig) -> str:
+    """Format a human-readable execution summary.
+
+    Args:
+        result: The sync result.
+        config: The sync configuration.
+
+    Returns:
+        Multi-line summary string.
+    """
+    sm = result.sync_map
+    mode = "dry-run" if result.dry_run else "apply"
+    lines = [
+        "",
+        f"planpilot — sync complete ({mode})",
+        "",
+        f"  Plan ID:   {sm.plan_id}",
+        f"  Repo:      {sm.repo}",
+        f"  Project:   {sm.project_url}",
+        "",
+    ]
+
+    total_existing = (
+        (len(sm.epics) - result.epics_created)
+        + (len(sm.stories) - result.stories_created)
+        + (len(sm.tasks) - result.tasks_created)
+    )
+    lines.append(
+        f"  Created:   {result.epics_created} epic(s), "
+        f"{result.stories_created} story(s), {result.tasks_created} task(s)"
+    )
+    if total_existing > 0:
+        lines.append(
+            f"  Existing:  {len(sm.epics) - result.epics_created} epic(s), "
+            f"{len(sm.stories) - result.stories_created} story(s), "
+            f"{len(sm.tasks) - result.tasks_created} task(s)"
+        )
+    lines.append("")
+
+    # Issue table
+    for eid, entry in sm.epics.items():
+        lines.append(f"  Epic   {eid:<6}  #{entry.issue_number:<5}  {entry.url}")
+    for sid, entry in sm.stories.items():
+        lines.append(f"  Story  {sid:<6}  #{entry.issue_number:<5}  {entry.url}")
+    for tid, entry in sm.tasks.items():
+        lines.append(f"  Task   {tid:<6}  #{entry.issue_number:<5}  {entry.url}")
+
+    lines.append("")
+    lines.append(f"  Sync map:  {config.sync_path}")
+
+    if result.dry_run:
+        lines.append("")
+        lines.append("  [dry-run] No changes were made to GitHub")
+
+    lines.append("")
+    return "\n".join(lines)
+
+
 async def _run_sync(config: SyncConfig) -> None:
     """Execute the sync pipeline.
 
@@ -104,13 +163,7 @@ async def _run_sync(config: SyncConfig) -> None:
     renderer = MarkdownRenderer()
     engine = SyncEngine(provider=provider, renderer=renderer, config=config)
     result = await engine.sync()
-
-    print(
-        f"\nSync complete: {result.epics_created} epic(s), "
-        f"{result.stories_created} story(s), {result.tasks_created} task(s)"
-    )
-    if result.dry_run:
-        print("[dry-run] No changes were made to GitHub")
+    print(_format_summary(result, config))
 
 
 def main() -> int:

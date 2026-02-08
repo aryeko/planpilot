@@ -10,11 +10,11 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from planpilot.cli import _build_config, _run_sync, build_parser, main
+from planpilot.cli import _build_config, _format_summary, _run_sync, build_parser, main
 from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig
-from planpilot.models.sync import SyncMap, SyncResult
+from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 
 
 def test_build_parser_requires_mode_flag():
@@ -191,6 +191,78 @@ def test_build_config_from_args():
     assert config.field_config.iteration == "Sprint 1"
     assert config.field_config.size_field == "Effort"
     assert config.field_config.size_from_tshirt is False
+
+
+def test_format_summary_dry_run():
+    """Test that _format_summary produces correct output for dry-run."""
+    sync_map = SyncMap(
+        plan_id="abc123",
+        repo="owner/repo",
+        project_url="https://github.com/orgs/o/projects/1",
+        epics={"E-1": SyncEntry(issue_number=0, url="dry-run", node_id="dry-run-epic-E-1")},
+        stories={"S-1": SyncEntry(issue_number=0, url="dry-run", node_id="dry-run-story-S-1")},
+        tasks={"T-1": SyncEntry(issue_number=0, url="dry-run", node_id="dry-run-task-T-1")},
+    )
+    result = SyncResult(sync_map=sync_map, epics_created=1, stories_created=1, tasks_created=1, dry_run=True)
+    config = SyncConfig(
+        repo="owner/repo",
+        project_url="https://github.com/orgs/o/projects/1",
+        epics_path=Path("e.json"),
+        stories_path=Path("s.json"),
+        tasks_path=Path("t.json"),
+        sync_path=Path("sync.json"),
+        dry_run=True,
+    )
+
+    output = _format_summary(result, config)
+
+    assert "sync complete (dry-run)" in output
+    assert "Plan ID:   abc123" in output
+    assert "Repo:      owner/repo" in output
+    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in output
+    assert "Epic   E-1" in output
+    assert "Story  S-1" in output
+    assert "Task   T-1" in output
+    assert "Sync map:  sync.json" in output
+    assert "[dry-run] No changes were made to GitHub" in output
+
+
+def test_format_summary_apply_with_existing():
+    """Test that _format_summary shows existing counts in apply mode."""
+    sync_map = SyncMap(
+        plan_id="abc123",
+        repo="owner/repo",
+        project_url="https://github.com/orgs/o/projects/1",
+        epics={
+            "E-1": SyncEntry(issue_number=1, url="https://github.com/owner/repo/issues/1", node_id="N1"),
+        },
+        stories={
+            "S-1": SyncEntry(issue_number=2, url="https://github.com/owner/repo/issues/2", node_id="N2"),
+            "S-2": SyncEntry(issue_number=3, url="https://github.com/owner/repo/issues/3", node_id="N3"),
+        },
+        tasks={
+            "T-1": SyncEntry(issue_number=4, url="https://github.com/owner/repo/issues/4", node_id="N4"),
+        },
+    )
+    # Only 1 story was newly created, rest existed
+    result = SyncResult(sync_map=sync_map, epics_created=0, stories_created=1, tasks_created=0, dry_run=False)
+    config = SyncConfig(
+        repo="owner/repo",
+        project_url="https://github.com/orgs/o/projects/1",
+        epics_path=Path("e.json"),
+        stories_path=Path("s.json"),
+        tasks_path=Path("t.json"),
+        sync_path=Path("sync.json"),
+    )
+
+    output = _format_summary(result, config)
+
+    assert "sync complete (apply)" in output
+    assert "Created:   0 epic(s), 1 story(s), 0 task(s)" in output
+    assert "Existing:  1 epic(s), 1 story(s), 1 task(s)" in output
+    assert "[dry-run]" not in output
+    assert "#1" in output
+    assert "#4" in output
 
 
 def test_verbose_configures_logging(capsys):

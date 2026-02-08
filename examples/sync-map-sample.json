@@ -4,43 +4,43 @@
   "project_url": "https://github.com/orgs/example-org/projects/1",
   "epics": {
     "E-1": {
-      "issue_number": 1,
-      "url": "https://github.com/example-org/example-repo/issues/1",
-      "node_id": "I_abc001",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-epic-E-1",
       "project_item_id": null
     }
   },
   "stories": {
     "S-1": {
-      "issue_number": 2,
-      "url": "https://github.com/example-org/example-repo/issues/2",
-      "node_id": "I_abc002",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-story-S-1",
       "project_item_id": null
     },
     "S-2": {
-      "issue_number": 3,
-      "url": "https://github.com/example-org/example-repo/issues/3",
-      "node_id": "I_abc003",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-story-S-2",
       "project_item_id": null
     }
   },
   "tasks": {
     "T-1": {
-      "issue_number": 4,
-      "url": "https://github.com/example-org/example-repo/issues/4",
-      "node_id": "I_abc004",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-task-T-1",
       "project_item_id": null
     },
     "T-2": {
-      "issue_number": 5,
-      "url": "https://github.com/example-org/example-repo/issues/5",
-      "node_id": "I_abc005",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-task-T-2",
       "project_item_id": null
     },
     "T-3": {
-      "issue_number": 6,
-      "url": "https://github.com/example-org/example-repo/issues/6",
-      "node_id": "I_abc006",
+      "issue_number": 0,
+      "url": "dry-run",
+      "node_id": "dry-run-task-T-3",
       "project_item_id": null
     }
   }

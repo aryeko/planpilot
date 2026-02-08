@@ -23,7 +23,7 @@ E-1 User Authentication
 
 ## Running
 
-### Dry-run (preview)
+### Dry-run (preview, fully offline)
 
 ```bash
 planpilot \
@@ -33,23 +33,10 @@ planpilot \
   --stories-path examples/stories.json \
   --tasks-path examples/tasks.json \
   --sync-path examples/sync-map.json \
-  --dry-run --verbose
+  --dry-run
 ```
 
-Expected output:
-
-```text
-[dry-run] No changes will be made
-[dry-run] create epic: User Authentication
-[dry-run] create story: User Registration
-[dry-run] create story: User Login and Sessions
-[dry-run] create task: Add user model and migration
-[dry-run] create task: Implement registration endpoint
-[dry-run] create task: Implement login endpoint with token generation
-Sync complete (dry-run): 1 epics, 2 stories, 3 tasks
-```
-
-### Apply (create issues)
+### Apply (create issues, requires `gh` auth)
 
 ```bash
 planpilot \
@@ -59,33 +46,47 @@ planpilot \
   --stories-path examples/stories.json \
   --tasks-path examples/tasks.json \
   --sync-path examples/sync-map.json \
-  --apply --verbose
+  --apply
 ```
 
 ## Sample output
 
+The files below were produced by running `planpilot --dry-run` against the plan files in this directory.
+
+### CLI output
+
+[`dry-run-output.txt`](dry-run-output.txt) — the terminal output from a dry-run:
+
+```text
+planpilot — sync complete (dry-run)
+
+  Plan ID:   ebcbac1f2062
+  Repo:      example-org/example-repo
+  Project:   https://github.com/orgs/example-org/projects/1
+
+  Created:   1 epic(s), 2 story(s), 3 task(s)
+
+  Epic   E-1     #0      dry-run
+  Story  S-1     #0      dry-run
+  Story  S-2     #0      dry-run
+  Task   T-1     #0      dry-run
+  Task   T-2     #0      dry-run
+  Task   T-3     #0      dry-run
+
+  Sync map:  examples/sync-map-sample.json
+
+  [dry-run] No changes were made to GitHub
+```
+
+In dry-run mode, issue numbers are `#0` and URLs show `dry-run` since no GitHub issues are created. In `--apply` mode, these will be real issue numbers and URLs.
+
 ### Sync map
 
-After a successful `--apply` run, planpilot writes a `sync-map.json` file mapping plan IDs to GitHub issue numbers and node IDs. See [`sync-map-sample.json`](sync-map-sample.json) for an example.
+[`sync-map-sample.json`](sync-map-sample.json) — the sync map written by the dry-run. This file maps plan entity IDs to their GitHub issue metadata and is used for idempotency on subsequent runs.
 
-The sync map is used for idempotency — subsequent runs detect existing issues and skip creation.
+## What `--apply` creates on GitHub
 
-### Rendered issue bodies
-
-The `output/` directory contains the Markdown bodies that planpilot generates for each issue after a full sync. These show the final state including cross-references (e.g. `#1`, `#2`) and checklists:
-
-| File | Issue | Highlights |
-|------|-------|------------|
-| [`output/epic-E-1.md`](output/epic-E-1.md) | Epic: User Authentication | Stories checklist with issue links |
-| [`output/story-S-1.md`](output/story-S-1.md) | Story: User Registration | Task checklist, epic back-ref |
-| [`output/story-S-2.md`](output/story-S-2.md) | Story: User Login and Sessions | Task checklist, epic back-ref |
-| [`output/task-T-1.md`](output/task-T-1.md) | Task: Add user model and migration | No dependencies |
-| [`output/task-T-2.md`](output/task-T-2.md) | Task: Implement registration endpoint | Blocked by T-1 (`#4`) |
-| [`output/task-T-3.md`](output/task-T-3.md) | Task: Implement login endpoint | Blocked by T-1 (`#4`) |
-
-### What planpilot creates on GitHub
-
-After `--apply`, you get:
+After running with `--apply`, planpilot creates:
 
 1. **6 GitHub Issues** — 1 epic, 2 stories, 3 tasks, each with issue type set
 2. **Sub-issue hierarchy** — stories linked under the epic, tasks under their stories
