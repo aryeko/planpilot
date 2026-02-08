@@ -35,7 +35,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--stories-path", required=True, help="Path to stories.json")
     parser.add_argument("--tasks-path", required=True, help="Path to tasks.json")
     parser.add_argument("--sync-path", required=True, help="Path to write sync map")
-    parser.add_argument("--label", default="codex", help="Label to apply")
+    parser.add_argument("--label", default="planpilot", help="Label to apply")
     parser.add_argument("--status", default="Backlog", help="Project status option name")
     parser.add_argument("--priority", default="P1", help="Project priority option name")
     parser.add_argument(

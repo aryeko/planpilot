@@ -25,6 +25,7 @@ from planpilot.providers.github.mapper import (
     build_blocked_by_map,
     build_parent_map,
     build_project_item_map,
+    parse_markers,
     parse_project_url,
     resolve_option_id,
 )
@@ -331,8 +332,6 @@ class GitHubProvider(Provider):
         Returns:
             Nested dict: ``{"epics": {id: {id, number}}, "stories": ..., "tasks": ...}``.
         """
-        from planpilot.providers.github.mapper import parse_markers
-
         mapping: dict[str, dict[str, dict[str, Any]]] = {"epics": {}, "stories": {}, "tasks": {}}
         for issue in existing_issues:
             markers = parse_markers(issue.body)
@@ -357,9 +356,13 @@ class GitHubProvider(Provider):
         Returns:
             The matching option ID, or None.
         """
-        from planpilot.providers.github.mapper import resolve_option_id
-
-        return resolve_option_id(options, name)
+        if not name:
+            return None
+        lower = name.lower()
+        for opt in options:
+            if opt.get("name", "").lower() == lower:
+                return opt.get("id")
+        return None
 
     async def create_issue(self, issue_input: CreateIssueInput) -> IssueRef:
         """Create a new issue.

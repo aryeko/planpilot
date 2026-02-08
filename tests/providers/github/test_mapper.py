@@ -231,6 +231,22 @@ def test_parse_project_url_with_trailing_slash():
     assert number == 42
 
 
+def test_parse_project_url_user_project():
+    """Test that parse_project_url supports user-level projects."""
+    url = "https://github.com/users/myuser/projects/99"
+    owner, number = parse_project_url(url)
+    assert owner == "myuser"
+    assert number == 99
+
+
+def test_parse_project_url_user_project_with_trailing_slash():
+    """Test that parse_project_url handles user projects with trailing slash."""
+    url = "https://github.com/users/myuser/projects/99/"
+    owner, number = parse_project_url(url)
+    assert owner == "myuser"
+    assert number == 99
+
+
 def test_parse_project_url_raises_on_invalid_format():
     """Test that parse_project_url raises ProjectURLError on invalid format."""
     with pytest.raises(ProjectURLError, match="Invalid project URL"):
