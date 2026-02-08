@@ -52,7 +52,6 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: coverage.xml
-          token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
       - name: Verify CLI
         run: poetry run planpilot --help
