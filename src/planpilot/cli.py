@@ -24,6 +24,11 @@ def build_parser() -> argparse.ArgumentParser:
         Configured ArgumentParser.
     """
     parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__import__('planpilot').__version__}",
+    )
     parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
     parser.add_argument("--project-url", required=True, help="GitHub Project URL")
     parser.add_argument("--epics-path", required=True, help="Path to epics.json")

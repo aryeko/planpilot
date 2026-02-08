@@ -18,7 +18,6 @@ from planpilot.models.project import (
 from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan, validate_plan
 from planpilot.providers.base import Provider
-from planpilot.providers.github.mapper import build_issue_mapping, resolve_option_id
 from planpilot.rendering.base import BodyRenderer
 from planpilot.sync.relations import compute_epic_blocked_by, compute_story_blocked_by
 
@@ -147,9 +146,8 @@ class SyncEngine:
         project_ctx = await self._provider.get_project_context(cfg.project_url, cfg.field_config)
 
         # Phase 2: Discovery
-        existing_issues = await self._provider.search_issues(cfg.repo, plan_id)
-        existing_raw = [{"id": e.id, "number": e.number, "body": e.body} for e in existing_issues]
-        existing_map = build_issue_mapping(existing_raw, plan_id=plan_id)
+        existing_issues = await self._provider.search_issues(cfg.repo, plan_id, cfg.label)
+        existing_map = self._provider.build_issue_map(existing_issues, plan_id)
 
         sync_map = SyncMap(
             plan_id=plan_id,
@@ -324,7 +322,7 @@ class SyncEngine:
                 size_option_id = None
                 if self._config.field_config.size_from_tshirt and project_ctx.size_field_id:
                     tshirt = task.estimate.tshirt if task.estimate else None
-                    size_option_id = resolve_option_id(project_ctx.size_options, tshirt)
+                    size_option_id = self._provider.resolve_option_id(project_ctx.size_options, tshirt)
                 await self._set_project_fields(project_ctx, item_id, size_option_id=size_option_id)
 
         return SyncEntry(issue_number=ref.number, url=ref.url, node_id=ref.id, project_item_id=item_id)

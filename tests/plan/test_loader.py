@@ -7,7 +7,6 @@ import tempfile
 from pathlib import Path
 
 import pytest
-from pydantic import ValidationError
 
 from planpilot.exceptions import PlanLoadError
 from planpilot.models.plan import Plan
@@ -113,7 +112,9 @@ def test_load_plan_invalid_json():
 
 
 def test_load_plan_missing_required_fields():
-    """Test that load_plan raises pydantic.ValidationError on missing required fields."""
+    """Test that load_plan raises PlanLoadError on missing required fields."""
+    from planpilot.exceptions import PlanLoadError
+
     with tempfile.TemporaryDirectory() as tmpdir:
         epics_path = Path(tmpdir) / "epics.json"
         stories_path = Path(tmpdir) / "stories.json"
@@ -124,5 +125,5 @@ def test_load_plan_missing_required_fields():
         stories_path.write_text("[]", encoding="utf-8")
         tasks_path.write_text("[]", encoding="utf-8")
 
-        with pytest.raises(ValidationError):
+        with pytest.raises(PlanLoadError, match="plan validation failed"):
             load_plan(epics_path, stories_path, tasks_path)

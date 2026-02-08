@@ -12,6 +12,7 @@ All methods are ``async``; providers that wrap a synchronous transport
 from __future__ import annotations
 
 from abc import ABC, abstractmethod
+from typing import Any
 
 from planpilot.models.project import (
     CreateIssueInput,
@@ -77,15 +78,42 @@ class Provider(ABC):
     # ------------------------------------------------------------------
 
     @abstractmethod
-    async def search_issues(self, repo: str, plan_id: str) -> list[ExistingIssue]:
+    async def search_issues(self, repo: str, plan_id: str, label: str) -> list[ExistingIssue]:
         """Search for issues belonging to *plan_id*.
 
         Args:
             repo: Repository identifier.
             plan_id: Deterministic plan hash embedded in issue bodies.
+            label: Label name to filter search results.
 
         Returns:
             List of matching :class:`ExistingIssue` instances.
+        """
+
+    @abstractmethod
+    def build_issue_map(
+        self, existing_issues: list[ExistingIssue], plan_id: str
+    ) -> dict[str, dict[str, dict[str, Any]]]:
+        """Build a mapping of entity IDs to issue metadata, filtered by plan_id.
+
+        Args:
+            existing_issues: Raw issue instances from the search API.
+            plan_id: Only include issues matching this plan_id.
+
+        Returns:
+            Nested dict: ``{"epics": {id: {id, number}}, "stories": ..., "tasks": ...}``.
+        """
+
+    @abstractmethod
+    def resolve_option_id(self, options: list[dict[str, str]], name: str | None) -> str | None:
+        """Find the option ID matching *name* (case-insensitive).
+
+        Args:
+            options: List of ``{"id": ..., "name": ...}`` dicts.
+            name: Option name to search for.
+
+        Returns:
+            The matching option ID, or None.
         """
 
     @abstractmethod

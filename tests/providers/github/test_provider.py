@@ -269,6 +269,7 @@ async def test_search_issues_single_page(provider, mock_client):
     """Test that search_issues handles single-page results."""
     repo = "owner/repo"
     plan_id = "plan123"
+    label = "planpilot"
 
     mock_client.graphql.return_value = {
         "data": {
@@ -282,7 +283,7 @@ async def test_search_issues_single_page(provider, mock_client):
         }
     }
 
-    result = await provider.search_issues(repo, plan_id)
+    result = await provider.search_issues(repo, plan_id, label)
 
     assert len(result) == 2
     assert all(isinstance(issue, ExistingIssue) for issue in result)
@@ -297,6 +298,7 @@ async def test_search_issues_paginates(provider, mock_client):
     """Test that search_issues handles multi-page results."""
     repo = "owner/repo"
     plan_id = "plan123"
+    label = "planpilot"
 
     mock_client.graphql.side_effect = [
         {
@@ -321,7 +323,7 @@ async def test_search_issues_paginates(provider, mock_client):
         },
     ]
 
-    result = await provider.search_issues(repo, plan_id)
+    result = await provider.search_issues(repo, plan_id, label)
 
     assert len(result) == 2
     assert mock_client.graphql.call_count == 2
