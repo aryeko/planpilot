@@ -1,0 +1,19 @@
+[project]
+name = "plan-gh-project-sync"
+version = "0.1.0"
+description = "Sync plan epics/stories to GitHub Issues and Projects"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+authors = [
+  {name = "aryeko"}
+]
+
+[project.scripts]
+plan-gh-project-sync = "plan_gh_project_sync.cli:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
