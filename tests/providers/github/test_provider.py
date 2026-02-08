@@ -139,6 +139,69 @@ async def test_get_repo_context_creates_label_if_missing(provider, mock_client):
 
 
 @pytest.mark.asyncio
+async def test_get_repo_context_handles_label_creation_provider_error(provider, mock_client):
+    """Test that get_repo_context handles ProviderError during label creation."""
+    repo = "owner/repo"
+    label = "planpilot"
+
+    mock_client.graphql.return_value = {
+        "data": {
+            "repository": {
+                "id": "repo_node_id",
+                "issueTypes": {"nodes": []},
+                "labels": {"nodes": []},
+            }
+        }
+    }
+    mock_client.run.side_effect = ProviderError("label create failed")
+
+    result = await provider.get_repo_context(repo, label)
+
+    assert isinstance(result, RepoContext)
+    assert result.repo_id == "repo_node_id"
+    assert result.label_id is None  # label creation failed
+
+
+@pytest.mark.asyncio
+async def test_get_repo_context_handles_label_creation_unexpected_error(provider, mock_client):
+    """Test that get_repo_context handles unexpected errors during label creation."""
+    repo = "owner/repo"
+    label = "planpilot"
+
+    mock_client.graphql.return_value = {
+        "data": {
+            "repository": {
+                "id": "repo_node_id",
+                "issueTypes": {"nodes": []},
+                "labels": {"nodes": []},
+            }
+        }
+    }
+    mock_client.run.side_effect = OSError("unexpected")
+
+    result = await provider.get_repo_context(repo, label)
+
+    assert isinstance(result, RepoContext)
+    assert result.label_id is None
+
+
+@pytest.mark.asyncio
+async def test_set_project_field_text_value(provider, mock_client):
+    """Test that set_project_field handles text values."""
+    mock_client.graphql_raw.return_value = {
+        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "item_id"}}}
+    }
+
+    value = FieldValue(text="some text")
+    await provider.set_project_field("project_id", "item_id", "field_id", value)
+
+    mock_client.graphql_raw.assert_called_once()
+    call_args = mock_client.graphql_raw.call_args[0][0]
+    value_str = " ".join(call_args)
+    assert "text" in value_str
+
+
+@pytest.mark.asyncio
 async def test_get_project_context_success(provider, mock_client):
     """Test that get_project_context returns ProjectContext with resolved fields."""
     project_url = "https://github.com/orgs/myorg/projects/1"
