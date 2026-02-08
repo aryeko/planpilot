@@ -102,7 +102,20 @@ planpilot \
 
 ### 3. Multi-epic plans
 
-The sync tool expects one epic per run. For multi-epic plans, slice first:
+Use `sync-all` to run multi-epic sync in one command:
+
+```bash
+planpilot sync-all \
+  --repo your-org/your-repo \
+  --project-url https://github.com/orgs/your-org/projects/1 \
+  --epics-path .plans/epics.json \
+  --stories-path .plans/stories.json \
+  --tasks-path .plans/tasks.json \
+  --sync-path .plans/github-sync-map.json \
+  --apply
+```
+
+Legacy manual flow (still supported): slice first, then sync each epic.
 
 ```bash
 planpilot-slice \

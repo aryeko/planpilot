@@ -2,6 +2,8 @@
 """
 Create per-epic .plans slices for planpilot.
 
+DEPRECATED: prefer `planpilot-slice` (packaged CLI) and `planpilot sync-all`.
+
 Why this exists:
 - planpilot validates exactly one epic per run.
 - This helper emits one epics/stories/tasks JSON triplet per epic.

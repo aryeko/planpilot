@@ -100,31 +100,28 @@ If auth fails, STOP and request login.
 
 ### 4) Multi-epic handling (sync/full)
 
-The current sync tool validates exactly one epic per run.
+Preferred path:
+- run `planpilot sync-all` to orchestrate multi-epic slicing + per-epic sync + merged sync map in one command
 
-If `len(epics.json) > 1`:
-- run `planpilot-slice` or the helper script `helpers/slice_epics_for_sync.py`
-- this generates per-epic slices in `.plans/tmp`
-- cross-epic `depends_on` are filtered out for each per-epic task slice
+Fallback/manual path (legacy):
+- run `planpilot-slice` to generate per-epic slices in `.plans/tmp`
+- run per-epic `planpilot` commands sequentially
+
+Deprecated:
+- `helpers/slice_epics_for_sync.py` should not be used as the default workflow
 
 ### 5) Sync execution (sync/full)
 
-For each epic slice:
-
-1. Run dry-run first
-2. If dry-run passes, run real sync
-3. Write per-epic sync map
-
-Command template:
+Preferred command:
 
 ```bash
-planpilot \
+planpilot sync-all \
   --repo <owner/repo> \
   --project-url <project-url> \
-  --epics-path .plans/tmp/epics.<epic_id>.json \
-  --stories-path .plans/tmp/stories.<epic_id>.json \
-  --tasks-path .plans/tmp/tasks.<epic_id>.json \
-  --sync-path .plans/github-sync-map.<epic_id>.json \
+  --epics-path .plans/epics.json \
+  --stories-path .plans/stories.json \
+  --tasks-path .plans/tasks.json \
+  --sync-path .plans/github-sync-map.json \
   --label codex \
   --status Backlog \
   --priority P1 \
@@ -135,6 +132,10 @@ planpilot \
 
 Then rerun replacing `--dry-run` with `--apply`.
 
+Legacy/manual template (only if needed):
+- Run `planpilot-slice`
+- Run per-epic `planpilot ... --epics-path .plans/tmp/epics.<epic_id>.json ...`
+
 ### 6) Post-sync verification
 
 Must report:
@@ -143,7 +144,7 @@ Must report:
 - Any warnings/fallbacks
 - Sync map artifact paths
 
-Optional: merge per-epic sync maps into `.plans/github-sync-map.json`.
+`sync-all` writes merged sync map plus per-epic sync maps.
 
 ## Common Mistakes
 
