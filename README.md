@@ -1,6 +1,7 @@
 # planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -28,7 +29,7 @@ flowchart LR
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - [`gh` CLI](https://cli.github.com/) installed and authenticated
 - GitHub token scopes: `repo`, `project`
 

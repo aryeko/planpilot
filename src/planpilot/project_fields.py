@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from .types import ProjectFieldIds
 from .utils import resolve_option_id
@@ -19,7 +19,7 @@ def resolve_project_fields(
     iteration_options: list[dict[str, str]] = []
     active_iteration_id: str | None = None
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
 
     for field in project.get("fields", {}).get("nodes", []):
         name = field.get("name", "").lower()
@@ -42,7 +42,7 @@ def resolve_project_fields(
                 except ValueError:
                     continue
                 if start_dt.tzinfo is None:
-                    start_dt = start_dt.replace(tzinfo=timezone.utc)
+                    start_dt = start_dt.replace(tzinfo=UTC)
                 end_dt = start_dt + timedelta(days=int(duration))
                 if start_dt <= now < end_dt:
                     active_iteration_id = it.get("id")
