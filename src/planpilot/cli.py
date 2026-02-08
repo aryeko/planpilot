@@ -6,6 +6,7 @@ import argparse
 import asyncio
 import logging
 import sys
+from collections.abc import Sequence
 
 from planpilot import __version__
 from planpilot.config import SyncConfig
@@ -16,20 +17,11 @@ from planpilot.providers.github.client import GhClient
 from planpilot.providers.github.provider import GitHubProvider
 from planpilot.rendering.markdown import MarkdownRenderer
 from planpilot.sync.engine import SyncEngine
+from planpilot.sync.orchestrator import MultiEpicOrchestrator
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for the planpilot CLI.
-
-    Returns:
-        Configured ArgumentParser.
-    """
-    parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-    )
+def _add_sync_args(parser: argparse.ArgumentParser) -> None:
+    """Attach shared sync arguments to a parser."""
     parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
     parser.add_argument("--project-url", required=True, help="GitHub Project URL")
     parser.add_argument("--epics-path", required=True, help="Path to epics.json")
@@ -69,6 +61,28 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable verbose logging",
     )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the planpilot CLI.
+
+    Returns:
+        Configured ArgumentParser.
+    """
+    parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    _add_sync_args(parser)
+    return parser
+
+
+def build_sync_all_parser() -> argparse.ArgumentParser:
+    """Build parser for `planpilot sync-all` command."""
+    parser = argparse.ArgumentParser(description="Orchestrate multi-epic sync in one command.")
+    _add_sync_args(parser)
     return parser
 
 
@@ -172,14 +186,32 @@ async def _run_sync(config: SyncConfig) -> None:
     print(_format_summary(result, config))
 
 
+async def _run_sync_all(config: SyncConfig) -> None:
+    """Execute the multi-epic orchestration pipeline."""
+    provider = GitHubProvider(GhClient())
+    renderer = MarkdownRenderer()
+    orchestrator = MultiEpicOrchestrator(provider=provider, renderer=renderer, config=config)
+    result = await orchestrator.sync_all()
+    print(_format_summary(result, config))
+
+
+def _parse_args(argv: Sequence[str]) -> tuple[argparse.Namespace, bool]:
+    """Parse argv and indicate whether sync-all mode is selected."""
+    if argv and argv[0] == "sync-all":
+        parser = build_sync_all_parser()
+        return parser.parse_args(argv[1:]), True
+
+    parser = build_parser()
+    return parser.parse_args(argv), False
+
+
 def main() -> int:
     """Entry point for the ``planpilot`` CLI command.
 
     Returns:
         Exit code: 0 on success, 2 on error.
     """
-    parser = build_parser()
-    args = parser.parse_args()
+    args, is_sync_all = _parse_args(sys.argv[1:])
 
     if args.verbose:
         logging.basicConfig(
@@ -191,7 +223,10 @@ def main() -> int:
     config = _build_config(args)
 
     try:
-        asyncio.run(_run_sync(config))
+        if is_sync_all:
+            asyncio.run(_run_sync_all(config))
+        else:
+            asyncio.run(_run_sync(config))
         return 0
     except PlanPilotError as exc:
         print(f"error: {exc}", file=sys.stderr)
