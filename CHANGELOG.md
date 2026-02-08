@@ -2,6 +2,66 @@
 
 <!-- version list -->
 
+## v1.1.3 (2026-02-08)
+
+### Bug Fixes
+
+- Add navigator branding assets ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+### Chores
+
+- Add navigator branding assets ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- Enhance OSS polish and discoverability ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+- Make social preview image 1280x640 ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- Optimize branding images for GitHub upload ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- **ci**: Bump actions/checkout from 4 to 6 ([#14](https://github.com/aryeko/planpilot/pull/14),
+  [`a20af85`](https://github.com/aryeko/planpilot/commit/a20af85d3bb6d2bd24a861cf98b2a4fcbd961fdd))
+
+- **ci**: Bump actions/download-artifact from 4 to 7
+  ([#13](https://github.com/aryeko/planpilot/pull/13),
+  [`683ab70`](https://github.com/aryeko/planpilot/commit/683ab7072a1a3b404a96a779634bc1301db670a9))
+
+- **ci**: Bump actions/upload-artifact from 4 to 6
+  ([#16](https://github.com/aryeko/planpilot/pull/16),
+  [`07067b7`](https://github.com/aryeko/planpilot/commit/07067b7885e5dcab22a124fdb85e03113233637c))
+
+- **ci**: Bump github/codeql-action from 3 to 4 ([#15](https://github.com/aryeko/planpilot/pull/15),
+  [`13be2fb`](https://github.com/aryeko/planpilot/commit/13be2fbd1b99cc2793ccd34a4b21d7bb1b643c26))
+
+### Documentation
+
+- Add branding and support links to README ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- Align README header icon ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- Make CoC reporting private ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+- Refine README header logo layout ([#19](https://github.com/aryeko/planpilot/pull/19),
+  [`14ff4f8`](https://github.com/aryeko/planpilot/commit/14ff4f8ba831a8e0502d29622e13143adfd7b78e))
+
+- Regenerate full changelog with all release versions
+  ([#11](https://github.com/aryeko/planpilot/pull/11),
+  [`b3d284f`](https://github.com/aryeko/planpilot/commit/b3d284f77df6177f27762de70e90b2f8f247b62e))
+
+### Testing
+
+- Suppress coverage runtime warnings in pytest config
+  ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+
 ## v1.1.2 (2026-02-08)
 
 ### Bug Fixes
