@@ -64,8 +64,6 @@ jobs:
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
           github_token: ${{ steps.app-token.outputs.token }}
-          git_committer_name: "planpilot-release[bot]"
-          git_committer_email: "260239233+planpilot-release[bot]@users.noreply.github.com"
           vcs_release: "false"
           build: "false"
 
