@@ -82,7 +82,14 @@ poetry add planpilot
 plan-gh-project-sync --repo owner/repo --project-url ... --dry-run
 
 # New
-planpilot --repo owner/repo --project-url ... --dry-run
+planpilot \
+  --repo owner/repo \
+  --project-url ... \
+  --epics-path .plans/epics.json \
+  --stories-path .plans/stories.json \
+  --tasks-path .plans/tasks.json \
+  --sync-path .plans/github-sync-map.json \
+  --dry-run
 ```
 
 ### Multi-epic sync
