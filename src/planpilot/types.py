@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Dict, List, Optional
 
 
 @dataclass
@@ -30,11 +29,11 @@ class IssueRef:
 
 @dataclass
 class ProjectFieldIds:
-    status_field_id: Optional[str]
-    status_option_id: Optional[str]
-    priority_field_id: Optional[str]
-    priority_option_id: Optional[str]
-    iteration_field_id: Optional[str]
-    iteration_option_id: Optional[str]
-    size_field_id: Optional[str]
-    size_options: List[Dict[str, str]]
+    status_field_id: str | None
+    status_option_id: str | None
+    priority_field_id: str | None
+    priority_option_id: str | None
+    iteration_field_id: str | None
+    iteration_option_id: str | None
+    size_field_id: str | None
+    size_options: list[dict[str, str]]

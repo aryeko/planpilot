@@ -1,0 +1,75 @@
+[
+  {
+    "id": "T-1",
+    "story_id": "S-1",
+    "title": "Add user model and migration",
+    "motivation": "Need a users table to store registration data.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Data Model" },
+    "requirements": [
+      "Create User model with email, hashed_password, created_at",
+      "Add database migration"
+    ],
+    "acceptance_criteria": [
+      "Migration runs without errors",
+      "User model validates email format"
+    ],
+    "verification": {
+      "commands": ["alembic upgrade head", "pytest tests/test_user_model.py"],
+      "ci_checks": ["test"],
+      "evidence": ["Migration file exists in alembic/versions/"]
+    },
+    "artifacts": ["src/models/user.py", "alembic/versions/001_add_users.py"],
+    "depends_on": [],
+    "estimate": { "tshirt": "S" }
+  },
+  {
+    "id": "T-2",
+    "story_id": "S-1",
+    "title": "Implement registration endpoint",
+    "motivation": "Users need an API to create accounts.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Registration API" },
+    "requirements": [
+      "POST /api/register accepts email and password",
+      "Returns 201 on success, 422 on validation error, 409 on duplicate"
+    ],
+    "acceptance_criteria": [
+      "Valid registration returns 201 with user ID",
+      "Duplicate email returns 409",
+      "Missing fields return 422"
+    ],
+    "verification": {
+      "commands": ["pytest tests/test_register.py -v"],
+      "ci_checks": ["test", "lint"],
+      "evidence": ["API endpoint responds correctly"],
+      "manual_steps": ["Call POST /api/register via curl and verify response"]
+    },
+    "artifacts": ["src/routes/register.py", "tests/test_register.py"],
+    "depends_on": ["T-1"],
+    "estimate": { "tshirt": "M" }
+  },
+  {
+    "id": "T-3",
+    "story_id": "S-2",
+    "title": "Implement login endpoint with token generation",
+    "motivation": "Users need to authenticate and receive session tokens.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Login API" },
+    "requirements": [
+      "POST /api/login accepts email and password",
+      "Returns JWT token on valid credentials",
+      "Returns 401 on invalid credentials"
+    ],
+    "acceptance_criteria": [
+      "Valid login returns 200 with JWT token",
+      "Invalid password returns 401",
+      "Token contains user ID and expiration"
+    ],
+    "verification": {
+      "commands": ["pytest tests/test_login.py -v"],
+      "ci_checks": ["test"],
+      "evidence": ["JWT token decodes correctly with expected claims"]
+    },
+    "artifacts": ["src/routes/login.py", "src/auth/tokens.py", "tests/test_login.py"],
+    "depends_on": ["T-1"],
+    "estimate": { "tshirt": "M" }
+  }
+]

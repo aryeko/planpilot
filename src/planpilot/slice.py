@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 import json
 from pathlib import Path
 from typing import Any
@@ -36,3 +37,28 @@ def slice_epics_for_sync(epics_path: Path, stories_path: Path, tasks_path: Path,
         _write_json(out_dir / f"epics.{eid}.json", [epic])
         _write_json(out_dir / f"stories.{eid}.json", epic_stories)
         _write_json(out_dir / f"tasks.{eid}.json", epic_tasks)
+
+
+def _build_slice_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description="Slice .plans files into per-epic sync inputs")
+    parser.add_argument("--epics-path", required=True, help="Path to epics.json")
+    parser.add_argument("--stories-path", required=True, help="Path to stories.json")
+    parser.add_argument("--tasks-path", required=True, help="Path to tasks.json")
+    parser.add_argument("--out-dir", default=".plans/tmp", help="Output directory for per-epic slices")
+    return parser
+
+
+def slice_cli() -> int:
+    """CLI entry point for the planpilot-slice command."""
+    args = _build_slice_parser().parse_args()
+    slice_epics_for_sync(
+        epics_path=Path(args.epics_path),
+        stories_path=Path(args.stories_path),
+        tasks_path=Path(args.tasks_path),
+        out_dir=Path(args.out_dir),
+    )
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(slice_cli())

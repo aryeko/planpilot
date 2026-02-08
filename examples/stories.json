@@ -1,0 +1,28 @@
+[
+  {
+    "id": "S-1",
+    "epic_id": "E-1",
+    "title": "User Registration",
+    "goal": "Implement user registration with input validation and secure password storage.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Registration" },
+    "task_ids": ["T-1", "T-2"],
+    "scope": {
+      "in": ["Registration endpoint", "Input validation", "Password hashing"],
+      "out": ["Email verification"]
+    },
+    "success_metrics": ["POST /api/register returns 201 on valid input"]
+  },
+  {
+    "id": "S-2",
+    "epic_id": "E-1",
+    "title": "User Login and Sessions",
+    "goal": "Implement login endpoint that issues session tokens.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Login" },
+    "task_ids": ["T-3"],
+    "scope": {
+      "in": ["Login endpoint", "Token generation", "Token validation middleware"],
+      "out": ["Refresh tokens"]
+    },
+    "success_metrics": ["POST /api/login returns a valid session token"]
+  }
+]

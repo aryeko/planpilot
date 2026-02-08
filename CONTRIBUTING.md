@@ -3,19 +3,34 @@
 ## Setup
 
 ```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
+# Install Poetry if you don't have it
+curl -sSL https://install.python-poetry.org | python3 -
+
+# Clone and install
+git clone https://github.com/aryeko/planpilot.git
+cd planpilot
+poetry install
 ```
 
-## Run checks
+## Development
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
-PYTHONPATH=src python3 -m plan_gh_project_sync --help
+# Run tests
+poetry run pytest -v
+
+# Lint
+poetry run ruff check .
+
+# Format
+poetry run ruff format .
+
+# Verify CLI
+poetry run planpilot --help
 ```
 
 ## Pull requests
 
 - Keep changes focused and well-tested.
 - Include rationale and verification steps.
+- Ensure `ruff check` and `ruff format --check` pass.
 - Prefer dry-run examples in docs for sync operations.

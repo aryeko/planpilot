@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
-from plan_gh_project_sync.sync import run_sync
-from plan_gh_project_sync.types import SyncConfig
+from planpilot.sync import run_sync
+from planpilot.types import SyncConfig
 
 
 def _write_json(path: Path, value):
@@ -40,9 +40,48 @@ class TestSyncPreflight(unittest.TestCase):
             stories = root / "stories.json"
             tasks = root / "tasks.json"
             sync_path = root / "sync.json"
-            _write_json(epics, [{"id": "E-1", "title": "Epic", "story_ids": ["S-1"], "goal": "g", "spec_ref": {"path": "p", "section": "s"}}])
-            _write_json(stories, [{"id": "S-1", "epic_id": "E-1", "title": "Story", "task_ids": ["T-1"], "goal": "g", "spec_ref": {"path": "p", "section": "s"}}])
-            _write_json(tasks, [{"id": "T-1", "story_id": "S-1", "title": "Task", "motivation": "m", "spec_ref": {"path": "p", "section": "s"}, "requirements": [], "acceptance_criteria": [], "verification": {}, "artifacts": [], "depends_on": []}])
+            _write_json(
+                epics,
+                [
+                    {
+                        "id": "E-1",
+                        "title": "Epic",
+                        "story_ids": ["S-1"],
+                        "goal": "g",
+                        "spec_ref": {"path": "p", "section": "s"},
+                    }
+                ],
+            )
+            _write_json(
+                stories,
+                [
+                    {
+                        "id": "S-1",
+                        "epic_id": "E-1",
+                        "title": "Story",
+                        "task_ids": ["T-1"],
+                        "goal": "g",
+                        "spec_ref": {"path": "p", "section": "s"},
+                    }
+                ],
+            )
+            _write_json(
+                tasks,
+                [
+                    {
+                        "id": "T-1",
+                        "story_id": "S-1",
+                        "title": "Task",
+                        "motivation": "m",
+                        "spec_ref": {"path": "p", "section": "s"},
+                        "requirements": [],
+                        "acceptance_criteria": [],
+                        "verification": {},
+                        "artifacts": [],
+                        "depends_on": [],
+                    }
+                ],
+            )
 
             cfg = SyncConfig(
                 repo="owner/repo",
@@ -61,9 +100,11 @@ class TestSyncPreflight(unittest.TestCase):
             )
 
             auth_result = mock.Mock(returncode=1)
-            with mock.patch("plan_gh_project_sync.sync.gh_run", return_value=auth_result):
-                with self.assertRaises(RuntimeError) as ctx:
-                    run_sync(cfg)
+            with (
+                mock.patch("planpilot.sync.gh_run", return_value=auth_result),
+                self.assertRaises(RuntimeError) as ctx,
+            ):
+                run_sync(cfg)
             self.assertIn("gh auth login", str(ctx.exception))
 
 

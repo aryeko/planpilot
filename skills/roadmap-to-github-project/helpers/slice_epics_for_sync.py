@@ -17,7 +17,6 @@ import re
 from pathlib import Path
 from typing import Any
 
-
 _SAFE_FILENAME_FRAGMENT = re.compile(r"[^A-Za-z0-9._-]+")
 
 

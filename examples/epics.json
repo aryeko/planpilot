@@ -1,0 +1,20 @@
+[
+  {
+    "id": "E-1",
+    "title": "User Authentication",
+    "goal": "Allow users to sign up, log in, and manage sessions securely.",
+    "spec_ref": { "path": "docs/spec.md", "section": "Authentication", "anchor": "auth" },
+    "story_ids": ["S-1", "S-2"],
+    "scope": {
+      "in": ["Email/password login", "Session tokens", "Password hashing"],
+      "out": ["OAuth providers", "Two-factor authentication"]
+    },
+    "success_metrics": [
+      "Users can register with email and password",
+      "Sessions expire after 24 hours",
+      "Passwords stored as bcrypt hashes"
+    ],
+    "risks": ["Token leakage if secrets are misconfigured"],
+    "assumptions": ["PostgreSQL is available for user storage"]
+  }
+]
