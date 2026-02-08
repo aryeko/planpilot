@@ -40,11 +40,12 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "--cov=planpilot --cov-report=term-missing --cov-report=xml"
+addopts = "--cov=planpilot --cov-report=term-missing --cov-report=xml:.coverage/coverage.xml"
 
 [tool.coverage.run]
 source = ["planpilot"]
 branch = true
+data_file = ".coverage/coverage.db"
 
 [tool.coverage.report]
 show_missing = true
