@@ -11,6 +11,100 @@
   [`8a30d8b`](https://github.com/aryeko/planpilot/commit/8a30d8bc42fe8fbd968e16752e94b4b31163c0af))
 
 
+## v1.1.1 (2026-02-08)
+
+### Bug Fixes
+
+- **ci**: Enable changelog file update in release workflow
+  ([#9](https://github.com/aryeko/planpilot/pull/9),
+  [`aa3de5e`](https://github.com/aryeko/planpilot/commit/aa3de5eb26ac884867bb9bb012bb69b594ce4313))
+
+- **ci**: Enable changelog update + add AGENTS knowledge base
+  ([#9](https://github.com/aryeko/planpilot/pull/9),
+  [`aa3de5e`](https://github.com/aryeko/planpilot/commit/aa3de5eb26ac884867bb9bb012bb69b594ce4313))
+
+### Documentation
+
+- Add hierarchical AGENTS knowledge base ([#9](https://github.com/aryeko/planpilot/pull/9),
+  [`aa3de5e`](https://github.com/aryeko/planpilot/commit/aa3de5eb26ac884867bb9bb012bb69b594ce4313))
+
+
+## v1.1.0 (2026-02-08)
+
+### Bug Fixes
+
+- Address PR review comments from CodeRabbit ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Address review findings, harden provider, and regenerate changelog
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Harden returncode check and guard sync-map lookups
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+### Chores
+
+- Drop Python 3.14, update dev status, add py.typed
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+### Documentation
+
+- Add design specs for remaining review findings ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Add multi-epic sync spec and design README ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Add retry/rate-limiting design spec ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Fix changelog duplicate Unreleased sections ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Fix unresolved review comments in retry-strategy.md
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Regenerate changelog with python-semantic-release
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Rewrite retry strategy spec with architecture-aware design
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+### Features
+
+- Implement provider abstraction and foundational fixes
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Support user project URLs, harden slice CLI, rename default label
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+### Testing
+
+- Add coverage for slice CLI error paths and provider helpers
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Fix lint/format and improve patch coverage to meet 90% target
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Improve patch coverage for client, provider, and design docs
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+- Modernize slice tests, add edge cases, update CLI defaults
+  ([#8](https://github.com/aryeko/planpilot/pull/8),
+  [`e4e7e12`](https://github.com/aryeko/planpilot/commit/e4e7e129a1e01caa4457513cb3fa2c07115b3ad5))
+
+
 ## v1.0.1 (2026-02-08)
 
 ### Bug Fixes
