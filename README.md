@@ -1,7 +1,7 @@
 # planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg)](https://codecov.io/gh/aryeko/planpilot)
+[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -49,7 +49,7 @@ src/planpilot/
 
 The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
 
-See [docs/architecture/v1-scope.md](docs/architecture/v1-scope.md) for more details.
+See [docs/architecture.md](docs/architecture.md) for the full architecture guide.
 
 ## Requirements
 
@@ -150,7 +150,7 @@ A complete working example is in the [examples/](examples/) directory.
 - [How It Works](docs/how-it-works.md) -- sync pipeline, idempotency, what gets created
 - [CLI Reference](docs/cli-reference.md) -- all flags and commands
 - [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
-- [Architecture / v1 Scope](docs/architecture/v1-scope.md) -- what's in and out of scope
+- [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
 ## Contributing

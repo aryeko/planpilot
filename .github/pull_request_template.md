@@ -1,10 +1,18 @@
 ## Summary
 
+<!-- What does this PR do and why? -->
+
 ## Changes
+
+<!-- Bullet-point list of changes. -->
 
 ## Verification
 
-- [ ] `PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"`
-- [ ] `PYTHONPATH=src python3 -m plan_gh_project_sync --help`
+- [ ] `poetry run pytest -v`
+- [ ] `poetry run ruff check .`
+- [ ] `poetry run ruff format --check .`
+- [ ] `poetry run planpilot --help`
 
 ## Notes
+
+<!-- Anything reviewers should know. -->
