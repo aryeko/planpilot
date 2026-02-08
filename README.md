@@ -153,6 +153,19 @@ A complete working example is in the [examples/](examples/) directory.
 - [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
+## Development
+
+Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
+
+```bash
+poe lint           # ruff check
+poe format         # ruff format
+poe test           # pytest -v
+poe coverage       # pytest + HTML coverage report
+poe typecheck      # mypy
+poe check          # lint + format-check + tests (all-in-one)
+```
+
 ## Contributing
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and development instructions.

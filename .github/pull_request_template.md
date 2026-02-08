@@ -8,9 +8,7 @@
 
 ## Verification
 
-- [ ] `poetry run pytest -v`
-- [ ] `poetry run ruff check .`
-- [ ] `poetry run ruff format --check .`
+- [ ] `poe check` (runs lint + format-check + tests)
 - [ ] `poetry run planpilot --help`
 
 ## Notes

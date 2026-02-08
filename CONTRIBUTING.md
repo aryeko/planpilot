@@ -17,15 +17,21 @@ poetry install
 
 ## Development
 
+Development tasks are managed with [poethepoet](https://github.com/nat-n/poethepoet). Run any task with `poe <task>` (or `poetry run poe <task>` if poe is not on your PATH):
+
+| Command | Description |
+|---------|-------------|
+| `poe lint` | Run ruff linter (`ruff check .`) |
+| `poe format` | Auto-format code (`ruff format .`) |
+| `poe format-check` | Check formatting without changes (`ruff format --check .`) |
+| `poe test` | Run tests with verbose output (`pytest -v`) |
+| `poe coverage` | Run tests and generate HTML coverage report |
+| `poe typecheck` | Run mypy type-checking (`mypy src/planpilot`) |
+| `poe check` | Run lint + format-check + tests in sequence |
+
 ```bash
-# Run tests
-poetry run pytest -v
-
-# Lint
-poetry run ruff check .
-
-# Format
-poetry run ruff format .
+# Quick check before pushing
+poe check
 
 # Verify CLI
 poetry run planpilot --help
@@ -94,6 +100,10 @@ flowchart LR
 - Keep changes focused and well-tested.
 - Use Conventional Commit format for all commits (enforced by CI).
 - Include rationale and verification steps.
-- Ensure `ruff check` and `ruff format --check` pass.
+- Ensure `poe check` passes (lint + format + tests).
 - PRs require at least 1 approving review and all CI checks to pass.
 - Prefer dry-run examples in docs for sync operations.
+
+## Test structure
+
+Tests mirror the source layout under `tests/`:
