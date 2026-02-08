@@ -64,9 +64,7 @@ def merge_sync_maps(sync_maps: list[SyncMap]) -> SyncMap:
         if sync_map.repo != repo:
             raise ValueError(f"incompatible repo in sync map: {sync_map.repo!r} != {repo!r}")
         if sync_map.project_url != project_url:
-            raise ValueError(
-                f"incompatible project_url in sync map: {sync_map.project_url!r} != {project_url!r}"
-            )
+            raise ValueError(f"incompatible project_url in sync map: {sync_map.project_url!r} != {project_url!r}")
 
         for entity_type, source, destination in (
             ("epic", sync_map.epics, merged.epics),

@@ -35,7 +35,7 @@ class SyncConfig(BaseModel):
     stories_path: Path
     tasks_path: Path
     sync_path: Path
-    label: str = "codex"
+    label: str = "planpilot"
     field_config: FieldConfig = FieldConfig()
     dry_run: bool = False
     verbose: bool = False
