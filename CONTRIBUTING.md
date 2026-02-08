@@ -10,6 +10,9 @@ curl -sSL https://install.python-poetry.org | python3 -
 git clone https://github.com/aryeko/planpilot.git
 cd planpilot
 poetry install
+
+# Install git hooks (commit-msg linting)
+./scripts/install-hooks.sh
 ```
 
 ## Development
@@ -69,7 +72,9 @@ Common types:
 
 Breaking changes: add `!` after the type (e.g. `feat!: remove fallback`) or include a `BREAKING CHANGE:` footer.
 
-Commit messages are linted in CI via [commitlint](https://github.com/opensource-nepal/commitlint).
+**Header limit**: 72 characters maximum (enforced by CI and the local hook).
+
+Commit messages are linted in CI via [commitlint](https://github.com/opensource-nepal/commitlint) and locally via a `commit-msg` git hook. The same `commitlint` package is included as a dev dependency (`poetry install`). Run `./scripts/install-hooks.sh` to install the hook.
 
 ## Pull requests
 
