@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import tempfile
 from pathlib import Path
 from unittest.mock import patch
+
+import pytest
 
 from planpilot.slice import slice_cli, slice_epics_for_sync
 
@@ -36,7 +39,8 @@ def test_slice_filters_cross_epic_dependencies():
         stories_path.write_text(json.dumps(stories), encoding="utf-8")
         tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
 
-        slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        assert len(results) == 2
 
         # E-1 slice: T-1 depends on T-2, but T-2 is in E-2, so dependency removed
         e1_tasks = json.loads((out_dir / "tasks.E-1.json").read_text(encoding="utf-8"))
@@ -60,7 +64,8 @@ def test_slice_empty_epics_produces_no_output():
         stories_path.write_text(json.dumps([]), encoding="utf-8")
         tasks_path.write_text(json.dumps([]), encoding="utf-8")
 
-        slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        assert results == []
 
         # Empty epics results in no output files
         assert not list(out_dir.glob("epics.*.json"))
@@ -84,8 +89,9 @@ def test_slice_missing_story_is_skipped():
         stories_path.write_text(json.dumps(stories), encoding="utf-8")
         tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
 
-        # Should not raise; missing story is silently skipped
-        slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        # Should not raise; missing story is skipped
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        assert len(results) == 1
 
         e1_stories = json.loads((out_dir / "stories.E-1.json").read_text(encoding="utf-8"))
         assert len(e1_stories) == 1
@@ -111,7 +117,8 @@ def test_slice_task_without_depends_on_key():
         tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
 
         # Should not raise; depends_on defaults to empty list
-        slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        assert len(results) == 1
 
         e1_tasks = json.loads((out_dir / "tasks.E-1.json").read_text(encoding="utf-8"))
         assert len(e1_tasks) == 1
@@ -141,7 +148,8 @@ def test_slice_single_epic_produces_identical_output():
         stories_path.write_text(json.dumps(stories), encoding="utf-8")
         tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
 
-        slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+        assert len(results) == 1
 
         # Single-epic slice should keep T-1's cross-story (but same-epic) dependency
         e1_tasks = json.loads((out_dir / "tasks.E-1.json").read_text(encoding="utf-8"))
@@ -228,3 +236,111 @@ def test_slice_cli_unexpected_error():
         patch("planpilot.slice.slice_epics_for_sync", side_effect=RuntimeError("boom")),
     ):
         assert slice_cli() == 1
+
+
+def test_slice_uses_safe_filename_for_unsafe_epic_id():
+    """Unsafe epic IDs are sanitized for output filenames."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+        out_dir = root / "tmp"
+
+        epics = [{"id": "epic:/\\*?<>|", "story_ids": ["S-1"]}]
+        stories = [{"id": "S-1", "epic_id": "epic:/\\*?<>|", "task_ids": ["T-1"]}]
+        tasks = [{"id": "T-1", "story_id": "S-1", "depends_on": []}]
+
+        epics_path.write_text(json.dumps(epics), encoding="utf-8")
+        stories_path.write_text(json.dumps(stories), encoding="utf-8")
+        tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
+
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+
+        assert len(results) == 1
+        assert results[0].epics_path.name.startswith("epics.epic")
+        assert results[0].epics_path.exists()
+        assert ":" not in results[0].epics_path.name
+        assert "/" not in results[0].epics_path.name
+
+
+def test_slice_reports_dropped_cross_epic_dependencies(caplog: pytest.LogCaptureFixture):
+    """Dropped cross-epic deps are logged and returned in SliceResult."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+        out_dir = root / "tmp"
+
+        epics = [
+            {"id": "E-1", "story_ids": ["S-1"]},
+            {"id": "E-2", "story_ids": ["S-2"]},
+        ]
+        stories = [
+            {"id": "S-1", "epic_id": "E-1", "task_ids": ["T-1"]},
+            {"id": "S-2", "epic_id": "E-2", "task_ids": ["T-2"]},
+        ]
+        tasks = [
+            {"id": "T-1", "story_id": "S-1", "depends_on": ["T-2"]},
+            {"id": "T-2", "story_id": "S-2", "depends_on": []},
+        ]
+
+        epics_path.write_text(json.dumps(epics), encoding="utf-8")
+        stories_path.write_text(json.dumps(stories), encoding="utf-8")
+        tasks_path.write_text(json.dumps(tasks), encoding="utf-8")
+
+        caplog.set_level(logging.WARNING)
+        results = slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir)
+
+        assert any("dropped 1 cross-epic dep(s)" in msg for msg in caplog.messages)
+        e1_result = next(result for result in results if result.epic_id == "E-1")
+        assert e1_result.dropped_deps == [("T-1", "T-2")]
+
+
+def test_slice_rejects_non_array_epics():
+    """epics must be a JSON array."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+
+        epics_path.write_text(json.dumps({}), encoding="utf-8")
+        stories_path.write_text(json.dumps([]), encoding="utf-8")
+        tasks_path.write_text(json.dumps([]), encoding="utf-8")
+
+        with pytest.raises(ValueError, match="epics: expected a JSON array"):
+            slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")
+
+
+def test_slice_rejects_missing_story_id_key():
+    """stories require both id and epic_id keys."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+
+        epics_path.write_text(json.dumps([{"id": "E-1", "story_ids": []}]), encoding="utf-8")
+        stories_path.write_text(json.dumps([{"epic_id": "E-1"}]), encoding="utf-8")
+        tasks_path.write_text(json.dumps([]), encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"stories\[0\]: missing required key 'id'"):
+            slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")
+
+
+def test_slice_rejects_missing_task_story_id_key():
+    """tasks require story_id key."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+
+        epics_path.write_text(json.dumps([{"id": "E-1", "story_ids": ["S-1"]}]), encoding="utf-8")
+        stories_path.write_text(json.dumps([{"id": "S-1", "epic_id": "E-1", "task_ids": ["T-1"]}]), encoding="utf-8")
+        tasks_path.write_text(json.dumps([{"id": "T-1"}]), encoding="utf-8")
+
+        with pytest.raises(ValueError, match=r"tasks\[0\]: missing required key 'story_id'"):
+            slice_epics_for_sync(epics_path, stories_path, tasks_path, root / "tmp")
