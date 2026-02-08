@@ -1,5 +1,9 @@
 # planpilot
 
+<p align="center">
+  <img src="assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="120" />
+</p>
+
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
@@ -155,6 +159,15 @@ A complete working example is in the [examples/](examples/) directory, including
 - [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
 - [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
+
+## Support
+
+- **Questions / ideas**: use [GitHub Discussions](https://github.com/aryeko/planpilot/discussions)
+- **Bugs / feature requests**: open a [GitHub Issue](https://github.com/aryeko/planpilot/issues/new/choose)
+
+## Branding
+
+Branding assets (logo + social preview images) are in [`assets/branding/navigator/`](assets/branding/navigator/).
 
 ## Development
 
