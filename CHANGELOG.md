@@ -2,6 +2,39 @@
 
 <!-- version list -->
 
+## v1.1.4 (2026-02-08)
+
+### Bug Fixes
+
+- Fix README logo alignment ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+### Documentation
+
+- Adjust README logo baseline ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Center README header block for consistent alignment
+  ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Fine-tune README logo alignment ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Fix PyPI README logo URL ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Fix README logo alignment ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Resize README logo for better alignment ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+- Switch README header back to left-aligned logo
+  ([#20](https://github.com/aryeko/planpilot/pull/20),
+  [`2e4393f`](https://github.com/aryeko/planpilot/commit/2e4393fdc85658ef058cf7c7b820531ce003403d))
+
+
 ## v1.1.3 (2026-02-08)
 
 ### Bug Fixes
