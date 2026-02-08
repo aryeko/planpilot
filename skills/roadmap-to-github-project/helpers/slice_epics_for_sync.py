@@ -15,17 +15,18 @@ import hashlib
 import json
 import re
 from pathlib import Path
+from typing import Any
 
 
 _SAFE_FILENAME_FRAGMENT = re.compile(r"[^A-Za-z0-9._-]+")
 
 
-def load_json(path: Path):
+def load_json(path: Path) -> Any:
     """Load and parse a JSON file from disk."""
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def write_json(path: Path, data) -> None:
+def write_json(path: Path, data: Any) -> None:
     """Write JSON with stable formatting and a trailing newline."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
@@ -51,8 +52,14 @@ def build_slices(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir
 
     stories_by_id = {s["id"]: s for s in stories}
 
-    for epic in epics:
-        eid = epic["id"]
+    for index, epic in enumerate(epics):
+        if not isinstance(epic, dict):
+            raise ValueError(f"Epic at index {index} must be an object: {epic!r}")
+
+        eid = epic.get("id")
+        if eid is None:
+            raise ValueError(f"Epic at index {index} missing required 'id': {epic!r}")
+
         file_eid = safe_epic_id_for_filename(eid)
         story_ids = epic.get("story_ids", [])
         epic_stories = [stories_by_id[sid] for sid in story_ids if sid in stories_by_id]

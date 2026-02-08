@@ -52,7 +52,7 @@ Planning artifacts:
 - `.plans/dependency-graph.md`
 
 Sync artifacts:
-- `.plans/github-sync-map.E-<id>.json` (per-epic)
+- `.plans/github-sync-map.<epic_id>.json` (per-epic)
 - `.plans/github-sync-map.json` (optional merged summary)
 
 Temporary slicing artifacts (where `<epic_id>` is the epic `id` from `.plans/epics.json` when filename-safe, otherwise a sanitized fallback):
@@ -162,7 +162,7 @@ Optional: merge per-epic sync maps into `.plans/github-sync-map.json`.
 - `gh auth status`
 - Dry-run succeeds for each epic slice
 - Real sync succeeds for each epic slice
-- `.plans/github-sync-map.E-*.json` exist and parse
+- `.plans/github-sync-map.<epic_id>.json` exist and parse
 
 ## Completion Criteria
 
