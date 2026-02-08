@@ -1,12 +1,15 @@
 name: Release
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
 
 jobs:
   release:
     runs-on: ubuntu-latest
+    if: github.event.workflow_run.conclusion == 'success'
     concurrency: release
     permissions:
       contents: write
@@ -26,9 +29,6 @@ jobs:
 
       - name: Install dependencies
         run: poetry install --no-interaction
-
-      - name: Run tests
-        run: poetry run pytest -v
 
       - name: Python Semantic Release
         id: release
