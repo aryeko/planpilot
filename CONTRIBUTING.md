@@ -107,3 +107,31 @@ flowchart LR
 ## Test structure
 
 Tests mirror the source layout under `tests/`:
+
+```
+tests/
+├── models/           → src/planpilot/models/
+├── plan/             → src/planpilot/plan/
+├── providers/github/ → src/planpilot/providers/github/
+├── rendering/        → src/planpilot/rendering/
+├── sync/             → src/planpilot/sync/
+├── test_cli.py       → src/planpilot/cli.py
+├── test_exceptions.py→ src/planpilot/exceptions.py
+└── test_slice.py     → src/planpilot/slice.py
+```
+
+- Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
+- Shared fixtures live in `tests/conftest.py`.
+- Coverage target: 90%+ branch coverage (`poe test` reports coverage automatically).
+- When adding a new module, create a matching test file in the same relative path.
+
+## Adding a provider
+
+To add a new provider (e.g. Jira):
+
+1. Create `src/planpilot/providers/jira/` with `__init__.py`, `client.py`, and `provider.py`.
+2. Implement the `Provider` ABC from `providers/base.py`.
+3. Add corresponding tests under `tests/providers/jira/`.
+4. Wire it into `cli.py` (e.g. via a `--provider` flag).
+
+No changes to `SyncEngine`, `BodyRenderer`, or plan modules are needed.
