@@ -81,13 +81,13 @@ def slice_epics_for_sync(epics_path, stories_path, tasks_path, out_dir):
 The existing `except (json.JSONDecodeError, KeyError, ValueError)` block already
 catches `ValueError`, so no CLI changes are needed. The user will now see:
 
-```
+```text
 Error: Invalid input format: stories[2]: missing required key 'epic_id'
 ```
 
 instead of:
 
-```
+```text
 Error: Invalid input format: 'epic_id'
 ```
 

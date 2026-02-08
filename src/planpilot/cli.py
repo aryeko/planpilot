@@ -7,6 +7,7 @@ import asyncio
 import logging
 import sys
 
+from planpilot import __version__
 from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig
@@ -27,7 +28,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--version",
         action="version",
-        version=f"%(prog)s {__import__('planpilot').__version__}",
+        version=f"%(prog)s {__version__}",
     )
     parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
     parser.add_argument("--project-url", required=True, help="GitHub Project URL")

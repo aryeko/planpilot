@@ -126,7 +126,7 @@ class SyncConfig(BaseModel):
 
 Expose via CLI:
 
-```
+```text
 --max-concurrency  Maximum parallel API calls (default: 5)
 ```
 

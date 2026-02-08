@@ -113,8 +113,6 @@ def test_load_plan_invalid_json():
 
 def test_load_plan_missing_required_fields():
     """Test that load_plan raises PlanLoadError on missing required fields."""
-    from planpilot.exceptions import PlanLoadError
-
     with tempfile.TemporaryDirectory() as tmpdir:
         epics_path = Path(tmpdir) / "epics.json"
         stories_path = Path(tmpdir) / "stories.json"

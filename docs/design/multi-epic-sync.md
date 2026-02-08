@@ -91,7 +91,7 @@ for task in epic_tasks:
 
 Add a new CLI command that orchestrates the full multi-epic workflow:
 
-```
+```shell
 planpilot sync-all \
   --repo owner/repo \
   --project-url https://github.com/orgs/org/projects/1 \
@@ -104,7 +104,7 @@ planpilot sync-all \
 
 Internal flow:
 
-```
+```text
 1. Load plan files
 2. If len(epics) == 1:
      Sync directly (current behavior, no slicing needed)

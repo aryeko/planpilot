@@ -14,7 +14,7 @@ during CI or peak-hour GitHub load.
 
 All API calls go through `GhClient`, which shells out to the `gh` CLI binary:
 
-```
+```text
 SyncEngine -> Provider -> GhClient.run() -> subprocess("gh", ...) -> GitHub API
 ```
 
@@ -228,7 +228,7 @@ class SyncConfig(BaseModel):
     retry_base_delay: float = 1.0
 ```
 
-```
+```text
 --max-retries     Max retry attempts per API call (default: 3, 0 = disable)
 ```
 

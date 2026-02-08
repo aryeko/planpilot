@@ -349,20 +349,9 @@ class GitHubProvider(Provider):
     def resolve_option_id(self, options: list[dict[str, str]], name: str | None) -> str | None:
         """Find the option ID matching *name* (case-insensitive).
 
-        Args:
-            options: List of ``{"id": ..., "name": ...}`` dicts.
-            name: Option name to search for.
-
-        Returns:
-            The matching option ID, or None.
+        Delegates to :func:`planpilot.providers.github.mapper.resolve_option_id`.
         """
-        if not name:
-            return None
-        lower = name.lower()
-        for opt in options:
-            if opt.get("name", "").lower() == lower:
-                return opt.get("id")
-        return None
+        return resolve_option_id(options, name)
 
     async def create_issue(self, issue_input: CreateIssueInput) -> IssueRef:
         """Create a new issue.

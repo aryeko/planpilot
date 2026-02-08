@@ -14,6 +14,6 @@ if ! command -v actionlint &>/dev/null; then
     exit 1
 fi
 
-echo "Running actionlint on .github/workflows/..."
+echo "Running actionlint..."
 actionlint "$@"
 echo "actionlint: OK"

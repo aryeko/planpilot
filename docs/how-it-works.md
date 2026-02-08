@@ -128,7 +128,7 @@ When `--project-url` points to a GitHub Projects v2 board, each issue is:
 
 ### Labels
 
-A label (default: `codex`) is applied to all created issues. If the label doesn't exist, planpilot creates it.
+A label (default: `planpilot`) is applied to all created issues. If the label doesn't exist, planpilot creates it.
 
 ## Sync map output
 
