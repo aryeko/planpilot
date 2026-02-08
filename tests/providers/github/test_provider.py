@@ -549,3 +549,64 @@ async def test_add_blocked_by_calls_graphql(provider, mock_client):
     assert "ADD_BLOCKED_BY" in call_args[0][0] or "addBlockedBy" in call_args[0][0]
     assert call_args[1]["variables"]["issueId"] == issue_id
     assert call_args[1]["variables"]["blockingIssueId"] == blocker_id
+
+
+def test_build_issue_map_basic(provider):
+    """Test that build_issue_map extracts entity markers into nested dict."""
+    issues = [
+        ExistingIssue(
+            id="i1", number=1,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
+        ),
+        ExistingIssue(
+            id="i2", number=2,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- STORY_ID: S-1 -->",
+        ),
+        ExistingIssue(
+            id="i3", number=3,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- TASK_ID: T-1 -->",
+        ),
+    ]
+    result = provider.build_issue_map(issues, "plan1")
+    assert result["epics"] == {"E-1": {"id": "i1", "number": 1}}
+    assert result["stories"] == {"S-1": {"id": "i2", "number": 2}}
+    assert result["tasks"] == {"T-1": {"id": "i3", "number": 3}}
+
+
+def test_build_issue_map_filters_by_plan_id(provider):
+    """Test that build_issue_map skips issues with non-matching plan_id."""
+    issues = [
+        ExistingIssue(
+            id="i1", number=1,
+            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
+        ),
+        ExistingIssue(
+            id="i2", number=2,
+            body="<!-- PLAN_ID: other -->\n<!-- EPIC_ID: E-2 -->",
+        ),
+    ]
+    result = provider.build_issue_map(issues, "plan1")
+    assert "E-1" in result["epics"]
+    assert "E-2" not in result["epics"]
+
+
+def test_resolve_option_id_found(provider):
+    """Test that resolve_option_id returns matching option ID (case-insensitive)."""
+    options = [
+        {"id": "opt1", "name": "High"},
+        {"id": "opt2", "name": "Low"},
+    ]
+    assert provider.resolve_option_id(options, "high") == "opt1"
+    assert provider.resolve_option_id(options, "LOW") == "opt2"
+
+
+def test_resolve_option_id_not_found(provider):
+    """Test that resolve_option_id returns None when no match."""
+    options = [{"id": "opt1", "name": "High"}]
+    assert provider.resolve_option_id(options, "Medium") is None
+
+
+def test_resolve_option_id_none_name(provider):
+    """Test that resolve_option_id returns None when name is None."""
+    options = [{"id": "opt1", "name": "High"}]
+    assert provider.resolve_option_id(options, None) is None

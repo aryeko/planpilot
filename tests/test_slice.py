@@ -5,10 +5,9 @@ from __future__ import annotations
 import json
 import tempfile
 from pathlib import Path
+from unittest.mock import patch
 
-import pytest
-
-from planpilot.slice import slice_epics_for_sync
+from planpilot.slice import slice_cli, slice_epics_for_sync
 
 
 def test_slice_filters_cross_epic_dependencies():
@@ -148,3 +147,46 @@ def test_slice_single_epic_produces_identical_output():
         e1_tasks = json.loads((out_dir / "tasks.E-1.json").read_text(encoding="utf-8"))
         assert e1_tasks[0]["depends_on"] == ["T-2"]
         assert e1_tasks[1]["depends_on"] == []
+
+
+def test_slice_cli_file_not_found():
+    """Test that slice_cli returns 1 when a file is missing."""
+    with patch("sys.argv", ["planpilot-slice", "--epics-path", "/nonexistent/epics.json",
+                             "--stories-path", "/nonexistent/stories.json",
+                             "--tasks-path", "/nonexistent/tasks.json"]):
+        assert slice_cli() == 1
+
+
+def test_slice_cli_invalid_json():
+    """Test that slice_cli returns 1 on invalid JSON input."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        bad_file = root / "bad.json"
+        bad_file.write_text("not valid json", encoding="utf-8")
+
+        with patch("sys.argv", ["planpilot-slice",
+                                 "--epics-path", str(bad_file),
+                                 "--stories-path", str(bad_file),
+                                 "--tasks-path", str(bad_file)]):
+            assert slice_cli() == 1
+
+
+def test_slice_cli_success():
+    """Test that slice_cli returns 0 on valid inputs."""
+    with tempfile.TemporaryDirectory() as td:
+        root = Path(td)
+        epics_path = root / "epics.json"
+        stories_path = root / "stories.json"
+        tasks_path = root / "tasks.json"
+        out_dir = root / "out"
+
+        epics_path.write_text(json.dumps([{"id": "E-1", "story_ids": ["S-1"]}]), encoding="utf-8")
+        stories_path.write_text(json.dumps([{"id": "S-1", "epic_id": "E-1", "task_ids": ["T-1"]}]), encoding="utf-8")
+        tasks_path.write_text(json.dumps([{"id": "T-1", "story_id": "S-1", "depends_on": []}]), encoding="utf-8")
+
+        with patch("sys.argv", ["planpilot-slice",
+                                 "--epics-path", str(epics_path),
+                                 "--stories-path", str(stories_path),
+                                 "--tasks-path", str(tasks_path),
+                                 "--out-dir", str(out_dir)]):
+            assert slice_cli() == 0
