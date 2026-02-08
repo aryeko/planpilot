@@ -120,7 +120,7 @@ def _format_summary(result: SyncResult, config: SyncConfig) -> str:
     mode = "dry-run" if result.dry_run else "apply"
     lines = [
         "",
-        f"planpilot — sync complete ({mode})",
+        f"planpilot - sync complete ({mode})",
         "",
         f"  Plan ID:   {sm.plan_id}",
         f"  Repo:      {sm.repo}",

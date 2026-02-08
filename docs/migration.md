@@ -90,7 +90,7 @@ planpilot --repo owner/repo --project-url ... --dry-run
 Use native multi-epic sync directly with `planpilot`:
 
 ```bash
-planpilot --repo owner/repo --project-url ... --epics-path .plans/epics.json --stories-path .plans/stories.json --tasks-path .plans/tasks.json --dry-run
+planpilot --repo owner/repo --project-url ... --epics-path .plans/epics.json --stories-path .plans/stories.json --tasks-path .plans/tasks.json --sync-path .plans/github-sync-map.json --dry-run
 ```
 
 ### Stricter validation (v0.2.0)

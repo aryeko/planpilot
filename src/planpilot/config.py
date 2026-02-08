@@ -25,7 +25,7 @@ class SyncConfig(BaseModel):
         sync_path: Path where the sync map will be written.
         label: Label to apply to all created issues.
         field_config: Project field preferences (status, priority, …).
-        dry_run: When *True*, no write operations are performed.
+        dry_run: When *True*, no GitHub mutations are performed (sync map is still written).
         verbose: When *True*, emit detailed progress to stderr.
     """
 

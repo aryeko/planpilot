@@ -13,8 +13,7 @@ src/planpilot/
 ├── models/                 # typed domain models (Plan/Project/Sync)
 ├── rendering/              # issue-body rendering protocol + markdown impl
 ├── config.py               # SyncConfig
-├── exceptions.py           # exception hierarchy
-└── slice.py                # multi-epic slicing CLI
+└── exceptions.py           # exception hierarchy
 ```
 
 ## WHERE TO LOOK

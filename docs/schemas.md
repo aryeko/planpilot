@@ -92,7 +92,7 @@ Each task is an atomic unit of work within a story.
 | `artifacts` | string[] | yes | Files/outputs produced |
 | `depends_on` | string[] | yes | Task IDs this task depends on (empty array if none) |
 | `scope` | object | no | `{ "in": [...], "out": [...] }` |
-| `estimate` | object | no | `{ "tshirt": "M" }` -- mapped to project Size field when `--size-from-tshirt` is enabled |
+| `estimate` | object | no | `{ "tshirt": "M" }` -- mapped to project Size field by default (disable with `--no-size-from-tshirt`) |
 
 ### verification object
 

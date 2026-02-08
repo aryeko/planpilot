@@ -124,7 +124,7 @@ When `--project-url` points to a GitHub Projects v2 board, each issue is:
    - **Status** (e.g. "Backlog") -- `--status`
    - **Priority** (e.g. "P1") -- `--priority`
    - **Iteration** (e.g. current active) -- `--iteration`
-   - **Size** (from task's `estimate.tshirt`) -- `--size-field` + `--size-from-tshirt`
+   - **Size** (from task's `estimate.tshirt`) -- `--size-field` (enabled by default, disable via `--no-size-from-tshirt`)
 
 ### Labels
 
