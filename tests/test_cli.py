@@ -13,11 +13,8 @@ import pytest
 from planpilot.cli import (
     _build_config,
     _format_summary,
-    _parse_args,
     _run_sync,
-    _run_sync_all,
     build_parser,
-    build_sync_all_parser,
     main,
 )
 from planpilot.config import SyncConfig
@@ -126,77 +123,6 @@ def test_build_parser_defaults():
     assert args.verbose is False
 
 
-def test_build_sync_all_parser_all_args() -> None:
-    """sync-all parser accepts standard sync flags."""
-    parser = build_sync_all_parser()
-    args = parser.parse_args(
-        [
-            "--repo",
-            "owner/repo",
-            "--project-url",
-            "https://github.com/orgs/o/projects/1",
-            "--epics-path",
-            "epics.json",
-            "--stories-path",
-            "stories.json",
-            "--tasks-path",
-            "tasks.json",
-            "--sync-path",
-            "sync.json",
-            "--dry-run",
-        ]
-    )
-    assert args.repo == "owner/repo"
-    assert args.dry_run is True
-
-
-def test_parse_args_detects_sync_all_mode() -> None:
-    """_parse_args returns sync-all mode when command is present."""
-    args, is_sync_all = _parse_args(
-        [
-            "sync-all",
-            "--repo",
-            "owner/repo",
-            "--project-url",
-            "https://github.com/orgs/o/projects/1",
-            "--epics-path",
-            "epics.json",
-            "--stories-path",
-            "stories.json",
-            "--tasks-path",
-            "tasks.json",
-            "--sync-path",
-            "sync.json",
-            "--dry-run",
-        ]
-    )
-    assert is_sync_all is True
-    assert args.repo == "owner/repo"
-
-
-def test_parse_args_keeps_legacy_mode() -> None:
-    """Legacy invocation remains supported without sync-all prefix."""
-    args, is_sync_all = _parse_args(
-        [
-            "--repo",
-            "owner/repo",
-            "--project-url",
-            "https://github.com/orgs/o/projects/1",
-            "--epics-path",
-            "epics.json",
-            "--stories-path",
-            "stories.json",
-            "--tasks-path",
-            "tasks.json",
-            "--sync-path",
-            "sync.json",
-            "--dry-run",
-        ]
-    )
-    assert is_sync_all is False
-    assert args.repo == "owner/repo"
-
-
 @pytest.mark.asyncio
 async def test_run_sync():
     """Test that _run_sync executes the sync pipeline correctly."""
@@ -232,37 +158,6 @@ async def test_run_sync():
         mock_client_class.assert_called_once()
         mock_renderer_class.assert_called_once()
         mock_engine.sync.assert_called_once()
-
-
-@pytest.mark.asyncio
-async def test_run_sync_all_uses_orchestrator():
-    """Test that _run_sync_all delegates to MultiEpicOrchestrator."""
-    config = SyncConfig(
-        repo="owner/repo",
-        project_url="https://github.com/orgs/o/projects/1",
-        epics_path=Path("epics.json"),
-        stories_path=Path("stories.json"),
-        tasks_path=Path("tasks.json"),
-        sync_path=Path("sync.json"),
-        dry_run=True,
-    )
-
-    mock_result = SyncResult(
-        sync_map=SyncMap(plan_id="test", repo="owner/repo", project_url="https://github.com/orgs/o/projects/1"),
-        dry_run=True,
-    )
-    mock_orchestrator = AsyncMock()
-    mock_orchestrator.sync_all = AsyncMock(return_value=mock_result)
-
-    with (
-        patch("planpilot.cli.GitHubProvider"),
-        patch("planpilot.cli.GhClient"),
-        patch("planpilot.cli.MarkdownRenderer"),
-        patch("planpilot.cli.MultiEpicOrchestrator", return_value=mock_orchestrator),
-    ):
-        await _run_sync_all(config)
-
-    mock_orchestrator.sync_all.assert_called_once()
 
 
 def test_build_config_from_args():
@@ -503,34 +398,3 @@ def test_main_returns_nonzero_on_plan_error(capsys):
         assert result == 2
         captured = capsys.readouterr()
         assert "error: plan error" in captured.err
-
-
-def test_main_runs_sync_all_when_command_selected() -> None:
-    """main dispatches to sync-all coroutine when command is selected."""
-    with (
-        patch("planpilot.cli.asyncio.run") as mock_run,
-        patch(
-            "sys.argv",
-            [
-                "planpilot",
-                "sync-all",
-                "--repo",
-                "owner/repo",
-                "--project-url",
-                "https://github.com/orgs/o/projects/1",
-                "--epics-path",
-                "epics.json",
-                "--stories-path",
-                "stories.json",
-                "--tasks-path",
-                "tasks.json",
-                "--sync-path",
-                "sync.json",
-                "--dry-run",
-            ],
-        ),
-    ):
-        mock_run.return_value = None
-        result = main()
-        assert result == 0
-        assert "_run_sync_all" in str(mock_run.call_args[0][0])
