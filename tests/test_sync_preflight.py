@@ -107,25 +107,40 @@ class TestSyncPreflight(unittest.TestCase):
                 run_sync(cfg)
             self.assertIn("gh auth login", str(ctx.exception))
 
-
     def _make_valid_plan(self, root):
         """Return (epics_path, stories_path, tasks_path) with a valid minimal plan."""
         epics = root / "epics.json"
         stories = root / "stories.json"
         tasks = root / "tasks.json"
-        _write_json(epics, [
-            {"id": "E-1", "title": "Epic", "story_ids": ["S-1"], "goal": "g", "spec_ref": "s"},
-        ])
-        _write_json(stories, [
-            {"id": "S-1", "epic_id": "E-1", "title": "Story", "task_ids": ["T-1"], "goal": "g", "spec_ref": "s"},
-        ])
-        _write_json(tasks, [
-            {
-                "id": "T-1", "story_id": "S-1", "title": "Task", "motivation": "m", "spec_ref": "s",
-                "requirements": [], "acceptance_criteria": [], "verification": {},
-                "artifacts": [], "depends_on": [],
-            },
-        ])
+        _write_json(
+            epics,
+            [
+                {"id": "E-1", "title": "Epic", "story_ids": ["S-1"], "goal": "g", "spec_ref": "s"},
+            ],
+        )
+        _write_json(
+            stories,
+            [
+                {"id": "S-1", "epic_id": "E-1", "title": "Story", "task_ids": ["T-1"], "goal": "g", "spec_ref": "s"},
+            ],
+        )
+        _write_json(
+            tasks,
+            [
+                {
+                    "id": "T-1",
+                    "story_id": "S-1",
+                    "title": "Task",
+                    "motivation": "m",
+                    "spec_ref": "s",
+                    "requirements": [],
+                    "acceptance_criteria": [],
+                    "verification": {},
+                    "artifacts": [],
+                    "depends_on": [],
+                },
+            ],
+        )
         return epics, stories, tasks
 
     def _make_config(self, epics, stories, tasks, sync_path):
@@ -172,13 +187,21 @@ class TestSyncPreflight(unittest.TestCase):
             root = Path(td)
             epics, stories, tasks = self._make_valid_plan(root)
             # Remove 'motivation' and 'depends_on' from task
-            _write_json(tasks, [
-                {
-                    "id": "T-1", "story_id": "S-1", "title": "Task", "spec_ref": "s",
-                    "requirements": [], "acceptance_criteria": [], "verification": {},
-                    "artifacts": [],
-                },
-            ])
+            _write_json(
+                tasks,
+                [
+                    {
+                        "id": "T-1",
+                        "story_id": "S-1",
+                        "title": "Task",
+                        "spec_ref": "s",
+                        "requirements": [],
+                        "acceptance_criteria": [],
+                        "verification": {},
+                        "artifacts": [],
+                    },
+                ],
+            )
             cfg = self._make_config(epics, stories, tasks, root / "sync.json")
             with self.assertRaises(RuntimeError) as ctx:
                 run_sync(cfg)
@@ -191,9 +214,12 @@ class TestSyncPreflight(unittest.TestCase):
             root = Path(td)
             epics, stories, tasks = self._make_valid_plan(root)
             # Remove 'task_ids' from story
-            _write_json(stories, [
-                {"id": "S-1", "epic_id": "E-1", "title": "Story", "goal": "g", "spec_ref": "s"},
-            ])
+            _write_json(
+                stories,
+                [
+                    {"id": "S-1", "epic_id": "E-1", "title": "Story", "goal": "g", "spec_ref": "s"},
+                ],
+            )
             cfg = self._make_config(epics, stories, tasks, root / "sync.json")
             with self.assertRaises(RuntimeError) as ctx:
                 run_sync(cfg)

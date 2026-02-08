@@ -68,11 +68,7 @@ def run_sync(config: SyncConfig) -> None:
     except json.JSONDecodeError as exc:
         raise RuntimeError(f"invalid JSON input: {exc}") from exc
 
-    auth = gh_run(["auth", "status"], check=False)
-    if auth.returncode != 0:
-        raise RuntimeError("GitHub authentication failed. Run `gh auth login` and retry.")
-
-    # validation
+    # validation (runs before auth so users get schema errors without needing gh)
     errors: list[str] = []
     if len(epics) != 1:
         errors.append("plan must contain exactly one epic")
@@ -93,8 +89,16 @@ def run_sync(config: SyncConfig) -> None:
 
     # required fields on tasks
     _TASK_REQUIRED = (
-        "id", "story_id", "title", "motivation", "spec_ref",
-        "requirements", "acceptance_criteria", "verification", "artifacts", "depends_on",
+        "id",
+        "story_id",
+        "title",
+        "motivation",
+        "spec_ref",
+        "requirements",
+        "acceptance_criteria",
+        "verification",
+        "artifacts",
+        "depends_on",
     )
     for i, task in enumerate(tasks):
         for field in _TASK_REQUIRED:
@@ -145,6 +149,10 @@ def run_sync(config: SyncConfig) -> None:
 
     if errors:
         raise RuntimeError("Validation errors:\n" + "\n".join(errors))
+
+    auth = gh_run(["auth", "status"], check=False)
+    if auth.returncode != 0:
+        raise RuntimeError("GitHub authentication failed. Run `gh auth login` and retry.")
 
     norm = json.dumps({"epics": epics, "stories": stories, "tasks": tasks}, sort_keys=True, separators=(",", ":"))
     plan_id = hashlib.sha256(norm.encode("utf-8")).hexdigest()[:12]
