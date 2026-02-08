@@ -27,7 +27,7 @@ class FieldConfig(BaseModel):
 class FieldValue(BaseModel):
     """A single project-field value to set on an item.
 
-    Exactly one of the value fields should be populated.
+    At most one of the value fields should be populated.
     """
 
     single_select_option_id: str | None = None

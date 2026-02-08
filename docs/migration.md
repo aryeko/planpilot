@@ -40,7 +40,7 @@ The following modules were replaced by the new package structure:
 
 All planpilot exceptions now inherit from `PlanPilotError`:
 
-```
+```text
 PlanPilotError
 ├── PlanLoadError          # File I/O or JSON parse failures
 ├── PlanValidationError    # Relational integrity errors

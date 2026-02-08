@@ -173,6 +173,28 @@ async def test_sync_calls_check_auth(mock_provider, mock_renderer, plan_json_fil
 
 
 @pytest.mark.asyncio
+async def test_sync_fails_fast_on_missing_repo_id(mock_provider, mock_renderer, plan_json_files, sample_config):
+    """Sync engine raises SyncError when repo context has no repo_id."""
+    from planpilot.exceptions import SyncError
+
+    epics_path, stories_path, tasks_path = plan_json_files
+    config = SyncConfig(
+        repo="owner/repo",
+        project_url="https://github.com/orgs/org/projects/1",
+        epics_path=epics_path,
+        stories_path=stories_path,
+        tasks_path=tasks_path,
+        sync_path=sample_config.sync_path,
+    )
+    mock_provider.get_repo_context.return_value = RepoContext(repo_id=None)
+    mock_provider.get_project_context.return_value = None
+
+    engine = SyncEngine(mock_provider, mock_renderer, config)
+    with pytest.raises(SyncError, match="missing repo_id"):
+        await engine.sync()
+
+
+@pytest.mark.asyncio
 async def test_sync_loads_and_validates_plan(mock_provider, mock_renderer, plan_json_files, sample_config):
     """Sync engine loads and validates the plan."""
     epics_path, stories_path, tasks_path = plan_json_files

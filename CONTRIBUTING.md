@@ -43,7 +43,7 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 
 - **`models/`** -- Pydantic domain models (`Plan`, `Epic`, `Story`, `Task`, `SyncMap`, …)
 - **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
-- **`providers/`** -- `Provider` ABC defining the adapter interface; `github/` implements it using the `gh` CLI
+- **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses the `gh` CLI
 - **`rendering/`** -- `BodyRenderer` Protocol for issue body generation; `MarkdownRenderer` is the default
 - **`sync/`** -- `SyncEngine` orchestrates the 5-phase sync pipeline, depends only on `Provider` and `BodyRenderer` abstractions
 - **`config.py`** -- Pydantic `SyncConfig` built from CLI arguments
@@ -108,7 +108,7 @@ flowchart LR
 
 Tests mirror the source layout under `tests/`:
 
-```
+```text
 tests/
 ├── models/           → src/planpilot/models/
 ├── plan/             → src/planpilot/plan/

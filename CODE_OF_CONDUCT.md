@@ -45,3 +45,4 @@ or harmful.
 
 Community leaders have the right and responsibility to remove, edit, or reject
 comments, commits, code, wiki edits, issues, and other contributions that are
+in violation of this Code of Conduct.

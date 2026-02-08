@@ -121,7 +121,8 @@ async def test_graphql_builds_correct_args():
     assert call_args[2] == "graphql"
     assert "-f" in call_args
     assert f"query={query}" in call_args
-    assert "-f" in call_args[call_args.index("-f") + 1 :]
+    # Variables should use -F (typed) flags, not -f (raw string)
+    assert "-F" in call_args
     assert "var1=value1" in call_args
     assert "var2=value2" in call_args
 

@@ -33,7 +33,7 @@ flowchart LR
 
 planpilot follows SOLID principles with a modular, provider-agnostic design:
 
-```
+```text
 src/planpilot/
 ├── models/          # Pydantic domain models (Plan, Epic, Story, Task, …)
 ├── plan/            # Plan loading, validation, and hashing

@@ -10,7 +10,7 @@
 
 ## Module map
 
-```
+```text
 src/planpilot/
 ├── models/              # Pydantic domain models
 │   ├── plan.py          # Epic, Story, Task, Plan
@@ -111,7 +111,7 @@ To add a new provider (e.g. Jira):
 
 ## Exception hierarchy
 
-```
+```text
 PlanPilotError
 ├── PlanLoadError          # File I/O or JSON parse failures
 ├── PlanValidationError    # Relational integrity errors (aggregated)
@@ -137,7 +137,7 @@ PlanPilotError
 
 Tests mirror the source structure:
 
-```
+```text
 tests/
 ├── models/          → src/planpilot/models/
 ├── plan/            → src/planpilot/plan/

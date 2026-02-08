@@ -71,6 +71,8 @@ class SyncEngine:
         # Phase 1: Setup
         await self._provider.check_auth()
         repo_ctx = await self._provider.get_repo_context(cfg.repo, cfg.label)
+        if not repo_ctx.repo_id:
+            raise SyncError("Repository context missing repo_id")
         project_ctx = await self._provider.get_project_context(cfg.project_url, cfg.field_config)
 
         # Phase 2: Discovery

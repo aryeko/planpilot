@@ -72,16 +72,19 @@ class GhClient:
     async def graphql(self, query: str, variables: dict[str, Any] | None = None) -> Any:
         """Execute a GraphQL query/mutation via ``gh api graphql``.
 
+        Uses ``-F`` (typed field) flags so that integers, booleans, and
+        nulls are sent with correct JSON types rather than as strings.
+
         Args:
             query: The GraphQL operation string.
-            variables: Mapping of variable names to string values.
+            variables: Mapping of variable names to their values.
 
         Returns:
             Parsed JSON response.
         """
         args = ["api", "graphql", "-f", f"query={query}"]
         for key, value in (variables or {}).items():
-            args.extend(["-f", f"{key}={value}"])
+            args.extend(["-F", f"{key}={value}"])
         return await self.json(args)
 
     async def graphql_raw(self, args: list[str]) -> Any:

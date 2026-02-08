@@ -25,6 +25,7 @@ def validate_plan(plan: Plan) -> None:
     epic_ids = {e.id for e in plan.epics}
     story_ids = {s.id for s in plan.stories}
     task_ids = {t.id for t in plan.tasks}
+    task_by_id = {t.id: t for t in plan.tasks}
 
     # Track which tasks belong to which story
     story_tasks: dict[str, list[str]] = {sid: [] for sid in story_ids}
@@ -44,6 +45,12 @@ def validate_plan(plan: Plan) -> None:
         missing = [tid for tid in story.task_ids if tid not in task_ids]
         if missing:
             errors.append(f"story {story.id} references unknown task_ids {missing}")
+        # Verify referenced tasks actually belong to this story
+        for tid in story.task_ids:
+            if tid in task_by_id and task_by_id[tid].story_id != story.id:
+                errors.append(
+                    f"story {story.id} references task {tid} but task.story_id is '{task_by_id[tid].story_id}'"
+                )
         extras = set(story_tasks.get(story.id, [])) - set(story.task_ids)
         if extras:
             errors.append(f"story {story.id} missing task_ids for {sorted(extras)}")

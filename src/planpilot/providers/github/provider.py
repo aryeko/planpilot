@@ -496,19 +496,16 @@ class GitHubProvider(Provider):
 
         for i in range(0, len(issue_ids), batch_size):
             batch = issue_ids[i : i + batch_size]
-            # Inline IDs into query string - replace the variable with actual IDs
-            ids_str = json.dumps(batch)
-            # Replace the variable declaration and usage with inline values
-            query = FETCH_ISSUE_RELATIONS.replace("query($ids: [ID!]!)", "query").replace(
-                "nodes(ids: $ids)", f"nodes(ids: {ids_str})"
-            )
 
             args = [
                 "api",
                 "graphql",
                 "-f",
-                f"query={query}",
+                f"query={FETCH_ISSUE_RELATIONS}",
             ]
+            # Pass each ID as a separate -F flag for array variables
+            for id_ in batch:
+                args.extend(["-F", f"ids[]={id_}"])
 
             response = await self.client.graphql_raw(args)
             nodes = response.get("data", {}).get("nodes", [])

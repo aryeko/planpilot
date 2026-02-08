@@ -193,6 +193,48 @@ def test_validate_plan_stories_must_be_listed_in_epic():
     assert "story2" in str(exc_info.value)
 
 
+def test_validate_plan_task_story_id_cross_reference():
+    """Test that story.task_ids can't reference tasks owned by a different story."""
+    plan = create_minimal_plan()
+    # Add a second story with a second task
+    story2 = Story(
+        id="story2",
+        epic_id="epic1",
+        title="Story2",
+        goal="Goal",
+        spec_ref="spec.md",
+        task_ids=["task1"],  # Incorrectly claims task1 (owned by story1)
+        scope=Scope(),
+        success_metrics=[],
+        risks=[],
+        assumptions=[],
+    )
+    task2 = Task(
+        id="task2",
+        story_id="story2",
+        title="Task2",
+        motivation="Motivation",
+        spec_ref="spec.md",
+        requirements=[],
+        acceptance_criteria=[],
+        verification=Verification(),
+        artifacts=[],
+        depends_on=[],
+        estimate=Estimate(),
+        scope=Scope(),
+    )
+    plan.stories.append(story2)
+    plan.tasks.append(task2)
+    plan.epics[0].story_ids = ["story1", "story2"]
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    error_str = str(exc_info.value)
+    assert "story story2 references task task1" in error_str
+    assert "task.story_id is 'story1'" in error_str
+
+
 def test_validate_plan_valid_plan_passes():
     """Test that a valid plan passes without error."""
     plan = create_minimal_plan()
