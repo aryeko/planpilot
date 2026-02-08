@@ -59,9 +59,11 @@ representative at an online or offline event.
 ## Enforcement
 
 Instances of abusive, harassing, or otherwise unacceptable behavior may be
-reported to the community leaders responsible for enforcement at
-https://github.com/aryeko/planpilot/issues or by contacting the project
-maintainers directly through GitHub.
+reported to the community leaders responsible for enforcement via a private
+email to aryekogan@gmail.com or by contacting the project maintainers directly
+through GitHub.
+
+Please avoid reporting Code of Conduct violations via public GitHub issues.
 
 All complaints will be reviewed and investigated promptly and fairly.
 
