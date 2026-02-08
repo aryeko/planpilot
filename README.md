@@ -1,11 +1,11 @@
-# <img src="assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" align="middle" style="vertical-align: middle;" /> planpilot
+# <img src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" height="32" align="absmiddle" /> planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
 [![Downloads](https://static.pepy.tech/badge/planpilot)](https://pepy.tech/project/planpilot)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/aryeko/planpilot/blob/main/LICENSE)
 
 Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2.
 
