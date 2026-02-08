@@ -134,7 +134,7 @@ def main() -> int:
     try:
         asyncio.run(_run_sync(config))
         return 0
-    except (PlanPilotError, RuntimeError) as exc:
+    except PlanPilotError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 

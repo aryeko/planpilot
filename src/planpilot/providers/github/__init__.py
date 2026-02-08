@@ -1,6 +1,5 @@
 """GitHub provider adapter using the ``gh`` CLI."""
 
-# Provider module will be created later
-# from planpilot.providers.github.provider import GitHubProvider
+from planpilot.providers.github.provider import GitHubProvider
 
-__all__ = []
+__all__ = ["GitHubProvider"]

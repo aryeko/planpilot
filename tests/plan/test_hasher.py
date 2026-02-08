@@ -78,27 +78,11 @@ def test_compute_plan_id_different_plans_different_hashes():
     assert plan_id1 != plan_id2
 
 
-def test_compute_plan_id_order_independent():
-    """Test that order of fields in JSON doesn't affect the hash."""
-    plan = create_minimal_plan()
-    plan_id1 = compute_plan_id(plan)
-
-    # Create a new plan with the same data but potentially different internal ordering
-    # Since we're using sort_keys=True, this should already be handled,
-    # but let's verify by recreating the plan
-    plan2 = create_minimal_plan()
-    plan_id2 = compute_plan_id(plan2)
-
-    assert plan_id1 == plan_id2
-
-
-def test_compute_plan_id_field_order_independent():
-    """Test that field order within model_dump doesn't affect hash."""
+def test_compute_plan_id_stable_across_reconstruction():
+    """Test that separately reconstructed identical plans hash the same."""
     plan1 = create_minimal_plan()
     plan2 = create_minimal_plan()
 
-    # Both plans have identical data, just created separately
-    # The hash should be the same because sort_keys=True normalizes order
     plan_id1 = compute_plan_id(plan1)
     plan_id2 = compute_plan_id(plan2)
 

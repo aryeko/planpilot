@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from planpilot.exceptions import PlanLoadError
 from planpilot.models.plan import Plan
 
 
@@ -20,19 +21,21 @@ def load_plan(epics_path: Path, stories_path: Path, tasks_path: Path) -> Plan:
         A validated Plan instance.
 
     Raises:
-        RuntimeError: If any file is missing or contains invalid JSON.
+        PlanLoadError: If any file is missing, unreadable, or contains invalid JSON.
         pydantic.ValidationError: If the data doesn't match the schema.
     """
     # Check files exist
     for p in (epics_path, stories_path, tasks_path):
         if not p.exists():
-            raise RuntimeError(f"missing required file: {p}")
+            raise PlanLoadError(f"missing required file: {p}")
     # Load JSON
     try:
         epics = json.loads(epics_path.read_text(encoding="utf-8"))
         stories = json.loads(stories_path.read_text(encoding="utf-8"))
         tasks = json.loads(tasks_path.read_text(encoding="utf-8"))
     except json.JSONDecodeError as exc:
-        raise RuntimeError(f"invalid JSON input: {exc}") from exc
+        raise PlanLoadError(f"invalid JSON input: {exc}") from exc
+    except OSError as exc:
+        raise PlanLoadError(f"failed to read plan file: {exc}") from exc
 
     return Plan(epics=epics, stories=stories, tasks=tasks)

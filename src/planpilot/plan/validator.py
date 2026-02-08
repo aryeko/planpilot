@@ -7,10 +7,15 @@ from planpilot.models.plan import Plan
 
 
 def validate_plan(plan: Plan) -> None:
-    """Validate relational integrity of a plan.
+    """Validate relational integrity of a pre-sliced, single-epic plan.
 
-    Checks cross-entity references: epic↔story, story↔task, task dependencies.
-    Raises PlanValidationError with all found errors.
+    This validator is intended for plans that have already been sliced by
+    ``slice_epics_for_sync()`` into per-epic inputs.  It enforces exactly
+    one epic and checks cross-entity references: epic↔story, story↔task,
+    and task dependencies.
+
+    Raises:
+        PlanValidationError: Aggregated list of all validation errors found.
     """
     errors: list[str] = []
 

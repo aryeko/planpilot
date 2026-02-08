@@ -69,7 +69,7 @@ class GhClient:
             return None
         return json.loads(result.stdout)
 
-    async def graphql(self, query: str, variables: dict[str, str] | None = None) -> Any:
+    async def graphql(self, query: str, variables: dict[str, Any] | None = None) -> Any:
         """Execute a GraphQL query/mutation via ``gh api graphql``.
 
         Args:

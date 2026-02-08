@@ -141,8 +141,11 @@ def build_parent_map(nodes: list[dict[str, Any]]) -> dict[str, str | None]:
     """
     mapping: dict[str, str | None] = {}
     for node in nodes:
+        node_id = node.get("id")
+        if not node_id:
+            continue
         parent = node.get("parent")
-        mapping[node.get("id", "")] = parent.get("id") if parent else None
+        mapping[node_id] = parent.get("id") if parent else None
     return mapping
 
 
@@ -157,6 +160,9 @@ def build_blocked_by_map(nodes: list[dict[str, Any]]) -> dict[str, set[str]]:
     """
     mapping: dict[str, set[str]] = {}
     for node in nodes:
+        node_id = node.get("id")
+        if not node_id:
+            continue
         blocked = node.get("blockedBy", {}).get("nodes", [])
-        mapping[node.get("id", "")] = {n.get("id") for n in blocked if n.get("id")}
+        mapping[node_id] = {n.get("id") for n in blocked if n.get("id")}
     return mapping

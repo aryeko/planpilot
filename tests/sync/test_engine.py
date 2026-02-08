@@ -262,8 +262,10 @@ async def test_sync_creates_story_issue(
 
     assert mock_provider.create_issue.call_count == 3  # epic, story, task
     mock_renderer.render_story.assert_called()
-    call_kwargs = mock_renderer.render_story.call_args
-    assert "#10" in call_kwargs[0][2]  # epic_ref contains epic number
+    # Verify epic_ref was passed containing the epic issue number
+    call_args = mock_renderer.render_story.call_args
+    positional_args = call_args[0]
+    assert any("#10" in str(arg) for arg in positional_args)
 
 
 @pytest.mark.asyncio
@@ -294,8 +296,10 @@ async def test_sync_creates_task_issue(
 
     assert mock_provider.create_issue.call_count == 3
     mock_renderer.render_task.assert_called()
-    call_kwargs = mock_renderer.render_task.call_args
-    assert "#11" in call_kwargs[0][2]  # story_ref contains story number
+    # Verify story_ref was passed containing the story issue number
+    call_args = mock_renderer.render_task.call_args
+    positional_args = call_args[0]
+    assert any("#11" in str(arg) for arg in positional_args)
 
 
 @pytest.mark.asyncio

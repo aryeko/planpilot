@@ -283,5 +283,4 @@ def test_build_blocked_by_map_handles_missing_blocked_by():
     ]
     result = build_blocked_by_map(nodes)
     assert result["issue1"] == {"blocker1"}
-    # Should handle gracefully - might raise KeyError or return empty set
-    # Based on implementation, it should handle missing field
+    assert result["issue2"] == set()

@@ -7,7 +7,7 @@ provider-agnostic way.
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 # ------------------------------------------------------------------
 # Field configuration (what the user *wants* to set)
@@ -34,6 +34,21 @@ class FieldValue(BaseModel):
     iteration_id: str | None = None
     text: str | None = None
     number: float | None = None
+
+    @model_validator(mode="after")
+    def check_at_most_one(self) -> FieldValue:
+        """Ensure at most one value field is populated."""
+        values = [
+            self.single_select_option_id,
+            self.iteration_id,
+            self.text,
+            self.number,
+        ]
+        populated = sum(v is not None for v in values)
+        if populated > 1:
+            msg = "Only one value field should be populated"
+            raise ValueError(msg)
+        return self
 
 
 # ------------------------------------------------------------------

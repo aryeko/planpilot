@@ -4,10 +4,11 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
+from typing import Any
 
 from planpilot.config import SyncConfig
 from planpilot.exceptions import SyncError
-from planpilot.models.plan import Plan
+from planpilot.models.plan import Epic, Plan, Story, Task
 from planpilot.models.project import (
     CreateIssueInput,
     FieldValue,
@@ -127,11 +128,11 @@ class SyncEngine:
 
     async def _upsert_epic(
         self,
-        epic,
+        epic: Epic,
         plan_id: str,
         repo_ctx: RepoContext,
         project_ctx: ProjectContext | None,
-        existing_map: dict[str, dict[str, dict[str, any]]],
+        existing_map: dict[str, dict[str, dict[str, Any]]],
         dry_run: bool,
         counters: dict[str, int],
     ) -> SyncEntry:
@@ -176,11 +177,11 @@ class SyncEngine:
 
     async def _upsert_story(
         self,
-        story,
+        story: Story,
         plan_id: str,
         repo_ctx: RepoContext,
         project_ctx: ProjectContext | None,
-        existing_map: dict[str, dict[str, dict[str, any]]],
+        existing_map: dict[str, dict[str, dict[str, Any]]],
         sync_map: SyncMap,
         dry_run: bool,
         counters: dict[str, int],
@@ -227,11 +228,11 @@ class SyncEngine:
 
     async def _upsert_task(
         self,
-        task,
+        task: Task,
         plan_id: str,
         repo_ctx: RepoContext,
         project_ctx: ProjectContext | None,
-        existing_map: dict[str, dict[str, dict[str, any]]],
+        existing_map: dict[str, dict[str, dict[str, Any]]],
         sync_map: SyncMap,
         dry_run: bool,
         counters: dict[str, int],
@@ -311,8 +312,8 @@ class SyncEngine:
         plan: Plan,
         plan_id: str,
         sync_map: SyncMap,
-        task_by_id: dict[str, any],
-        story_by_id: dict[str, any],
+        task_by_id: dict[str, Task],
+        story_by_id: dict[str, Story],
     ) -> None:
         """Phase 4: Update all bodies with cross-references."""
         repo = self._config.repo

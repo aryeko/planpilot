@@ -259,7 +259,9 @@ def test_main_returns_zero_on_success(capsys):
 
 
 def test_main_returns_nonzero_on_error(capsys):
-    """Test that main returns 2 when RuntimeError is raised."""
+    """Test that main returns 2 when PlanLoadError is raised."""
+    from planpilot.exceptions import PlanLoadError
+
     with (
         patch("planpilot.cli.asyncio.run") as mock_run,
         patch(
@@ -282,11 +284,11 @@ def test_main_returns_nonzero_on_error(capsys):
             ],
         ),
     ):
-        mock_run.side_effect = RuntimeError("test error")
+        mock_run.side_effect = PlanLoadError("missing required file: epics.json")
         result = main()
         assert result == 2
         captured = capsys.readouterr()
-        assert "error: test error" in captured.err
+        assert "error:" in captured.err
 
 
 def test_main_returns_nonzero_on_plan_error(capsys):

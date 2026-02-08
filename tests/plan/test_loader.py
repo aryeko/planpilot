@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
+from planpilot.exceptions import PlanLoadError
 from planpilot.models.plan import Plan
 from planpilot.plan.loader import load_plan
 
@@ -83,7 +84,7 @@ def test_load_plan_valid_json():
 
 
 def test_load_plan_missing_file():
-    """Test that load_plan raises RuntimeError when a file doesn't exist."""
+    """Test that load_plan raises PlanLoadError when a file doesn't exist."""
     with tempfile.TemporaryDirectory() as tmpdir:
         epics_path = Path(tmpdir) / "epics.json"
         stories_path = Path(tmpdir) / "stories.json"
@@ -92,12 +93,12 @@ def test_load_plan_missing_file():
         # Create only one file
         epics_path.write_text("[]", encoding="utf-8")
 
-        with pytest.raises(RuntimeError, match="missing required file"):
+        with pytest.raises(PlanLoadError, match="missing required file"):
             load_plan(epics_path, stories_path, tasks_path)
 
 
 def test_load_plan_invalid_json():
-    """Test that load_plan raises RuntimeError on invalid JSON."""
+    """Test that load_plan raises PlanLoadError on invalid JSON."""
     with tempfile.TemporaryDirectory() as tmpdir:
         epics_path = Path(tmpdir) / "epics.json"
         stories_path = Path(tmpdir) / "stories.json"
@@ -107,7 +108,7 @@ def test_load_plan_invalid_json():
         stories_path.write_text("[]", encoding="utf-8")
         tasks_path.write_text("[]", encoding="utf-8")
 
-        with pytest.raises(RuntimeError, match="invalid JSON input"):
+        with pytest.raises(PlanLoadError, match="invalid JSON input"):
             load_plan(epics_path, stories_path, tasks_path)
 
 

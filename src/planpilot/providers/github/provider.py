@@ -119,8 +119,10 @@ class GitHubProvider(Provider):
                 labels = repo_data.get("labels", {}).get("nodes", [])
                 if labels:
                     label_id = labels[0].get("id")
-            except Exception as e:
+            except ProviderError as e:
                 logger.warning(f"Failed to create label '{label}': {e}")
+            except Exception as e:
+                logger.warning(f"Unexpected error creating label '{label}': {type(e).__name__}: {e}")
 
         return RepoContext(
             repo_id=repo_id,
@@ -271,7 +273,7 @@ class GitHubProvider(Provider):
             )
 
         except Exception as e:
-            logger.error(f"Failed to fetch project context: {e}")
+            logger.error(f"Failed to fetch project context: {e}", exc_info=True)
             return None
 
     async def search_issues(self, repo: str, plan_id: str) -> list[ExistingIssue]:

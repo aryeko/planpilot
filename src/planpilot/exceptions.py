@@ -12,6 +12,10 @@ class PlanPilotError(Exception):
     """Base exception for all planpilot errors."""
 
 
+class PlanLoadError(PlanPilotError):
+    """Raised when plan files cannot be read or parsed."""
+
+
 class PlanValidationError(PlanPilotError):
     """Raised when plan JSON fails schema or relational validation.
 
