@@ -1,4 +1,4 @@
-# <img src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="28" height="28" style="vertical-align: middle; position: relative; top: 2px;" /> planpilot
+# <img src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="24" height="24" style="vertical-align: middle; position: relative; top: 3px;" /> planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
