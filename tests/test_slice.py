@@ -151,9 +151,18 @@ def test_slice_single_epic_produces_identical_output():
 
 def test_slice_cli_file_not_found():
     """Test that slice_cli returns 1 when a file is missing."""
-    with patch("sys.argv", ["planpilot-slice", "--epics-path", "/nonexistent/epics.json",
-                             "--stories-path", "/nonexistent/stories.json",
-                             "--tasks-path", "/nonexistent/tasks.json"]):
+    with patch(
+        "sys.argv",
+        [
+            "planpilot-slice",
+            "--epics-path",
+            "/nonexistent/epics.json",
+            "--stories-path",
+            "/nonexistent/stories.json",
+            "--tasks-path",
+            "/nonexistent/tasks.json",
+        ],
+    ):
         assert slice_cli() == 1
 
 
@@ -164,10 +173,18 @@ def test_slice_cli_invalid_json():
         bad_file = root / "bad.json"
         bad_file.write_text("not valid json", encoding="utf-8")
 
-        with patch("sys.argv", ["planpilot-slice",
-                                 "--epics-path", str(bad_file),
-                                 "--stories-path", str(bad_file),
-                                 "--tasks-path", str(bad_file)]):
+        with patch(
+            "sys.argv",
+            [
+                "planpilot-slice",
+                "--epics-path",
+                str(bad_file),
+                "--stories-path",
+                str(bad_file),
+                "--tasks-path",
+                str(bad_file),
+            ],
+        ):
             assert slice_cli() == 1
 
 
@@ -184,9 +201,30 @@ def test_slice_cli_success():
         stories_path.write_text(json.dumps([{"id": "S-1", "epic_id": "E-1", "task_ids": ["T-1"]}]), encoding="utf-8")
         tasks_path.write_text(json.dumps([{"id": "T-1", "story_id": "S-1", "depends_on": []}]), encoding="utf-8")
 
-        with patch("sys.argv", ["planpilot-slice",
-                                 "--epics-path", str(epics_path),
-                                 "--stories-path", str(stories_path),
-                                 "--tasks-path", str(tasks_path),
-                                 "--out-dir", str(out_dir)]):
+        with patch(
+            "sys.argv",
+            [
+                "planpilot-slice",
+                "--epics-path",
+                str(epics_path),
+                "--stories-path",
+                str(stories_path),
+                "--tasks-path",
+                str(tasks_path),
+                "--out-dir",
+                str(out_dir),
+            ],
+        ):
             assert slice_cli() == 0
+
+
+def test_slice_cli_unexpected_error():
+    """Test that slice_cli returns 1 on unexpected errors."""
+    with (
+        patch(
+            "sys.argv",
+            ["planpilot-slice", "--epics-path", "e.json", "--stories-path", "s.json", "--tasks-path", "t.json"],
+        ),
+        patch("planpilot.slice.slice_epics_for_sync", side_effect=RuntimeError("boom")),
+    ):
+        assert slice_cli() == 1

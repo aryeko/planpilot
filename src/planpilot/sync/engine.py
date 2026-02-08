@@ -388,10 +388,7 @@ class SyncEngine:
         for task in plan.tasks:
             story_entry = _get_sync_entry(sync_map.stories, task.story_id, "story")
             story_num = story_entry.issue_number
-            deps = {
-                dep: f"#{_get_sync_entry(sync_map.tasks, dep, 'task').issue_number}"
-                for dep in task.depends_on
-            }
+            deps = {dep: f"#{_get_sync_entry(sync_map.tasks, dep, 'task').issue_number}" for dep in task.depends_on}
             deps_block = self._renderer.render_deps_block(deps)
             body = self._renderer.render_task(task, plan_id, f"#{story_num}", deps_block)
             entry = _get_sync_entry(sync_map.tasks, task.id, "task")
@@ -429,11 +426,13 @@ class SyncEngine:
         sync_map: SyncMap,
     ) -> None:
         """Phase 5: Set up sub-issue and blocked-by relationships."""
-        all_ids = list(chain(
-            (e.node_id for e in sync_map.tasks.values()),
-            (e.node_id for e in sync_map.stories.values()),
-            (e.node_id for e in sync_map.epics.values()),
-        ))
+        all_ids = list(
+            chain(
+                (e.node_id for e in sync_map.tasks.values()),
+                (e.node_id for e in sync_map.stories.values()),
+                (e.node_id for e in sync_map.epics.values()),
+            )
+        )
         relation_map = await self._provider.get_issue_relations(all_ids)
 
         # Task blocked-by

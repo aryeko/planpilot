@@ -9,6 +9,7 @@ from unittest.mock import AsyncMock, MagicMock
 import pytest
 
 from planpilot.config import SyncConfig
+from planpilot.exceptions import SyncError
 from planpilot.models.plan import Epic, Plan, Story, Task
 from planpilot.models.project import (
     CreateIssueInput,
@@ -24,7 +25,7 @@ from planpilot.models.sync import SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan
 from planpilot.providers.base import Provider
 from planpilot.rendering.base import BodyRenderer
-from planpilot.sync.engine import SyncEngine
+from planpilot.sync.engine import SyncEngine, _get_sync_entry
 
 
 @pytest.fixture
@@ -582,3 +583,9 @@ async def test_sync_writes_sync_map(
     assert "epics" in data
     assert "stories" in data
     assert "tasks" in data
+
+
+def test_get_sync_entry_raises_on_missing_key():
+    """_get_sync_entry raises SyncError when entity_id is not in the map."""
+    with pytest.raises(SyncError, match="Missing task in sync map: 'T-999'"):
+        _get_sync_entry({}, "T-999", "task")

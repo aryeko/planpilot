@@ -9,9 +9,7 @@ from planpilot.exceptions import ProjectURLError
 
 # Regex for project URL: https://github.com/orgs/{org}/projects/{number}
 # or https://github.com/users/{user}/projects/{number}
-_PROJECT_URL_RE = re.compile(
-    r"https://github\.com/(?:orgs|users)/([^/]+)/projects/(\d+)/?$"
-)
+_PROJECT_URL_RE = re.compile(r"https://github\.com/(?:orgs|users)/([^/]+)/projects/(\d+)/?$")
 
 
 def parse_project_url(url: str) -> tuple[str, int]:
