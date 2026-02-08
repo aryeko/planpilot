@@ -7,20 +7,18 @@ from planpilot.models.plan import Plan
 
 
 def validate_plan(plan: Plan) -> None:
-    """Validate relational integrity of a pre-sliced, single-epic plan.
+    """Validate relational integrity of a plan.
 
-    This validator is intended for plans that have already been sliced by
-    ``slice_epics_for_sync()`` into per-epic inputs.  It enforces exactly
-    one epic and checks cross-entity references: epic↔story, story↔task,
-    and task dependencies.
+    Supports single-epic and multi-epic plans. Validates cross-entity
+    references: epic↔story, story↔task, and task dependencies.
 
     Raises:
         PlanValidationError: Aggregated list of all validation errors found.
     """
     errors: list[str] = []
 
-    if len(plan.epics) != 1:
-        errors.append("plan must contain exactly one epic")
+    if len(plan.epics) < 1:
+        errors.append("plan must contain at least one epic")
 
     epic_ids = {e.id for e in plan.epics}
     story_ids = {s.id for s in plan.stories}
@@ -57,12 +55,13 @@ def validate_plan(plan: Plan) -> None:
         if not story.task_ids and not story_tasks.get(story.id):
             errors.append(f"story {story.id} has no tasks")
 
-    if plan.epics:
-        epic = plan.epics[0]
+    for epic in plan.epics:
         missing_stories = [sid for sid in epic.story_ids if sid not in story_ids]
         if missing_stories:
             errors.append(f"epic {epic.id} references unknown story_ids {missing_stories}")
-        extras = set(story_ids) - set(epic.story_ids)
+
+        epic_story_ids = {story.id for story in plan.stories if story.epic_id == epic.id}
+        extras = epic_story_ids - set(epic.story_ids)
         if extras:
             errors.append(f"epic {epic.id} missing story_ids for {sorted(extras)}")
 
