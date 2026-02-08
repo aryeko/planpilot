@@ -1,4 +1,4 @@
-# <img src="assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" /> planpilot
+# <img src="assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" align="middle" style="vertical-align: middle;" /> planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
 [![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
