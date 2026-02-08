@@ -11,20 +11,40 @@ Why this exists:
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import re
 from pathlib import Path
 
 
+_SAFE_FILENAME_FRAGMENT = re.compile(r"[^A-Za-z0-9._-]+")
+
+
 def load_json(path: Path):
+    """Load and parse a JSON file from disk."""
     return json.loads(path.read_text(encoding="utf-8"))
 
 
 def write_json(path: Path, data) -> None:
+    """Write JSON with stable formatting and a trailing newline."""
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(data, indent=2) + "\n", encoding="utf-8")
 
 
+def safe_epic_id_for_filename(value: object) -> str:
+    """Return a filesystem-safe epic id fragment for output filenames."""
+    raw = "" if value is None else str(value).strip()
+    cleaned = _SAFE_FILENAME_FRAGMENT.sub("_", raw)
+    cleaned = cleaned.strip("._-")
+    if cleaned:
+        return cleaned
+
+    token = hashlib.sha1(raw.encode("utf-8")).hexdigest()[:12]
+    return f"epic_{token}"
+
+
 def build_slices(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir: Path) -> None:
+    """Emit one epics/stories/tasks JSON slice per epic."""
     epics = load_json(epics_path)
     stories = load_json(stories_path)
     tasks = load_json(tasks_path)
@@ -33,6 +53,7 @@ def build_slices(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir
 
     for epic in epics:
         eid = epic["id"]
+        file_eid = safe_epic_id_for_filename(eid)
         story_ids = epic.get("story_ids", [])
         epic_stories = [stories_by_id[sid] for sid in story_ids if sid in stories_by_id]
         epic_story_set = {s["id"] for s in epic_stories}
@@ -44,12 +65,13 @@ def build_slices(epics_path: Path, stories_path: Path, tasks_path: Path, out_dir
             deps = t.get("depends_on") or []
             t["depends_on"] = [d for d in deps if d in epic_task_ids]
 
-        write_json(out_dir / f"epics.{eid}.json", [epic])
-        write_json(out_dir / f"stories.{eid}.json", epic_stories)
-        write_json(out_dir / f"tasks.{eid}.json", epic_tasks)
+        write_json(out_dir / f"epics.{file_eid}.json", [epic])
+        write_json(out_dir / f"stories.{file_eid}.json", epic_stories)
+        write_json(out_dir / f"tasks.{file_eid}.json", epic_tasks)
 
 
 def parse_args() -> argparse.Namespace:
+    """Parse CLI arguments for per-epic slicing."""
     p = argparse.ArgumentParser(description="Slice .plans JSON into per-epic sync-ready files")
     p.add_argument("--epics-path", required=True, help="Path to .plans/epics.json")
     p.add_argument("--stories-path", required=True, help="Path to .plans/stories.json")
@@ -59,6 +81,7 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> int:
+    """CLI entrypoint."""
     args = parse_args()
     build_slices(
         epics_path=Path(args.epics_path),

@@ -55,10 +55,10 @@ Sync artifacts:
 - `.plans/github-sync-map.E-<id>.json` (per-epic)
 - `.plans/github-sync-map.json` (optional merged summary)
 
-Temporary slicing artifacts:
-- `.plans/tmp/epics.E-<id>.json`
-- `.plans/tmp/stories.E-<id>.json`
-- `.plans/tmp/tasks.E-<id>.json`
+Temporary slicing artifacts (where `<epic_id>` is the epic `id` from `.plans/epics.json` when filename-safe, otherwise a sanitized fallback):
+- `.plans/tmp/epics.<epic_id>.json`
+- `.plans/tmp/stories.<epic_id>.json`
+- `.plans/tmp/tasks.<epic_id>.json`
 
 ## Workflow
 
@@ -121,10 +121,10 @@ Command template:
 PYTHONPATH="<tool_src>" python3 -m plan_gh_project_sync \
   --repo <owner/repo> \
   --project-url <project-url> \
-  --epics-path .plans/tmp/epics.<EPIC>.json \
-  --stories-path .plans/tmp/stories.<EPIC>.json \
-  --tasks-path .plans/tmp/tasks.<EPIC>.json \
-  --sync-path .plans/github-sync-map.<EPIC>.json \
+  --epics-path .plans/tmp/epics.<epic_id>.json \
+  --stories-path .plans/tmp/stories.<epic_id>.json \
+  --tasks-path .plans/tmp/tasks.<epic_id>.json \
+  --sync-path .plans/github-sync-map.<epic_id>.json \
   --label codex \
   --status Backlog \
   --priority P1 \
