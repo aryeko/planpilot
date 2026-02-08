@@ -102,10 +102,10 @@ planpilot \
 
 ### 3. Multi-epic plans
 
-Use `sync-all` to run multi-epic sync in one command:
+planpilot supports multi-epic plans natively. Run once with full plan files:
 
 ```bash
-planpilot sync-all \
+planpilot \
   --repo your-org/your-repo \
   --project-url https://github.com/orgs/your-org/projects/1 \
   --epics-path .plans/epics.json \
@@ -115,7 +115,7 @@ planpilot sync-all \
   --apply
 ```
 
-Legacy manual flow (still supported): slice first, then sync each epic.
+If you prefer manual per-epic execution, slicing remains available:
 
 ```bash
 planpilot-slice \

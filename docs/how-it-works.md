@@ -170,6 +170,6 @@ Always dry-run first before using `--apply`.
 
 ## Multi-epic plans
 
-planpilot validates that each run contains exactly one epic. For plans with multiple epics, use `planpilot-slice` to split into per-epic files, then sync each one sequentially. See the [CLI reference](cli-reference.md) for usage.
+planpilot validates and syncs multi-epic plans natively in a single run. For teams that prefer per-epic workflows, `planpilot-slice` remains available to split files and run sequential syncs. See the [CLI reference](cli-reference.md) for usage.
 
 Cross-epic task dependencies are automatically filtered out during slicing to keep each per-epic plan self-contained.

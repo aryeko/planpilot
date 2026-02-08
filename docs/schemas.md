@@ -189,7 +189,7 @@ Every object must contain all required fields listed in the schema tables above.
 
 ### Phase 2: Relational integrity
 
-1. Exactly one epic per run (use `planpilot-slice` for multi-epic plans)
+1. At least one epic per run (multi-epic plans are supported natively)
 2. Every story's `epic_id` matches an epic in the file
 3. Every task's `story_id` matches a story in the file
 4. Every `depends_on` reference points to a valid task ID

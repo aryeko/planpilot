@@ -101,21 +101,20 @@ If auth fails, STOP and request login.
 ### 4) Multi-epic handling (sync/full)
 
 Preferred path:
-- run `planpilot sync-all` to orchestrate multi-epic slicing + per-epic sync + merged sync map in one command
+- run `planpilot` directly with full `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json`
+- native multi-epic validation + sync is supported
 
-Fallback/manual path (legacy):
-- run `planpilot-slice` to generate per-epic slices in `.plans/tmp`
-- run per-epic `planpilot` commands sequentially
-
-Deprecated:
-- `helpers/slice_epics_for_sync.py` should not be used as the default workflow
+Fallback/manual path:
+- run `planpilot-slice` for per-epic slicing
+- this generates per-epic slices in `.plans/tmp`
+- cross-epic `depends_on` are filtered out for each per-epic task slice
 
 ### 5) Sync execution (sync/full)
 
-Preferred command:
+Preferred command template:
 
 ```bash
-planpilot sync-all \
+planpilot \
   --repo <owner/repo> \
   --project-url <project-url> \
   --epics-path .plans/epics.json \
@@ -132,9 +131,7 @@ planpilot sync-all \
 
 Then rerun replacing `--dry-run` with `--apply`.
 
-Legacy/manual template (only if needed):
-- Run `planpilot-slice`
-- Run per-epic `planpilot ... --epics-path .plans/tmp/epics.<epic_id>.json ...`
+Manual per-epic fallback remains valid using `planpilot-slice` outputs.
 
 ### 6) Post-sync verification
 
@@ -149,7 +146,6 @@ Must report:
 ## Common Mistakes
 
 - Generating `.plans` with fields missing required by sync tool
-- Attempting to sync multi-epic file in one run (tool fails)
 - Skipping dry-run
 - Forgetting to filter cross-epic `depends_on` in per-epic slices
 - Treating this as implementation workflow (it is planning/sync only)
