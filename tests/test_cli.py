@@ -10,7 +10,13 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from planpilot.cli import _build_config, _format_summary, _run_sync, build_parser, main
+from planpilot.cli import (
+    _build_config,
+    _format_summary,
+    _run_sync,
+    build_parser,
+    main,
+)
 from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig

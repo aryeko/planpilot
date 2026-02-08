@@ -28,7 +28,7 @@ flowchart LR
 - **One-way sync**: local plan files -> GitHub
 - **Idempotent**: safe to rerun -- updates existing issues via markers
 - **Dry-run first**: preview all changes before applying
-- **Multi-epic**: slice large plans and sync each epic sequentially
+- **Multi-epic**: sync multiple epics natively in one run
 - **Provider-agnostic**: adapter pattern supports GitHub today, with Jira/Linear planned
 - **Async-first**: built on asyncio for fast, concurrent sync operations
 
@@ -46,8 +46,7 @@ src/planpilot/
 ├── sync/            # Sync engine orchestrator + relation logic
 ├── config.py        # SyncConfig (pydantic)
 ├── exceptions.py    # Custom exception hierarchy
-├── cli.py           # CLI entry point
-└── slice.py         # Multi-epic plan slicing
+└── cli.py           # CLI entry point
 ```
 
 The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
@@ -102,37 +101,24 @@ planpilot \
 
 ### 3. Multi-epic plans
 
-The sync tool expects one epic per run. For multi-epic plans, slice first:
+planpilot supports multi-epic plans natively. Run once with full plan files:
 
 ```bash
-planpilot-slice \
+planpilot \
+  --repo your-org/your-repo \
+  --project-url https://github.com/orgs/your-org/projects/1 \
   --epics-path .plans/epics.json \
   --stories-path .plans/stories.json \
   --tasks-path .plans/tasks.json \
-  --out-dir .plans/tmp
-```
-
-Then sync each epic:
-
-```bash
-for f in .plans/tmp/epics.*.json; do
-  id=$(basename "$f" .json | sed 's/epics\.//')
-  planpilot \
-    --repo your-org/your-repo \
-    --project-url https://github.com/orgs/your-org/projects/1 \
-    --epics-path ".plans/tmp/epics.${id}.json" \
-    --stories-path ".plans/tmp/stories.${id}.json" \
-    --tasks-path ".plans/tmp/tasks.${id}.json" \
-    --sync-path ".plans/github-sync-map.${id}.json" \
-    --apply
-done
+  --sync-path .plans/github-sync-map.json \
+  --apply
 ```
 
 ## Optional flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--label` | `codex` | Label applied to created issues |
+| `--label` | `planpilot` | Label applied to created issues |
 | `--status` | `Backlog` | Project status field value |
 | `--priority` | `P1` | Project priority field value |
 | `--iteration` | `active` | Iteration title, `active`, or `none` |

@@ -18,18 +18,8 @@ from planpilot.rendering.markdown import MarkdownRenderer
 from planpilot.sync.engine import SyncEngine
 
 
-def build_parser() -> argparse.ArgumentParser:
-    """Build the argument parser for the planpilot CLI.
-
-    Returns:
-        Configured ArgumentParser.
-    """
-    parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
-    parser.add_argument(
-        "--version",
-        action="version",
-        version=f"%(prog)s {__version__}",
-    )
+def _add_sync_args(parser: argparse.ArgumentParser) -> None:
+    """Attach shared sync arguments to a parser."""
     parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
     parser.add_argument("--project-url", required=True, help="GitHub Project URL")
     parser.add_argument("--epics-path", required=True, help="Path to epics.json")
@@ -69,6 +59,21 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Enable verbose logging",
     )
+
+
+def build_parser() -> argparse.ArgumentParser:
+    """Build the argument parser for the planpilot CLI.
+
+    Returns:
+        Configured ArgumentParser.
+    """
+    parser = argparse.ArgumentParser(description="Sync plan epics/stories/tasks to GitHub issues and project.")
+    parser.add_argument(
+        "--version",
+        action="version",
+        version=f"%(prog)s {__version__}",
+    )
+    _add_sync_args(parser)
     return parser
 
 
@@ -115,7 +120,7 @@ def _format_summary(result: SyncResult, config: SyncConfig) -> str:
     mode = "dry-run" if result.dry_run else "apply"
     lines = [
         "",
-        f"planpilot — sync complete ({mode})",
+        f"planpilot - sync complete ({mode})",
         "",
         f"  Plan ID:   {sm.plan_id}",
         f"  Repo:      {sm.repo}",
@@ -179,7 +184,7 @@ def main() -> int:
         Exit code: 0 on success, 2 on error.
     """
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(sys.argv[1:])
 
     if args.verbose:
         logging.basicConfig(

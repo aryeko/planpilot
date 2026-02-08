@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, call
 
 import pytest
 
@@ -138,6 +138,59 @@ def sample_plan_with_deps(tmp_path: Path) -> tuple[Plan, Path, Path, Path]:
     stories_path = tmp_path / "stories.json"
     tasks_path = tmp_path / "tasks.json"
     epics_path.write_text(json.dumps([epic.model_dump(mode="json", by_alias=True)]), encoding="utf-8")
+    stories_path.write_text(
+        json.dumps([story1.model_dump(mode="json", by_alias=True), story2.model_dump(mode="json", by_alias=True)]),
+        encoding="utf-8",
+    )
+    tasks_path.write_text(
+        json.dumps([task1.model_dump(mode="json", by_alias=True), task2.model_dump(mode="json", by_alias=True)]),
+        encoding="utf-8",
+    )
+
+    return plan, epics_path, stories_path, tasks_path
+
+
+@pytest.fixture
+def sample_multi_epic_plan_with_cross_epic_deps(tmp_path: Path) -> tuple[Plan, Path, Path, Path]:
+    """Create a multi-epic plan with cross-epic task dependencies."""
+    epic1 = Epic(id="E-1", title="Epic 1", goal="Goal", spec_ref="spec.md", story_ids=["S-1"])
+    epic2 = Epic(id="E-2", title="Epic 2", goal="Goal", spec_ref="spec.md", story_ids=["S-2"])
+
+    story1 = Story(id="S-1", epic_id="E-1", title="Story 1", goal="Goal", spec_ref="spec.md", task_ids=["T-1"])
+    story2 = Story(id="S-2", epic_id="E-2", title="Story 2", goal="Goal", spec_ref="spec.md", task_ids=["T-2"])
+
+    task1 = Task(
+        id="T-1",
+        story_id="S-1",
+        title="Task 1",
+        motivation="Motivation",
+        spec_ref="spec.md",
+        requirements=[],
+        acceptance_criteria=[],
+        artifacts=[],
+        depends_on=[],
+    )
+    task2 = Task(
+        id="T-2",
+        story_id="S-2",
+        title="Task 2",
+        motivation="Motivation",
+        spec_ref="spec.md",
+        requirements=[],
+        acceptance_criteria=[],
+        artifacts=[],
+        depends_on=["T-1"],
+    )
+
+    plan = Plan(epics=[epic1, epic2], stories=[story1, story2], tasks=[task1, task2])
+
+    epics_path = tmp_path / "epics.multi.json"
+    stories_path = tmp_path / "stories.multi.json"
+    tasks_path = tmp_path / "tasks.multi.json"
+    epics_path.write_text(
+        json.dumps([epic1.model_dump(mode="json", by_alias=True), epic2.model_dump(mode="json", by_alias=True)]),
+        encoding="utf-8",
+    )
     stories_path.write_text(
         json.dumps([story1.model_dump(mode="json", by_alias=True), story2.model_dump(mode="json", by_alias=True)]),
         encoding="utf-8",
@@ -583,6 +636,92 @@ async def test_sync_writes_sync_map(
     assert "epics" in data
     assert "stories" in data
     assert "tasks" in data
+
+
+@pytest.mark.asyncio
+async def test_sync_sets_cross_epic_relations(
+    mock_provider,
+    mock_renderer,
+    sample_multi_epic_plan_with_cross_epic_deps,
+    sample_config,
+    repo_context,
+    project_context,
+):
+    """Sync engine creates task/story/epic blocked-by across epics."""
+    _plan, epics_path, stories_path, tasks_path = sample_multi_epic_plan_with_cross_epic_deps
+    config = SyncConfig(
+        repo="owner/repo",
+        project_url="https://github.com/orgs/org/projects/1",
+        epics_path=epics_path,
+        stories_path=stories_path,
+        tasks_path=tasks_path,
+        sync_path=sample_config.sync_path,
+    )
+    mock_provider.get_repo_context.return_value = repo_context
+    mock_provider.get_project_context.return_value = project_context
+
+    epic1_ref = IssueRef(id="epic1-node", number=10, url="https://github.com/owner/repo/issues/10")
+    epic2_ref = IssueRef(id="epic2-node", number=11, url="https://github.com/owner/repo/issues/11")
+    story1_ref = IssueRef(id="story1-node", number=12, url="https://github.com/owner/repo/issues/12")
+    story2_ref = IssueRef(id="story2-node", number=13, url="https://github.com/owner/repo/issues/13")
+    task1_ref = IssueRef(id="task1-node", number=14, url="https://github.com/owner/repo/issues/14")
+    task2_ref = IssueRef(id="task2-node", number=15, url="https://github.com/owner/repo/issues/15")
+    mock_provider.create_issue.side_effect = [epic1_ref, epic2_ref, story1_ref, story2_ref, task1_ref, task2_ref]
+    mock_provider.add_to_project.return_value = "item-999"
+    mock_provider.get_issue_relations.return_value = RelationMap(
+        parents={
+            "story1-node": None,
+            "story2-node": None,
+            "task1-node": None,
+            "task2-node": None,
+        },
+        blocked_by={},
+    )
+
+    engine = SyncEngine(mock_provider, mock_renderer, config)
+    await engine.sync()
+
+    expected_calls = [
+        call("task2-node", "task1-node"),
+        call("story2-node", "story1-node"),
+        call("epic2-node", "epic1-node"),
+    ]
+    for expected in expected_calls:
+        assert expected in mock_provider.add_blocked_by.call_args_list
+
+
+@pytest.mark.asyncio
+async def test_sync_dry_run_multi_epic_native_path(
+    mock_provider,
+    mock_renderer,
+    sample_multi_epic_plan_with_cross_epic_deps,
+    tmp_path,
+):
+    """Core dry-run handles multi-epic inputs without slicing."""
+    _plan, epics_path, stories_path, tasks_path = sample_multi_epic_plan_with_cross_epic_deps
+    sync_path = tmp_path / "sync.multi.dryrun.json"
+    config = SyncConfig(
+        repo="owner/repo",
+        project_url="https://github.com/orgs/org/projects/1",
+        epics_path=epics_path,
+        stories_path=stories_path,
+        tasks_path=tasks_path,
+        sync_path=sync_path,
+        dry_run=True,
+    )
+
+    engine = SyncEngine(mock_provider, mock_renderer, config)
+    result = await engine.sync()
+
+    assert result.dry_run is True
+    assert result.epics_created == 2
+    assert result.stories_created == 2
+    assert result.tasks_created == 2
+    assert set(result.sync_map.epics) == {"E-1", "E-2"}
+    assert set(result.sync_map.stories) == {"S-1", "S-2"}
+    assert set(result.sync_map.tasks) == {"T-1", "T-2"}
+    mock_provider.check_auth.assert_not_called()
+    assert sync_path.exists()
 
 
 def test_get_sync_entry_raises_on_missing_key():

@@ -366,7 +366,7 @@ class GitHubProvider(Provider):
             ProviderError: If the creation fails.
         """
         # Build the input object as JSON
-        input_obj = {
+        input_obj: dict[str, Any] = {
             "repositoryId": issue_input.repo_id,
             "title": issue_input.title,
             "body": issue_input.body,
@@ -462,7 +462,8 @@ class GitHubProvider(Provider):
                 variables={"projectId": project_id, "contentId": issue_id},
             )
             item_data = response.get("data", {}).get("addProjectV2ItemById", {}).get("item", {})
-            return item_data.get("id")
+            item_id = item_data.get("id")
+            return item_id if isinstance(item_id, str) else None
         except Exception as e:
             logger.warning("Failed to add issue to project: %s", e)
             return None

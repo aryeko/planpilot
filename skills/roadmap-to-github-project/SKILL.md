@@ -36,7 +36,7 @@ Required for `sync` mode:
 Recommended defaults:
 - `plans_dir=.plans`
 - `sync_path=.plans/github-sync-map.json`
-- `label=codex`
+- `label=planpilot`
 - `status=Backlog`
 - `priority=P1`
 - `iteration=active`
@@ -52,13 +52,7 @@ Planning artifacts:
 - `.plans/dependency-graph.md`
 
 Sync artifacts:
-- `.plans/github-sync-map.<epic_id>.json` (per-epic)
-- `.plans/github-sync-map.json` (optional merged summary)
-
-Temporary slicing artifacts (where `<epic_id>` is the epic `id` from `.plans/epics.json` when filename-safe, otherwise a sanitized fallback):
-- `.plans/tmp/epics.<epic_id>.json`
-- `.plans/tmp/stories.<epic_id>.json`
-- `.plans/tmp/tasks.<epic_id>.json`
+- `.plans/github-sync-map.json`
 
 ## Workflow
 
@@ -100,32 +94,22 @@ If auth fails, STOP and request login.
 
 ### 4) Multi-epic handling (sync/full)
 
-The current sync tool validates exactly one epic per run.
-
-If `len(epics.json) > 1`:
-- run `planpilot-slice` or the helper script `helpers/slice_epics_for_sync.py`
-- this generates per-epic slices in `.plans/tmp`
-- cross-epic `depends_on` are filtered out for each per-epic task slice
+- run `planpilot` directly with full `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json`
+- native multi-epic validation + sync is supported
 
 ### 5) Sync execution (sync/full)
 
-For each epic slice:
-
-1. Run dry-run first
-2. If dry-run passes, run real sync
-3. Write per-epic sync map
-
-Command template:
+Preferred command template:
 
 ```bash
 planpilot \
   --repo <owner/repo> \
   --project-url <project-url> \
-  --epics-path .plans/tmp/epics.<epic_id>.json \
-  --stories-path .plans/tmp/stories.<epic_id>.json \
-  --tasks-path .plans/tmp/tasks.<epic_id>.json \
-  --sync-path .plans/github-sync-map.<epic_id>.json \
-  --label codex \
+  --epics-path .plans/epics.json \
+  --stories-path .plans/stories.json \
+  --tasks-path .plans/tasks.json \
+  --sync-path .plans/github-sync-map.json \
+  --label planpilot \
   --status Backlog \
   --priority P1 \
   --iteration active \
@@ -143,14 +127,12 @@ Must report:
 - Any warnings/fallbacks
 - Sync map artifact paths
 
-Optional: merge per-epic sync maps into `.plans/github-sync-map.json`.
+Sync writes one canonical map: `.plans/github-sync-map.json`.
 
 ## Common Mistakes
 
 - Generating `.plans` with fields missing required by sync tool
-- Attempting to sync multi-epic file in one run (tool fails)
 - Skipping dry-run
-- Forgetting to filter cross-epic `depends_on` in per-epic slices
 - Treating this as implementation workflow (it is planning/sync only)
 
 ## Verification Checklist
@@ -159,9 +141,9 @@ Optional: merge per-epic sync maps into `.plans/github-sync-map.json`.
 - `python3 -m json.tool .plans/stories.json`
 - `python3 -m json.tool .plans/tasks.json`
 - `gh auth status`
-- Dry-run succeeds for each epic slice
-- Real sync succeeds for each epic slice
-- `.plans/github-sync-map.<epic_id>.json` exist and parse
+- Dry-run succeeds
+- Real sync succeeds
+- `.plans/github-sync-map.json` exists and parses
 
 ## Completion Criteria
 
@@ -169,4 +151,4 @@ This skill run is complete when:
 1. `.plans` artifacts are valid and internally consistent
 2. Epic/story/task issues are created or updated in target repo
 3. Project items are added when project access is available
-4. Per-epic sync maps are written for idempotent reruns
+4. Canonical sync map is written for idempotent reruns

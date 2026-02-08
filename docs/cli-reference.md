@@ -27,29 +27,10 @@ planpilot \
 
 ### Optional flags
 
-- `--label` (default `codex`) -- Label to apply to created issues
+- `--label` (default `planpilot`) -- Label to apply to created issues
 - `--status` (default `Backlog`) -- Project status option name
 - `--priority` (default `P1`) -- Project priority option name
 - `--iteration` (default `active`) -- Iteration title, or `active` / `none`
 - `--size-field` (default `Size`) -- Project size field name (empty to skip)
 - `--no-size-from-tshirt` -- Disable t-shirt size mapping (enabled by default)
 - `--verbose`, `-v` -- Enable verbose logging
-
-## planpilot-slice
-
-Slice multi-epic plans into per-epic JSON files for sequential sync.
-
-```bash
-planpilot-slice \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --out-dir .plans/tmp
-```
-
-### Flags
-
-- `--epics-path` (required) -- Path to epics.json
-- `--stories-path` (required) -- Path to stories.json
-- `--tasks-path` (required) -- Path to tasks.json
-- `--out-dir` (default `.plans/tmp`) -- Output directory for per-epic slices

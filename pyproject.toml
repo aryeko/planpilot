@@ -34,7 +34,6 @@ exclude = ["skills"]
 
 [tool.poetry.scripts]
 planpilot = "planpilot.cli:main"
-planpilot-slice = "planpilot.slice:slice_cli"
 
 [tool.poetry.dependencies]
 python = ">=3.11"

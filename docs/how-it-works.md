@@ -124,7 +124,7 @@ When `--project-url` points to a GitHub Projects v2 board, each issue is:
    - **Status** (e.g. "Backlog") -- `--status`
    - **Priority** (e.g. "P1") -- `--priority`
    - **Iteration** (e.g. current active) -- `--iteration`
-   - **Size** (from task's `estimate.tshirt`) -- `--size-field` + `--size-from-tshirt`
+   - **Size** (from task's `estimate.tshirt`) -- `--size-field` (enabled by default, disable via `--no-size-from-tshirt`)
 
 ### Labels
 
@@ -170,6 +170,4 @@ Always dry-run first before using `--apply`.
 
 ## Multi-epic plans
 
-planpilot validates that each run contains exactly one epic. For plans with multiple epics, use `planpilot-slice` to split into per-epic files, then sync each one sequentially. See the [CLI reference](cli-reference.md) for usage.
-
-Cross-epic task dependencies are automatically filtered out during slicing to keep each per-epic plan self-contained.
+planpilot validates and syncs multi-epic plans natively in a single run. See the [CLI reference](cli-reference.md) for usage.

@@ -51,25 +51,71 @@ def create_minimal_plan() -> Plan:
     return Plan(epics=[epic], stories=[story], tasks=[task])
 
 
-def test_validate_plan_exactly_one_epic():
-    """Test that plan must contain exactly one epic."""
+def create_valid_multi_epic_plan() -> Plan:
+    """Create a valid plan with two epics for native multi-epic support tests."""
+    epic1 = Epic(id="epic1", title="Epic 1", goal="Goal", spec_ref="spec.md", story_ids=["story1"], scope=Scope())
+    epic2 = Epic(id="epic2", title="Epic 2", goal="Goal", spec_ref="spec.md", story_ids=["story2"], scope=Scope())
+
+    story1 = Story(
+        id="story1",
+        epic_id="epic1",
+        title="Story 1",
+        goal="Goal",
+        spec_ref="spec.md",
+        task_ids=["task1"],
+        scope=Scope(),
+    )
+    story2 = Story(
+        id="story2",
+        epic_id="epic2",
+        title="Story 2",
+        goal="Goal",
+        spec_ref="spec.md",
+        task_ids=["task2"],
+        scope=Scope(),
+    )
+
+    task1 = Task(
+        id="task1",
+        story_id="story1",
+        title="Task 1",
+        motivation="Motivation",
+        spec_ref="spec.md",
+        requirements=[],
+        acceptance_criteria=[],
+        verification=Verification(),
+        artifacts=[],
+        depends_on=["task2"],
+        estimate=Estimate(),
+        scope=Scope(),
+    )
+    task2 = Task(
+        id="task2",
+        story_id="story2",
+        title="Task 2",
+        motivation="Motivation",
+        spec_ref="spec.md",
+        requirements=[],
+        acceptance_criteria=[],
+        verification=Verification(),
+        artifacts=[],
+        depends_on=[],
+        estimate=Estimate(),
+        scope=Scope(),
+    )
+
+    return Plan(epics=[epic1, epic2], stories=[story1, story2], tasks=[task1, task2])
+
+
+def test_validate_plan_requires_at_least_one_epic():
+    """Test that plan must contain at least one epic."""
     plan = create_minimal_plan()
     plan.epics = []  # Zero epics
 
     with pytest.raises(PlanValidationError) as exc_info:
         validate_plan(plan)
 
-    assert "exactly one epic" in str(exc_info.value).lower()
-
-    plan.epics = [
-        Epic(id="e1", title="E1", goal="G", spec_ref="s", story_ids=[]),
-        Epic(id="e2", title="E2", goal="G", spec_ref="s", story_ids=[]),
-    ]
-
-    with pytest.raises(PlanValidationError) as exc_info:
-        validate_plan(plan)
-
-    assert "exactly one epic" in str(exc_info.value).lower()
+    assert "at least one epic" in str(exc_info.value).lower()
 
 
 def test_validate_plan_task_story_id_reference():
@@ -257,3 +303,69 @@ def test_validate_plan_multiple_errors():
     assert "story_id 'nonexistent' not found" in error_str
     assert "epic_id 'nonexistent' not found" in error_str
     assert "references unknown story_ids" in error_str
+
+
+def test_validate_plan_multi_epic_valid_plan_passes() -> None:
+    """Native validator should accept valid plans with multiple epics."""
+    plan = create_valid_multi_epic_plan()
+
+    validate_plan(plan)
+
+
+def test_validate_plan_multi_epic_cross_references_are_validated() -> None:
+    """Native validator should report cross-epic mismatches without single-epic errors."""
+    plan = create_valid_multi_epic_plan()
+    plan.stories[1].epic_id = "missing-epic"
+    plan.tasks[1].story_id = "missing-story"
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    message = str(exc_info.value)
+    assert "story story2 epic_id 'missing-epic' not found in epics" in message
+    assert "task task2 story_id 'missing-story' not found in stories" in message
+    assert "exactly one epic" not in message
+
+
+def test_validate_plan_rejects_epic_story_ids_owned_by_other_epic() -> None:
+    """An epic cannot list a story owned by another epic."""
+    plan = create_valid_multi_epic_plan()
+    plan.epics[0].story_ids = ["story1", "story2"]
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    assert "references story_ids owned by a different epic" in str(exc_info.value)
+
+
+def test_validate_plan_rejects_duplicate_entity_ids() -> None:
+    """Duplicate epic/story/task IDs are invalid."""
+    plan = create_minimal_plan()
+    plan.epics.append(Epic(id="epic1", title="Epic dup", goal="Goal", spec_ref="spec.md", story_ids=["story1"]))
+    plan.stories.append(
+        Story(id="story1", epic_id="epic1", title="Story dup", goal="Goal", spec_ref="spec.md", task_ids=["task1"])
+    )
+    plan.tasks.append(
+        Task(
+            id="task1",
+            story_id="story1",
+            title="Task dup",
+            motivation="Motivation",
+            spec_ref="spec.md",
+            requirements=[],
+            acceptance_criteria=[],
+            verification=Verification(),
+            artifacts=[],
+            depends_on=[],
+            estimate=Estimate(),
+            scope=Scope(),
+        )
+    )
+
+    with pytest.raises(PlanValidationError) as exc_info:
+        validate_plan(plan)
+
+    error_str = str(exc_info.value)
+    assert "duplicate epic ids" in error_str
+    assert "duplicate story ids" in error_str
+    assert "duplicate task ids" in error_str

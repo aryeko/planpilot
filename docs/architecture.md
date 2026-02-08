@@ -37,8 +37,7 @@ src/planpilot/
 │   └── relations.py     # Blocked-by roll-up logic
 ├── config.py            # SyncConfig (Pydantic BaseModel)
 ├── exceptions.py        # Exception hierarchy
-├── cli.py               # CLI entry point
-└── slice.py             # Multi-epic plan slicing
+└── cli.py               # CLI entry point
 ```
 
 ## Data flow
@@ -90,8 +89,8 @@ The `Provider` ABC defines the full interface a project management system must i
 class Provider(ABC):
     async def check_auth(self) -> None: ...
     async def get_repo_context(self, repo, label) -> RepoContext: ...
-    async def get_project_context(self, url, config) -> ProjectContext | None: ...
-    async def search_issues(self, repo, plan_id) -> list[ExistingIssue]: ...
+    async def get_project_context(self, project_url, field_config) -> ProjectContext | None: ...
+    async def search_issues(self, repo, plan_id, label) -> list[ExistingIssue]: ...
     async def create_issue(self, input) -> IssueRef: ...
     async def update_issue(self, repo, number, title, body) -> None: ...
     async def set_issue_type(self, issue_id, type_id) -> None: ...
@@ -149,8 +148,7 @@ tests/
 ├── rendering/       → src/planpilot/rendering/
 ├── sync/            → src/planpilot/sync/
 ├── test_cli.py      → src/planpilot/cli.py
-├── test_exceptions.py→ src/planpilot/exceptions.py
-└── test_slice.py    → src/planpilot/slice.py
+└── test_exceptions.py→ src/planpilot/exceptions.py
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions.
