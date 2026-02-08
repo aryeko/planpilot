@@ -9,7 +9,7 @@ homepage = "https://github.com/aryeko/planpilot"
 repository = "https://github.com/aryeko/planpilot"
 keywords = ["github", "projects", "roadmap", "sync", "issues"]
 classifiers = [
-    "Development Status :: 3 - Alpha",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Build Tools",
     "License :: OSI Approved :: MIT License",
@@ -17,9 +17,9 @@ classifiers = [
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
 ]
 packages = [{include = "planpilot", from = "src"}]
+exclude = ["skills"]
 
 [tool.poetry.scripts]
 planpilot = "planpilot.cli:main"
