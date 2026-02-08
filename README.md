@@ -29,7 +29,7 @@ flowchart LR
 
 ## Requirements
 
-- Python 3.10+
+- Python 3.11+
 - [`gh` CLI](https://cli.github.com/) installed and authenticated
 - GitHub token scopes: `repo`, `project`
 
