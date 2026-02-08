@@ -8,25 +8,44 @@ planpilot uses [python-semantic-release](https://python-semantic-release.readthe
 flowchart TD
     A[Push to main] --> CI
     subgraph CI_workflow [CI Workflow]
-        lint[Lint - ruff]
-        test[Test - pytest x4 versions]
+        lint[Lint — ruff]
+        test[Test — pytest ×4 versions]
+        commitlint[Commit lint]
     end
-    CI_workflow -->|success| B[Semantic Release]
-    B --> B1{Version bump\nneeded?}
-    B1 -->|No| Z[Done - no release]
-    B1 -->|Yes| C[Bump version in\npyproject.toml + __init__.py]
-    C --> D[Update CHANGELOG.md]
-    D --> E[Create git tag]
-    E --> F[Build package]
-    F --> G[Publish to TestPyPI]
-    G --> H{Install test\npasses?}
-    H -->|No| X[Release blocked]
-    H -->|Yes| I[Publish to PyPI]
-    I --> J[Create GitHub Release]
-    J --> K[Released]
+    CI_workflow -->|success| GUARD{"chore(release):\ncommit?"}
+    GUARD -->|Yes — skip| NOOP[No-op — prevent recursion]
+    GUARD -->|No| PSR[Semantic Release]
+    PSR --> BUMP{Version bump\nneeded?}
+    BUMP -->|No| DONE[Done — no release]
+    BUMP -->|Yes| VER[Bump version in\npyproject.toml + __init__.py]
+    VER --> CL[Update CHANGELOG.md]
+    CL --> TAG[Create git tag]
+    TAG --> BUILD[Build package — poetry build]
+    BUILD --> TESTPYPI[Publish to TestPyPI\nwith attestations]
+    TESTPYPI --> SMOKE{Smoke test\npasses?}
+    SMOKE -->|No| BLOCKED[Release blocked]
+    SMOKE -->|Yes| PYPI[Publish to PyPI\nwith attestations]
+    PYPI --> GHR[Create GitHub Release\n+ upload assets]
+    GHR --> RELEASED[Released ✓]
 ```
 
-CI acts as the first gate -- the release workflow only runs after lint and tests pass. TestPyPI acts as the second gate -- if the package fails to publish or install from TestPyPI, the production PyPI publish and GitHub Release are blocked.
+### Gates
+
+1. **CI gate** — the release workflow only runs after lint, tests, and commitlint pass.
+2. **Recursion guard** — release commits (`chore(release): X.Y.Z`) are skipped to prevent infinite loops. This is defense-in-depth; `GITHUB_TOKEN` pushes don't trigger workflows by design.
+3. **TestPyPI gate** — if the package fails to publish or fails the smoke test, PyPI publish and GitHub Release are blocked.
+
+### Smoke test
+
+The smoke test (`scripts/smoke-test.sh`) runs after TestPyPI publish and validates:
+
+- **Installability** — `pip install planpilot==X.Y.Z` from TestPyPI (with retries for index lag)
+- **Import + version** — verifies `planpilot.__version__` matches the released version
+- **CLI entry point** — `planpilot --help` exits cleanly
+
+### Attestations
+
+Both TestPyPI and PyPI publishes include [PEP 740 attestations](https://peps.python.org/pep-0740/) via Sigstore/OIDC. This provides cryptographic proof that published packages were built by this repo's GitHub Actions workflow and haven't been tampered with.
 
 **You never need to manually bump versions, tag, or publish.**
 
@@ -36,13 +55,15 @@ Version bumps are determined by commit message prefixes:
 
 | Prefix | Version bump | Example |
 |--------|-------------|---------|
-| `feat:` | Minor (0.x.0) | `feat: add Jira adapter` |
-| `fix:` | Patch (0.0.x) | `fix: handle empty task_ids` |
-| `perf:` | Patch (0.0.x) | `perf: reduce API calls during sync` |
-| `BREAKING CHANGE:` | Major (x.0.0) | `feat!: require epic_id on stories` |
+| `feat:` | Minor (0.x.0 → 0.x+1.0) | `feat: add Jira adapter` |
+| `fix:` | Patch (0.0.x → 0.0.x+1) | `fix: handle empty task_ids` |
+| `perf:` | Patch (0.0.x → 0.0.x+1) | `perf: reduce API calls during sync` |
+| `feat!:` / `BREAKING CHANGE:` | **Major** (x.0.0 → x+1.0.0) | `feat!: require epic_id on stories` |
 | `docs:`, `chore:`, `ci:`, `test:`, `refactor:`, `style:` | No release | `docs: update schema examples` |
 
-Breaking changes can also be indicated with a `!` after the type (e.g. `feat!:`) or with a `BREAKING CHANGE:` footer in the commit body.
+> **Note:** `major_on_zero` is enabled — breaking changes will bump the major version even during `0.x` development (e.g. `0.3.0` → `1.0.0`). This signals to users that an intentional breaking change has been made.
+
+Breaking changes can be indicated with a `!` after the type (e.g. `feat!:`) or with a `BREAKING CHANGE:` footer in the commit body.
 
 ## Dry-run (preview next release)
 
@@ -72,6 +93,17 @@ The `main` branch is protected:
 - All CI checks must pass (lint, tests, commitlint)
 - Stale reviews are dismissed on new pushes
 - Direct pushes to `main` are blocked
+
+### Release bot token
+
+Because branch protection blocks direct pushes to `main`, the release workflow uses a fine-grained PAT (`RELEASE_BOT_TOKEN`) to push the version bump commit and tag. This token is scoped to this repo only:
+
+| Permission | Level |
+|------------|-------|
+| Contents | Read & Write |
+| Metadata | Read |
+
+The token is stored as a repository secret and used only in the `release` job (checkout + PSR steps). All other jobs use `GITHUB_TOKEN`.
 
 ## Manual override
 
