@@ -52,13 +52,7 @@ Planning artifacts:
 - `.plans/dependency-graph.md`
 
 Sync artifacts:
-- `.plans/github-sync-map.<epic_id>.json` (per-epic)
-- `.plans/github-sync-map.json` (optional merged summary)
-
-Temporary slicing artifacts (where `<epic_id>` is the epic `id` from `.plans/epics.json` when filename-safe, otherwise a sanitized fallback):
-- `.plans/tmp/epics.<epic_id>.json`
-- `.plans/tmp/stories.<epic_id>.json`
-- `.plans/tmp/tasks.<epic_id>.json`
+- `.plans/github-sync-map.json`
 
 ## Workflow
 
@@ -100,14 +94,8 @@ If auth fails, STOP and request login.
 
 ### 4) Multi-epic handling (sync/full)
 
-Preferred path:
 - run `planpilot` directly with full `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json`
 - native multi-epic validation + sync is supported
-
-Fallback/manual path:
-- run `planpilot-slice` for per-epic slicing
-- this generates per-epic slices in `.plans/tmp`
-- cross-epic `depends_on` are filtered out for each per-epic task slice
 
 ### 5) Sync execution (sync/full)
 
@@ -131,8 +119,6 @@ planpilot \
 
 Then rerun replacing `--dry-run` with `--apply`.
 
-Manual per-epic fallback remains valid using `planpilot-slice` outputs.
-
 ### 6) Post-sync verification
 
 Must report:
@@ -141,13 +127,12 @@ Must report:
 - Any warnings/fallbacks
 - Sync map artifact paths
 
-If you choose orchestration mode (`planpilot sync-all`), it writes merged sync map plus per-epic sync maps.
+Sync writes one canonical map: `.plans/github-sync-map.json`.
 
 ## Common Mistakes
 
 - Generating `.plans` with fields missing required by sync tool
 - Skipping dry-run
-- Forgetting to filter cross-epic `depends_on` in per-epic slices
 - Treating this as implementation workflow (it is planning/sync only)
 
 ## Verification Checklist
@@ -156,9 +141,9 @@ If you choose orchestration mode (`planpilot sync-all`), it writes merged sync m
 - `python3 -m json.tool .plans/stories.json`
 - `python3 -m json.tool .plans/tasks.json`
 - `gh auth status`
-- Dry-run succeeds for each epic slice
-- Real sync succeeds for each epic slice
-- `.plans/github-sync-map.<epic_id>.json` exist and parse
+- Dry-run succeeds
+- Real sync succeeds
+- `.plans/github-sync-map.json` exists and parses
 
 ## Completion Criteria
 
@@ -166,4 +151,4 @@ This skill run is complete when:
 1. `.plans` artifacts are valid and internally consistent
 2. Epic/story/task issues are created or updated in target repo
 3. Project items are added when project access is available
-4. Per-epic sync maps are written for idempotent reruns
+4. Canonical sync map is written for idempotent reruns

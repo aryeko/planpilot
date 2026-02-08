@@ -37,8 +37,7 @@ src/planpilot/
 │   └── relations.py     # Blocked-by roll-up logic
 ├── config.py            # SyncConfig (Pydantic BaseModel)
 ├── exceptions.py        # Exception hierarchy
-├── cli.py               # CLI entry point
-└── slice.py             # Multi-epic plan slicing
+└── cli.py               # CLI entry point
 ```
 
 ## Data flow
@@ -149,8 +148,7 @@ tests/
 ├── rendering/       → src/planpilot/rendering/
 ├── sync/            → src/planpilot/sync/
 ├── test_cli.py      → src/planpilot/cli.py
-├── test_exceptions.py→ src/planpilot/exceptions.py
-└── test_slice.py    → src/planpilot/slice.py
+└── test_exceptions.py→ src/planpilot/exceptions.py
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions.

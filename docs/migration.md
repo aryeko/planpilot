@@ -85,16 +85,12 @@ plan-gh-project-sync --repo owner/repo --project-url ... --dry-run
 planpilot --repo owner/repo --project-url ... --dry-run
 ```
 
-### Slicing helper
+### Multi-epic sync
 
-The `tools/slice_epics_for_sync.py` script has been replaced with a proper CLI entry point:
+Use native multi-epic sync directly with `planpilot`:
 
 ```bash
-# Old
-PYTHONPATH=src python3 tools/slice_epics_for_sync.py --epics-path ...
-
-# New
-planpilot-slice --epics-path ...
+planpilot --repo owner/repo --project-url ... --epics-path .plans/epics.json --stories-path .plans/stories.json --tasks-path .plans/tasks.json --dry-run
 ```
 
 ### Stricter validation (v0.2.0)

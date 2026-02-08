@@ -116,8 +116,7 @@ tests/
 ├── rendering/        → src/planpilot/rendering/
 ├── sync/             → src/planpilot/sync/
 ├── test_cli.py       → src/planpilot/cli.py
-├── test_exceptions.py→ src/planpilot/exceptions.py
-└── test_slice.py     → src/planpilot/slice.py
+└── test_exceptions.py→ src/planpilot/exceptions.py
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
