@@ -54,20 +54,91 @@ class SyncEngine:
     async def sync(self) -> SyncResult:
         """Run the full sync pipeline.
 
+        In dry-run mode the engine works entirely offline: it loads,
+        validates, and enumerates what *would* be created without making
+        any API calls.
+
         Returns:
             SyncResult with the sync map and creation counts.
         """
         cfg = self._config
         dry_run = cfg.dry_run
 
-        # Load and validate plan
+        # Load and validate plan (always local, no API)
         plan = load_plan(cfg.epics_path, cfg.stories_path, cfg.tasks_path)
         validate_plan(plan)
         plan_id = compute_plan_id(plan)
 
         if dry_run:
-            logger.info("[dry-run] No changes will be made")
+            return self._dry_run(plan, plan_id, cfg)
 
+        return await self._apply(plan, plan_id, cfg)
+
+    # ------------------------------------------------------------------
+    # Dry-run: fully offline preview
+    # ------------------------------------------------------------------
+
+    def _dry_run(self, plan: Plan, plan_id: str, cfg: SyncConfig) -> SyncResult:
+        """Preview what would be created without any API calls.
+
+        Args:
+            plan: Validated plan.
+            plan_id: Deterministic plan hash.
+            cfg: Sync configuration.
+
+        Returns:
+            SyncResult with placeholder entries and creation counts.
+        """
+        logger.info("[dry-run] No changes will be made")
+
+        sync_map = SyncMap(
+            plan_id=plan_id,
+            repo=cfg.repo,
+            project_url=cfg.project_url,
+        )
+
+        counters = {"epics": 0, "stories": 0, "tasks": 0}
+
+        for epic in plan.epics:
+            logger.info("[dry-run] create epic: %s", epic.title)
+            sync_map.epics[epic.id] = SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-epic-{epic.id}")
+            counters["epics"] += 1
+
+        for story in plan.stories:
+            logger.info("[dry-run] create story: %s", story.title)
+            sync_map.stories[story.id] = SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-story-{story.id}")
+            counters["stories"] += 1
+
+        for task in plan.tasks:
+            logger.info("[dry-run] create task: %s", task.title)
+            sync_map.tasks[task.id] = SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-task-{task.id}")
+            counters["tasks"] += 1
+
+        Path(cfg.sync_path).write_text(sync_map.model_dump_json(indent=2), encoding="utf-8")
+
+        return SyncResult(
+            sync_map=sync_map,
+            epics_created=counters["epics"],
+            stories_created=counters["stories"],
+            tasks_created=counters["tasks"],
+            dry_run=True,
+        )
+
+    # ------------------------------------------------------------------
+    # Apply: full sync with API calls
+    # ------------------------------------------------------------------
+
+    async def _apply(self, plan: Plan, plan_id: str, cfg: SyncConfig) -> SyncResult:
+        """Run the full sync pipeline with real API calls.
+
+        Args:
+            plan: Validated plan.
+            plan_id: Deterministic plan hash.
+            cfg: Sync configuration.
+
+        Returns:
+            SyncResult with the sync map and creation counts.
+        """
         # Phase 1: Setup
         await self._provider.check_auth()
         repo_ctx = await self._provider.get_repo_context(cfg.repo, cfg.label)
@@ -92,30 +163,24 @@ class SyncEngine:
 
         # Phase 3: Upsert epics
         for epic in plan.epics:
-            entry = await self._upsert_epic(epic, plan_id, repo_ctx, project_ctx, existing_map, dry_run, counters)
+            entry = await self._upsert_epic(epic, plan_id, repo_ctx, project_ctx, existing_map, counters)
             sync_map.epics[epic.id] = entry
 
         # Upsert stories
         for story in plan.stories:
-            entry = await self._upsert_story(
-                story, plan_id, repo_ctx, project_ctx, existing_map, sync_map, dry_run, counters
-            )
+            entry = await self._upsert_story(story, plan_id, repo_ctx, project_ctx, existing_map, sync_map, counters)
             sync_map.stories[story.id] = entry
 
         # Upsert tasks
         for task in plan.tasks:
-            entry = await self._upsert_task(
-                task, plan_id, repo_ctx, project_ctx, existing_map, sync_map, dry_run, counters
-            )
+            entry = await self._upsert_task(task, plan_id, repo_ctx, project_ctx, existing_map, sync_map, counters)
             sync_map.tasks[task.id] = entry
 
         # Phase 4: Enrich bodies
-        if not dry_run:
-            await self._enrich_bodies(plan, plan_id, sync_map, task_by_id, story_by_id)
+        await self._enrich_bodies(plan, plan_id, sync_map, task_by_id, story_by_id)
 
         # Phase 5: Relations
-        if not dry_run:
-            await self._set_relations(plan, sync_map)
+        await self._set_relations(plan, sync_map)
 
         # Write sync map
         Path(cfg.sync_path).write_text(sync_map.model_dump_json(indent=2), encoding="utf-8")
@@ -125,7 +190,7 @@ class SyncEngine:
             epics_created=counters["epics"],
             stories_created=counters["stories"],
             tasks_created=counters["tasks"],
-            dry_run=dry_run,
+            dry_run=False,
         )
 
     async def _upsert_epic(
@@ -135,7 +200,6 @@ class SyncEngine:
         repo_ctx: RepoContext,
         project_ctx: ProjectContext | None,
         existing_map: dict[str, dict[str, dict[str, Any]]],
-        dry_run: bool,
         counters: dict[str, int],
     ) -> SyncEntry:
         """Create or find an epic issue."""
@@ -148,11 +212,6 @@ class SyncEngine:
             )
 
         body = self._renderer.render_epic(epic, plan_id)
-        if dry_run:
-            logger.info("[dry-run] create epic: %s", epic.title)
-            counters["epics"] += 1
-            return SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-epic-{epic.id}")
-
         ref = await self._provider.create_issue(
             CreateIssueInput(
                 repo_id=repo_ctx.repo_id or "",
@@ -185,7 +244,6 @@ class SyncEngine:
         project_ctx: ProjectContext | None,
         existing_map: dict[str, dict[str, dict[str, Any]]],
         sync_map: SyncMap,
-        dry_run: bool,
         counters: dict[str, int],
     ) -> SyncEntry:
         """Create or find a story issue."""
@@ -200,12 +258,6 @@ class SyncEngine:
         epic_num = sync_map.epics[story.epic_id].issue_number
         epic_ref = f"#{epic_num}"
         body = self._renderer.render_story(story, plan_id, epic_ref)
-
-        if dry_run:
-            logger.info("[dry-run] create story: %s", story.title)
-            counters["stories"] += 1
-            return SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-story-{story.id}")
-
         ref = await self._provider.create_issue(
             CreateIssueInput(
                 repo_id=repo_ctx.repo_id or "",
@@ -236,7 +288,6 @@ class SyncEngine:
         project_ctx: ProjectContext | None,
         existing_map: dict[str, dict[str, dict[str, Any]]],
         sync_map: SyncMap,
-        dry_run: bool,
         counters: dict[str, int],
     ) -> SyncEntry:
         """Create or find a task issue."""
@@ -252,12 +303,6 @@ class SyncEngine:
         story_ref = f"#{story_num}"
         placeholder_deps = "Blocked by:\n\n* (populated after mapping exists)"
         body = self._renderer.render_task(task, plan_id, story_ref, placeholder_deps)
-
-        if dry_run:
-            logger.info("[dry-run] create task: %s", task.title)
-            counters["tasks"] += 1
-            return SyncEntry(issue_number=0, url="dry-run", node_id=f"dry-run-task-{task.id}")
-
         ref = await self._provider.create_issue(
             CreateIssueInput(
                 repo_id=repo_ctx.repo_id or "",

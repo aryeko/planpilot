@@ -143,7 +143,7 @@ Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
 
 See [docs/schemas.md](docs/schemas.md) for the expected structure of `epics.json`, `stories.json`, and `tasks.json`, with full examples.
 
-A complete working example is in the [examples/](examples/) directory.
+A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
 ## Documentation
 

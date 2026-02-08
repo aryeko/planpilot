@@ -470,10 +470,13 @@ async def test_sync_dry_run_skips_writes(
 
 
 @pytest.mark.asyncio
-async def test_sync_dry_run_still_reads(
-    mock_provider, mock_renderer, plan_json_files, sample_config, repo_context, project_context
+async def test_sync_dry_run_is_offline(
+    mock_provider,
+    mock_renderer,
+    plan_json_files,
+    sample_config,
 ):
-    """Dry run still calls check_auth, search, and get contexts."""
+    """Dry run makes no API calls — works fully offline."""
     epics_path, stories_path, tasks_path = plan_json_files
     config = SyncConfig(
         repo="owner/repo",
@@ -484,16 +487,23 @@ async def test_sync_dry_run_still_reads(
         sync_path=sample_config.sync_path,
         dry_run=True,
     )
-    mock_provider.get_repo_context.return_value = repo_context
-    mock_provider.get_project_context.return_value = project_context
 
     engine = SyncEngine(mock_provider, mock_renderer, config)
-    await engine.sync()
+    result = await engine.sync()
 
-    mock_provider.check_auth.assert_called_once()
-    mock_provider.get_repo_context.assert_called_once()
-    mock_provider.get_project_context.assert_called_once()
-    mock_provider.search_issues.assert_called_once()
+    # No provider methods should be called in dry-run
+    mock_provider.check_auth.assert_not_called()
+    mock_provider.get_repo_context.assert_not_called()
+    mock_provider.get_project_context.assert_not_called()
+    mock_provider.search_issues.assert_not_called()
+    mock_provider.create_issue.assert_not_called()
+
+    # But we should still get a valid result
+    assert result.dry_run is True
+    assert result.epics_created >= 1
+    assert result.stories_created >= 1
+    assert result.tasks_created >= 1
+    assert result.sync_map.plan_id
 
 
 @pytest.mark.asyncio

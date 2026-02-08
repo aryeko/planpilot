@@ -125,13 +125,17 @@ PlanPilotError
 
 ## Sync engine phases
 
-| Phase | What it does | Skipped in dry-run? |
-|-------|-------------|---------------------|
-| **1. Setup** | Authenticate, resolve repo context (label, issue types), resolve project context (fields, iterations) | No |
-| **2. Discovery** | Search for existing issues by `PLAN_ID` marker | No |
-| **3. Upsert** | Create missing epics → stories → tasks; skip existing | Creates are skipped |
-| **4. Enrich** | Update all issue bodies with cross-reference links and checklists | Yes |
-| **5. Relations** | Add sub-issue hierarchy and blocked-by links (with story/epic roll-up) | Yes |
+In `--apply` mode, the engine runs all five phases:
+
+| Phase | What it does |
+|-------|-------------|
+| **1. Setup** | Authenticate, resolve repo context (label, issue types), resolve project context (fields, iterations) |
+| **2. Discovery** | Search for existing issues by `PLAN_ID` marker |
+| **3. Upsert** | Create missing epics → stories → tasks; skip existing |
+| **4. Enrich** | Update all issue bodies with cross-reference links and checklists |
+| **5. Relations** | Add sub-issue hierarchy and blocked-by links (with story/epic roll-up) |
+
+In `--dry-run` mode, the engine works **fully offline** — no API calls. It loads, validates, and enumerates what would be created, writes a placeholder sync map, and exits immediately.
 
 ## Testing strategy
 
