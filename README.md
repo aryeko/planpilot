@@ -74,6 +74,25 @@ PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
 PYTHONPATH=src python3 -m plan_gh_project_sync --help
 ```
 
+## Install Skill: roadmap-to-github-project
+
+Skill source in this repo:
+- `skills/roadmap-to-github-project/SKILL.md`
+- `skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py`
+
+Human install (copy into your OpenCode skills directory):
+
+```bash
+mkdir -p ~/.config/opencode/skills/roadmap-to-github-project/helpers
+cp skills/roadmap-to-github-project/SKILL.md ~/.config/opencode/skills/roadmap-to-github-project/SKILL.md
+cp skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py ~/.config/opencode/skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py
+```
+
+LLM install/use instructions:
+- Reference the skill by path: `~/.config/opencode/skills/roadmap-to-github-project/SKILL.md`.
+- Ask the agent to use `roadmap-to-github-project` mode (`plan`, `sync`, or `full`) and provide required inputs (`roadmap_path` for `plan`; `repo`, `project_url`, and plans paths for `sync`).
+- If syncing multiple epics, instruct the agent to run `helpers/slice_epics_for_sync.py` before `plan-gh-project-sync`.
+
 ## Docs
 
 - `docs/architecture/v1-scope.md`
