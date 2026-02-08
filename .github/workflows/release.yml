@@ -1,22 +1,54 @@
 name: Release
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
     branches: [main]
 
+# Least privilege by default; elevated per-job.
+permissions:
+  contents: read
+
+# Prevent overlapping releases if two merges land in quick succession.
+concurrency:
+  group: release-main
+  cancel-in-progress: false
+
 jobs:
+  # ── Job 1: Semantic Release — bump, changelog, tag ─────────────
   release:
+    name: Semantic Release + Build
     runs-on: ubuntu-latest
-    concurrency: release
+
+    # Gate: CI passed, on main, not a PSR release commit (defense-in-depth).
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      !startsWith(github.event.workflow_run.head_commit.message, 'chore(release):')
+
     permissions:
       contents: write
+
     outputs:
-      released: ${{ steps.release.outputs.released }}
-      tag: ${{ steps.release.outputs.tag }}
+      released: ${{ steps.psr.outputs.released }}
+      tag:      ${{ steps.psr.outputs.tag }}
+      version:  ${{ steps.psr.outputs.version }}
+
     steps:
-      - uses: actions/checkout@v6
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
         with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
+      - name: Checkout CI-tested commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - run: pipx install poetry
       - uses: actions/setup-python@v6
@@ -27,36 +59,47 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
 
-      - name: Run tests
-        run: poetry run pytest -v
-
       - name: Python Semantic Release
-        id: release
-        uses: python-semantic-release/python-semantic-release@v10
+        id: psr
+        uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ steps.app-token.outputs.token }}
+          git_committer_name: "planpilot-release[bot]"
+          git_committer_email: "2821859+planpilot-release[bot]@users.noreply.github.com"
+          vcs_release: "false"
           build: "false"
 
       - name: Build package
-        if: steps.release.outputs.released == 'true'
+        if: steps.psr.outputs.released == 'true'
         run: poetry build
 
       - name: Upload dist artifacts
-        if: steps.release.outputs.released == 'true'
+        if: steps.psr.outputs.released == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: dist
           path: dist/*
+          if-no-files-found: error
 
+  # ── Job 2: Publish to TestPyPI + smoke test ────────────────────
   publish-testpypi:
+    name: TestPyPI + Smoke Test
     needs: release
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
     environment: testpypi
     permissions:
-      id-token: write
+      id-token: write      # OIDC + PEP 740 attestations
+
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Checkout (for smoke-test script)
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: scripts
+          sparse-checkout-cone-mode: true
+
+      - name: Download dist
+        uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
@@ -65,42 +108,51 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
+          attestations: true
 
-      - name: Verify TestPyPI install
-        run: |
-          sleep 15  # wait for TestPyPI index to update
-          pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ planpilot
-          planpilot --help
+      - name: Smoke test — install and verify from TestPyPI
+        env:
+          PKG_VERSION: ${{ needs.release.outputs.version }}
+        run: ./scripts/smoke-test.sh
 
+  # ── Job 3: Publish to PyPI ─────────────────────────────────────
   publish-pypi:
+    name: Publish to PyPI
     needs: [release, publish-testpypi]
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
     environment: pypi
     permissions:
-      id-token: write
+      id-token: write      # OIDC + PEP 740 attestations
+
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download dist
+        uses: actions/download-artifact@v4
         with:
           name: dist
           path: dist/
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          attestations: true
 
-  publish-github-release:
+  # ── Job 4: GitHub Release ──────────────────────────────────────
+  github-release:
+    name: GitHub Release
     needs: [release, publish-pypi]
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
-      - name: Publish to GitHub Releases
-        uses: python-semantic-release/publish-action@v10
+      - name: Create GitHub Release + upload assets
+        uses: python-semantic-release/publish-action@v10.5.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.release.outputs.tag }}
