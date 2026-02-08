@@ -1,27 +1,11 @@
-name: Test Release
+name: Test Release (dry-run)
 
 on:
   workflow_dispatch:
-    inputs:
-      force:
-        description: "Force version bump type (prerelease, patch, minor, major)"
-        required: false
-        default: "prerelease"
-        type: choice
-        options:
-          - prerelease
-          - patch
-          - minor
-          - major
 
 jobs:
-  test-release:
+  dry-run:
     runs-on: ubuntu-latest
-    concurrency: test-release
-    permissions:
-      id-token: write
-      contents: write
-    environment: testpypi
     steps:
       - uses: actions/checkout@v6
         with:
@@ -39,21 +23,8 @@ jobs:
       - name: Run tests
         run: poetry run pytest -v
 
-      - name: Python Semantic Release (dry-run)
-        id: release
+      - name: Semantic Release (dry-run)
         uses: python-semantic-release/python-semantic-release@v10
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          force: ${{ inputs.force }}
-          push: "false"
-          vcs_release: "false"
-
-      - name: Build package
-        if: steps.release.outputs.released == 'true'
-        run: poetry build
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        if: steps.release.outputs.released == 'true'
-        with:
-          repository-url: https://test.pypi.org/legacy/
+          no_operation_mode: true

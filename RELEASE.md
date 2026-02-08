@@ -7,9 +7,12 @@ planpilot uses [python-semantic-release](https://python-semantic-release.readthe
 1. Analyzes commit messages using [Conventional Commits](https://www.conventionalcommits.org/)
 2. Determines the next version (major/minor/patch) based on commit types
 3. Bumps the version in `pyproject.toml` and `src/planpilot/__init__.py`
-4. Updates `CHANGELOG.md`
-5. Creates a git tag and GitHub Release
-6. Publishes to PyPI via Trusted Publisher (OIDC)
+4. Updates `CHANGELOG.md`, creates a git tag
+5. **Publishes to TestPyPI** and verifies the package installs correctly
+6. **Publishes to PyPI** (only after TestPyPI succeeds)
+7. Creates a **GitHub Release** with release notes
+
+TestPyPI acts as a gate -- if the package fails to publish or install from TestPyPI, the production PyPI publish and GitHub Release are blocked.
 
 **You never need to manually bump versions, tag, or publish.**
 
@@ -27,19 +30,14 @@ Version bumps are determined by commit message prefixes:
 
 Breaking changes can also be indicated with a `!` after the type (e.g. `feat!:`) or with a `BREAKING CHANGE:` footer in the commit body.
 
-## Testing releases (TestPyPI)
+## Dry-run (preview next release)
 
-Use the manual "Test Release" workflow in GitHub Actions:
+Use the manual "Test Release (dry-run)" workflow to see what the next release would look like without making any changes:
 
-1. Go to Actions > Test Release > Run workflow
-2. Select a force bump type (defaults to `prerelease`)
-3. The workflow builds and publishes to TestPyPI without tagging
+1. Go to Actions > Test Release (dry-run) > Run workflow
+2. Review the output to see the next version and changelog
 
-Verify:
-
-```bash
-pip install -i https://test.pypi.org/simple/ planpilot
-```
+No packages are published, no tags are created.
 
 ## Pre-release checks
 
