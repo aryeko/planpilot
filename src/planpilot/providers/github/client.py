@@ -50,7 +50,7 @@ class GhClient:
         )
         stdout_bytes, stderr_bytes = await proc.communicate()
         result = CompletedProcess(
-            returncode=proc.returncode or 0,
+            returncode=proc.returncode if proc.returncode is not None else 0,
             stdout=stdout_bytes.decode() if stdout_bytes else "",
             stderr=stderr_bytes.decode() if stderr_bytes else "",
         )
