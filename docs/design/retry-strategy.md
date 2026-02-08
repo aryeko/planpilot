@@ -167,8 +167,10 @@ class GhClient:
             stderr=asyncio.subprocess.PIPE,
         )
         stdout_bytes, stderr_bytes = await proc.communicate()
+        if proc.returncode is None:
+            raise ProviderError(f"gh command did not terminate: {' '.join(cmd)}")
         return CompletedProcess(
-            returncode=proc.returncode if proc.returncode is not None else 0,
+            returncode=proc.returncode,
             stdout=stdout_bytes.decode() if stdout_bytes else "",
             stderr=stderr_bytes.decode() if stderr_bytes else "",
         )
@@ -297,6 +299,6 @@ Fully backward compatible:
 - Sync succeeds through transient 502/429 errors (up to `max_retries`).
 - Non-retryable errors (401, 404, 422) fail immediately without delay.
 - GraphQL-level errors are detected and either retried or raised.
-- Backoff delays are logarithmic, not linear.
+- Backoff delays are exponential, not linear.
 - `--max-retries 0` disables retry entirely.
 - All 11 new unit tests pass. Existing tests unaffected.
