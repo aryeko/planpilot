@@ -5,21 +5,32 @@ description = "Sync roadmap plans (epics, stories, tasks) to GitHub Issues and P
 readme = "README.md"
 license = "MIT"
 authors = ["aryeko"]
+maintainers = ["aryeko"]
 homepage = "https://github.com/aryeko/planpilot"
 repository = "https://github.com/aryeko/planpilot"
-keywords = ["github", "projects", "roadmap", "sync", "issues"]
+documentation = "https://github.com/aryeko/planpilot/tree/main/docs"
+keywords = ["github", "projects", "roadmap", "sync", "issues", "project-management", "cli", "asyncio"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Version Control :: Git",
+    "Topic :: Office/Business :: Scheduling",
     "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+    "Environment :: Console",
 ]
 packages = [{include = "planpilot", from = "src"}]
 exclude = ["skills"]
+
+[tool.poetry.urls]
+"Bug Tracker" = "https://github.com/aryeko/planpilot/issues"
+"Changelog" = "https://github.com/aryeko/planpilot/blob/main/CHANGELOG.md"
+"Documentation" = "https://github.com/aryeko/planpilot/tree/main/docs"
 
 [tool.poetry.scripts]
 planpilot = "planpilot.cli:main"
@@ -56,6 +67,11 @@ check = ["lint", "format-check", "test"]
 testpaths = ["tests"]
 addopts = "--cov=planpilot --cov-report=term-missing --cov-report=xml:.coverage/coverage.xml"
 asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+    "ignore::RuntimeWarning:coverage",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.coverage.run]
 source = ["planpilot"]

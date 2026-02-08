@@ -3,3 +3,6 @@ contact_links:
   - name: Documentation
     url: https://github.com/aryeko/planpilot/tree/main/docs
     about: Check the docs before opening an issue
+  - name: GitHub Discussions
+    url: https://github.com/aryeko/planpilot/discussions
+    about: Ask questions and discuss ideas with the community
