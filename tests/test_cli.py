@@ -108,7 +108,7 @@ def test_build_parser_defaults():
             "--dry-run",
         ]
     )
-    assert args.label == "codex"
+    assert args.label == "planpilot"
     assert args.status == "Backlog"
     assert args.priority == "P1"
     assert args.iteration == "active"
