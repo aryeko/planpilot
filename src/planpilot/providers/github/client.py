@@ -84,7 +84,11 @@ class GhClient:
         """
         args = ["api", "graphql", "-f", f"query={query}"]
         for key, value in (variables or {}).items():
-            args.extend(["-F", f"{key}={value}"])
+            # Strings are passed as-is; non-strings (int, bool, None) are
+            # JSON-encoded so gh's -F flag interprets them with correct types
+            # (e.g. True→"true", None→"null", 1→"1").
+            encoded = value if isinstance(value, str) else json.dumps(value)
+            args.extend(["-F", f"{key}={encoded}"])
         return await self.json(args)
 
     async def graphql_raw(self, args: list[str]) -> Any:

@@ -106,7 +106,7 @@ async def test_graphql_builds_correct_args():
     """Test that graphql() builds correct command args with query and variables."""
     client = GhClient()
     query = "query { viewer { login } }"
-    variables = {"var1": "value1", "var2": "value2"}
+    variables = {"owner": "acme", "number": 42}
     mock_proc = AsyncMock()
     mock_proc.returncode = 0
     mock_proc.communicate = AsyncMock(return_value=(b'{"data": {}}', b""))
@@ -121,10 +121,29 @@ async def test_graphql_builds_correct_args():
     assert call_args[2] == "graphql"
     assert "-f" in call_args
     assert f"query={query}" in call_args
-    # Variables should use -F (typed) flags, not -f (raw string)
+    # Variables use -F (typed) flags; strings as-is, non-strings JSON-encoded
     assert "-F" in call_args
-    assert "var1=value1" in call_args
-    assert "var2=value2" in call_args
+    assert "owner=acme" in call_args  # string passed as-is
+    assert "number=42" in call_args  # int JSON-encoded to "42"
+
+
+@pytest.mark.asyncio
+async def test_graphql_encodes_non_string_variables():
+    """Test that graphql() JSON-encodes booleans and None for -F flags."""
+    client = GhClient()
+    query = "query { test }"
+    variables = {"flag": True, "val": None, "count": 5}
+    mock_proc = AsyncMock()
+    mock_proc.returncode = 0
+    mock_proc.communicate = AsyncMock(return_value=(b'{"data": {}}', b""))
+
+    with patch("asyncio.create_subprocess_exec", return_value=mock_proc) as mock_exec:
+        await client.graphql(query, variables)
+
+    call_args = mock_exec.call_args[0]
+    assert "flag=true" in call_args  # Python True → "true"
+    assert "val=null" in call_args  # Python None → "null"
+    assert "count=5" in call_args  # int → "5"
 
 
 @pytest.mark.asyncio
