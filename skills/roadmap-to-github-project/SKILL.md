@@ -41,7 +41,7 @@ Recommended defaults:
 - `priority=P1`
 - `iteration=active`
 - `size_field=Size`
-- `size_from_tshirt=true`
+- T-shirt size mapping is enabled by default (disable with `--no-size-from-tshirt`)
 
 ## Outputs
 
@@ -130,11 +130,10 @@ planpilot \
   --priority P1 \
   --iteration active \
   --size-field Size \
-  --size-from-tshirt true \
   --dry-run --verbose
 ```
 
-Then rerun without `--dry-run` and add `--apply`.
+Then rerun replacing `--dry-run` with `--apply`.
 
 ### 6) Post-sync verification
 

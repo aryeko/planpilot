@@ -1,7 +1,7 @@
 # planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg)](https://codecov.io/gh/aryeko/planpilot)
+[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
@@ -26,6 +26,30 @@ flowchart LR
 - **Idempotent**: safe to rerun -- updates existing issues via markers
 - **Dry-run first**: preview all changes before applying
 - **Multi-epic**: slice large plans and sync each epic sequentially
+- **Provider-agnostic**: adapter pattern supports GitHub today, with Jira/Linear planned
+- **Async-first**: built on asyncio for fast, concurrent sync operations
+
+## Architecture
+
+planpilot follows SOLID principles with a modular, provider-agnostic design:
+
+```text
+src/planpilot/
+├── models/          # Pydantic domain models (Plan, Epic, Story, Task, …)
+├── plan/            # Plan loading, validation, and hashing
+├── providers/       # Provider adapter pattern (ABC + implementations)
+│   └── github/      # GitHub adapter (gh CLI)
+├── rendering/       # Issue body rendering (Protocol + Markdown impl)
+├── sync/            # Sync engine orchestrator + relation logic
+├── config.py        # SyncConfig (pydantic)
+├── exceptions.py    # Custom exception hierarchy
+├── cli.py           # CLI entry point
+└── slice.py         # Multi-epic plan slicing
+```
+
+The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
+
+See [docs/architecture.md](docs/architecture.md) for the full architecture guide.
 
 ## Requirements
 
@@ -110,7 +134,7 @@ done
 | `--priority` | `P1` | Project priority field value |
 | `--iteration` | `active` | Iteration title, `active`, or `none` |
 | `--size-field` | `Size` | Project size field name |
-| `--size-from-tshirt` | `true` | Map `estimate.tshirt` to size field |
+| `--no-size-from-tshirt` | off | Disable t-shirt size mapping |
 | `--verbose` | off | Enable verbose logging |
 
 Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
@@ -119,16 +143,28 @@ Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
 
 See [docs/schemas.md](docs/schemas.md) for the expected structure of `epics.json`, `stories.json`, and `tasks.json`, with full examples.
 
-A complete working example is in the [examples/](examples/) directory.
+A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
 ## Documentation
 
 - [How It Works](docs/how-it-works.md) -- sync pipeline, idempotency, what gets created
 - [CLI Reference](docs/cli-reference.md) -- all flags and commands
 - [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
-- [Architecture / v1 Scope](docs/architecture/v1-scope.md) -- what's in and out of scope
-- [Migration Guide](docs/migration.md) -- upgrading from previous versions
+- [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
+
+## Development
+
+Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
+
+```bash
+poe lint           # ruff check
+poe format         # ruff format
+poe test           # pytest -v
+poe coverage       # pytest + HTML coverage report
+poe typecheck      # mypy
+poe check          # lint + format-check + tests (all-in-one)
+```
 
 ## Contributing
 

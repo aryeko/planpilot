@@ -10,23 +10,46 @@ curl -sSL https://install.python-poetry.org | python3 -
 git clone https://github.com/aryeko/planpilot.git
 cd planpilot
 poetry install
+
+# Install git hooks (commit-msg linting)
+./scripts/install-hooks.sh
 ```
 
 ## Development
 
+Development tasks are managed with [poethepoet](https://github.com/nat-n/poethepoet). Run any task with `poe <task>` (or `poetry run poe <task>` if poe is not on your PATH):
+
+| Command | Description |
+|---------|-------------|
+| `poe lint` | Run ruff linter (`ruff check .`) |
+| `poe format` | Auto-format code (`ruff format .`) |
+| `poe format-check` | Check formatting without changes (`ruff format --check .`) |
+| `poe test` | Run tests with verbose output (`pytest -v`) |
+| `poe coverage` | Run tests and generate HTML coverage report |
+| `poe typecheck` | Run mypy type-checking (`mypy src/planpilot`) |
+| `poe check` | Run lint + format-check + tests in sequence |
+
 ```bash
-# Run tests
-poetry run pytest -v
-
-# Lint
-poetry run ruff check .
-
-# Format
-poetry run ruff format .
+# Quick check before pushing
+poe check
 
 # Verify CLI
 poetry run planpilot --help
 ```
+
+## Architecture
+
+planpilot follows SOLID principles with a modular, provider-agnostic design:
+
+- **`models/`** -- Pydantic domain models (`Plan`, `Epic`, `Story`, `Task`, `SyncMap`, …)
+- **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
+- **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses the `gh` CLI
+- **`rendering/`** -- `BodyRenderer` Protocol for issue body generation; `MarkdownRenderer` is the default
+- **`sync/`** -- `SyncEngine` orchestrates the 5-phase sync pipeline, depends only on `Provider` and `BodyRenderer` abstractions
+- **`config.py`** -- Pydantic `SyncConfig` built from CLI arguments
+- **`exceptions.py`** -- Custom exception hierarchy (`PlanPilotError` → specific errors)
+
+To add a new provider (e.g. Jira), implement the `Provider` ABC in `providers/jira/` -- no changes to the sync engine needed.
 
 ## Commit messages
 
@@ -55,7 +78,9 @@ Common types:
 
 Breaking changes: add `!` after the type (e.g. `feat!: remove fallback`) or include a `BREAKING CHANGE:` footer.
 
-Commit messages are linted in CI via [commitlint](https://github.com/opensource-nepal/commitlint).
+**Header limit**: 72 characters maximum (enforced by CI and the local hook).
+
+Commit messages are linted in CI via [commitlint](https://github.com/opensource-nepal/commitlint) and locally via a `commit-msg` git hook. The same `commitlint` package is included as a dev dependency (`poetry install`). Run `./scripts/install-hooks.sh` to install the hook.
 
 ## Pull requests
 
@@ -75,6 +100,38 @@ flowchart LR
 - Keep changes focused and well-tested.
 - Use Conventional Commit format for all commits (enforced by CI).
 - Include rationale and verification steps.
-- Ensure `ruff check` and `ruff format --check` pass.
+- Ensure `poe check` passes (lint + format + tests).
 - PRs require at least 1 approving review and all CI checks to pass.
 - Prefer dry-run examples in docs for sync operations.
+
+## Test structure
+
+Tests mirror the source layout under `tests/`:
+
+```text
+tests/
+├── models/           → src/planpilot/models/
+├── plan/             → src/planpilot/plan/
+├── providers/github/ → src/planpilot/providers/github/
+├── rendering/        → src/planpilot/rendering/
+├── sync/             → src/planpilot/sync/
+├── test_cli.py       → src/planpilot/cli.py
+├── test_exceptions.py→ src/planpilot/exceptions.py
+└── test_slice.py     → src/planpilot/slice.py
+```
+
+- Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
+- Shared fixtures live in `tests/conftest.py`.
+- Coverage target: 90%+ branch coverage (`poe test` reports coverage automatically).
+- When adding a new module, create a matching test file in the same relative path.
+
+## Adding a provider
+
+To add a new provider (e.g. Jira):
+
+1. Create `src/planpilot/providers/jira/` with `__init__.py`, `client.py`, and `provider.py`.
+2. Implement the `Provider` ABC from `providers/base.py`.
+3. Add corresponding tests under `tests/providers/jira/`.
+4. Wire it into `cli.py` (e.g. via a `--provider` flag).
+
+No changes to `SyncEngine`, `BodyRenderer`, or plan modules are needed.

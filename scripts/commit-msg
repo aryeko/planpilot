@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# commit-msg hook — validates conventional commit format via commitlint.
+# Installed by: ./scripts/install-hooks.sh
+set -euo pipefail
+poetry run commitlint --file "$1"

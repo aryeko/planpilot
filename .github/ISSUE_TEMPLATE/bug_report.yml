@@ -1,0 +1,45 @@
+name: Bug report
+description: Report a defect in sync behavior
+labels: [bug]
+body:
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What happened?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Minimal steps to trigger the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+  - type: input
+    id: version
+    attributes:
+      label: planpilot version
+      placeholder: "e.g. 0.2.0"
+  - type: dropdown
+    id: python
+    attributes:
+      label: Python version
+      options:
+        - "3.11"
+        - "3.12"
+        - "3.13"
+        - "3.14"
+  - type: input
+    id: os
+    attributes:
+      label: OS
+      placeholder: "e.g. macOS 15, Ubuntu 24.04"

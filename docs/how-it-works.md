@@ -6,20 +6,38 @@ planpilot reads structured plan files (JSON) and creates a fully linked project 
 
 ## Sync pipeline
 
+The sync engine (`SyncEngine`) orchestrates five phases via a `Provider` adapter:
+
 ```mermaid
 flowchart TD
-    A[Load plan files] --> A1[Validate required fields]
-    A1 --> A2[Validate relational integrity]
-    A2 --> B[Check GitHub auth]
-    B --> C[Resolve project fields]
-    C --> D[Look up existing issues]
-    D --> E[Create/update Epics]
-    E --> F[Create/update Stories]
-    F --> G[Create/update Tasks]
-    G --> H[Add to Projects v2 board]
-    H --> I[Set field values]
-    I --> J[Link sub-issues]
-    J --> K[Add blocked-by relations]
+    A[Load plan files] --> A1[Pydantic model validation]
+    A1 --> A2[Relational integrity check]
+
+    subgraph phase1 [Phase 1 -- Setup]
+        A2 --> B[Check auth via Provider]
+        B --> C[Resolve repo context]
+        C --> D[Resolve project context]
+    end
+
+    subgraph phase2 [Phase 2 -- Discovery]
+        D --> E[Search existing issues by plan_id]
+    end
+
+    subgraph phase3 [Phase 3 -- Upsert]
+        E --> F[Create/skip Epics]
+        F --> G[Create/skip Stories]
+        G --> H[Create/skip Tasks]
+    end
+
+    subgraph phase4 [Phase 4 -- Enrich]
+        H --> I[Update bodies with cross-references]
+    end
+
+    subgraph phase5 [Phase 5 -- Relations]
+        I --> J[Add sub-issue hierarchy]
+        J --> K[Add blocked-by links with roll-up]
+    end
+
     K --> L[Write sync map]
 ```
 
@@ -27,9 +45,9 @@ flowchart TD
 
 planpilot validates plan files in two phases before touching GitHub:
 
-1. **Required fields** -- every epic, story, and task must contain all required fields defined in the [schema](schemas.md). Missing fields produce clear error messages (e.g. `epic[0] missing required field 'goal'`). Validation stops immediately if any fields are missing.
+1. **Schema validation** -- plan files are parsed through Pydantic models (`Epic`, `Story`, `Task`). Missing or mistyped fields produce clear errors (e.g. `Field required: 'goal'`) without any API calls.
 
-2. **Relational integrity** -- cross-references are checked: `epic_id` on stories must match an epic, `story_id` on tasks must match a story, `depends_on` must reference valid task IDs, and parent `story_ids`/`task_ids` lists must be complete and consistent.
+2. **Relational integrity** -- the `validate_plan()` function checks cross-references: `epic_id` on stories must match an epic, `story_id` on tasks must match a story, `depends_on` must reference valid task IDs, and parent `story_ids`/`task_ids` lists must be complete and consistent. All errors are collected and raised together in a `PlanValidationError`.
 
 There are no silent fallbacks -- if a required field or relationship is missing, the tool fails with an actionable error rather than guessing defaults.
 
