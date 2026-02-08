@@ -2,6 +2,80 @@
 
 <!-- version list -->
 
+## v1.2.0 (2026-02-08)
+
+### Bug Fixes
+
+- Resolve multi-epic review gaps and docs inconsistencies
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **provider**: Tighten project item id typing for mypy
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+### Documentation
+
+- Finalize native-only consistency and remove phase2 leftovers
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- Fix native migration command with required flags
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- Migrate guidance to packaged multi-epic workflow
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- Switch guidance to native-only multi-epic workflow
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- Update guidance for native multi-epic sync ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+### Features
+
+- Enable native-only multi-epic sync flow ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **cli**: Add sync-all command orchestration path
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **slice**: Harden multi-epic slicing and validation
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **sync**: Add multi-epic orchestrator and sync-map merge
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **validator**: Support native multi-epic plan validation
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+### Refactoring
+
+- **cli**: Remove sync-all compatibility path ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **slice**: Remove planpilot-slice compatibility path
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+### Testing
+
+- Drop compatibility suites and keep native-only cli coverage
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+- **sync**: Cover native multi-epic relations and dry-run
+  ([#21](https://github.com/aryeko/planpilot/pull/21),
+  [`2aec7d1`](https://github.com/aryeko/planpilot/commit/2aec7d17a02c1c01ba9ce76d2f56a22f4ea0d648))
+
+
 ## v1.1.4 (2026-02-08)
 
 ### Bug Fixes
