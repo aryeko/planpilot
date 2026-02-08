@@ -1,7 +1,11 @@
 # CLI Reference
 
+## planpilot
+
+Sync plan artifacts to GitHub Issues and Projects v2.
+
 ```bash
-plan-gh-project-sync \
+planpilot \
   --repo OWNER/REPO \
   --project-url https://github.com/orgs/<org>/projects/<num> \
   --epics-path .plans/epics.json \
@@ -11,22 +15,41 @@ plan-gh-project-sync \
   (--dry-run | --apply)
 ```
 
-## Required flags
+### Required flags
 
-- `--repo`
-- `--project-url`
-- `--epics-path`
-- `--stories-path`
-- `--tasks-path`
-- `--sync-path`
+- `--repo` -- GitHub repository (OWNER/REPO)
+- `--project-url` -- GitHub Projects v2 URL
+- `--epics-path` -- Path to epics.json
+- `--stories-path` -- Path to stories.json
+- `--tasks-path` -- Path to tasks.json
+- `--sync-path` -- Path to write sync map output
 - One mode flag: `--dry-run` or `--apply`
 
-## Optional flags
+### Optional flags
 
-- `--label` (default `codex`)
-- `--status` (default `Backlog`)
-- `--priority` (default `P1`)
-- `--iteration` (default `active`)
-- `--size-field` (default `Size`)
-- `--size-from-tshirt` (`true`/`false`)
-- `--verbose`
+- `--label` (default `codex`) -- Label to apply to created issues
+- `--status` (default `Backlog`) -- Project status option name
+- `--priority` (default `P1`) -- Project priority option name
+- `--iteration` (default `active`) -- Iteration title, or `active` / `none`
+- `--size-field` (default `Size`) -- Project size field name (empty to skip)
+- `--size-from-tshirt` (`true`/`false`) -- Use estimate.tshirt for size
+- `--verbose`, `-v` -- Enable verbose logging
+
+## planpilot-slice
+
+Slice multi-epic plans into per-epic JSON files for sequential sync.
+
+```bash
+planpilot-slice \
+  --epics-path .plans/epics.json \
+  --stories-path .plans/stories.json \
+  --tasks-path .plans/tasks.json \
+  --out-dir .plans/tmp
+```
+
+### Flags
+
+- `--epics-path` (required) -- Path to epics.json
+- `--stories-path` (required) -- Path to stories.json
+- `--tasks-path` (required) -- Path to tasks.json
+- `--out-dir` (default `.plans/tmp`) -- Output directory for per-epic slices

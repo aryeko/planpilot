@@ -1,51 +1,68 @@
-# gh-project-plan-sync
+# planpilot
 
-Sync plan artifacts (`epics.json`, `stories.json`, `tasks.json`) into GitHub Issues and GitHub Projects v2.
+[![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-## v1 scope
+Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2.
 
-- One-way sync: local plan files -> GitHub
-- Idempotent reruns via markers and sync map
-- Dry-run preview and explicit apply mode
+## What it does
 
-See `docs/architecture/v1-scope.md` for full in/out-of-scope details.
+**planpilot** takes structured plan files and turns them into a fully linked project board:
+
+```mermaid
+flowchart LR
+    A["roadmap.md"] --> B["epics.json\nstories.json\ntasks.json"]
+    B -->|planpilot| C["GitHub Issues\n+ Projects v2"]
+    C --> D["Epic / Story / Task\nissue types"]
+    C --> E["Sub-issue\nhierarchy"]
+    C --> F["Blocked-by\ndependencies"]
+    C --> G["Project fields\nstatus, priority,\niteration, size"]
+```
+
+- **One-way sync**: local plan files -> GitHub
+- **Idempotent**: safe to rerun -- updates existing issues via markers
+- **Dry-run first**: preview all changes before applying
+- **Multi-epic**: slice large plans and sync each epic sequentially
 
 ## Requirements
 
 - Python 3.10+
-- `gh` CLI installed and authenticated
-- GitHub token/scopes sufficient for repo and project operations (`repo`, `project`)
+- [`gh` CLI](https://cli.github.com/) installed and authenticated
+- GitHub token scopes: `repo`, `project`
+
+## Installation
+
+```bash
+pip install planpilot
+```
+
+Or with Poetry:
+
+```bash
+poetry add planpilot
+```
 
 ## Quickstart
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -e .
-```
-
-Dry-run first:
+### 1. Dry-run (preview changes)
 
 ```bash
-.venv/bin/plan-gh-project-sync \
+planpilot \
   --repo your-org/your-repo \
   --project-url https://github.com/orgs/your-org/projects/1 \
   --epics-path .plans/epics.json \
   --stories-path .plans/stories.json \
   --tasks-path .plans/tasks.json \
   --sync-path .plans/github-sync-map.json \
-  --label codex \
-  --status Backlog \
-  --priority P1 \
-  --iteration active \
-  --size-field Size \
-  --size-from-tshirt true \
   --dry-run
 ```
 
-Apply changes:
+### 2. Apply changes
 
 ```bash
-.venv/bin/plan-gh-project-sync \
+planpilot \
   --repo your-org/your-repo \
   --project-url https://github.com/orgs/your-org/projects/1 \
   --epics-path .plans/epics.json \
@@ -55,47 +72,66 @@ Apply changes:
   --apply
 ```
 
-## Multi-epic note
+### 3. Multi-epic plans
 
-Current core sync path expects one epic per run. For multi-epic plans, slice per epic and run sequentially (helper flow documented in roadmap integration notes).
+The sync tool expects one epic per run. For multi-epic plans, slice first:
 
 ```bash
-PYTHONPATH=src python3 tools/slice_epics_for_sync.py \
+planpilot-slice \
   --epics-path .plans/epics.json \
   --stories-path .plans/stories.json \
   --tasks-path .plans/tasks.json \
   --out-dir .plans/tmp
 ```
 
-## Verification
+Then sync each epic:
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -s tests -p "test_*.py"
-PYTHONPATH=src python3 -m plan_gh_project_sync --help
+for f in .plans/tmp/epics.*.json; do
+  id=$(basename "$f" .json | sed 's/epics\.//')
+  planpilot \
+    --repo your-org/your-repo \
+    --project-url https://github.com/orgs/your-org/projects/1 \
+    --epics-path ".plans/tmp/epics.${id}.json" \
+    --stories-path ".plans/tmp/stories.${id}.json" \
+    --tasks-path ".plans/tmp/tasks.${id}.json" \
+    --sync-path ".plans/github-sync-map.${id}.json" \
+    --apply
+done
 ```
 
-## Install Skill: roadmap-to-github-project
+## Optional flags
 
-Skill source in this repo:
-- `skills/roadmap-to-github-project/SKILL.md`
-- `skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py`
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--label` | `codex` | Label applied to created issues |
+| `--status` | `Backlog` | Project status field value |
+| `--priority` | `P1` | Project priority field value |
+| `--iteration` | `active` | Iteration title, `active`, or `none` |
+| `--size-field` | `Size` | Project size field name |
+| `--size-from-tshirt` | `true` | Map `estimate.tshirt` to size field |
+| `--verbose` | off | Enable verbose logging |
 
-Human install (copy into your OpenCode skills directory):
+Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
 
-```bash
-mkdir -p ~/.config/opencode/skills/roadmap-to-github-project/helpers
-cp skills/roadmap-to-github-project/SKILL.md ~/.config/opencode/skills/roadmap-to-github-project/SKILL.md
-cp skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py ~/.config/opencode/skills/roadmap-to-github-project/helpers/slice_epics_for_sync.py
-```
+## Plan file schemas
 
-LLM install/use instructions:
-- Reference the skill by path: `~/.config/opencode/skills/roadmap-to-github-project/SKILL.md`.
-- Ask the agent to use `roadmap-to-github-project` mode (`plan`, `sync`, or `full`) and provide required inputs (`roadmap_path` for `plan`; `repo`, `project_url`, and plans paths for `sync`).
-- If syncing multiple epics, instruct the agent to run `helpers/slice_epics_for_sync.py` before `plan-gh-project-sync`.
+See [docs/schemas.md](docs/schemas.md) for the expected structure of `epics.json`, `stories.json`, and `tasks.json`, with full examples.
 
-## Docs
+A complete working example is in the [examples/](examples/) directory.
 
-- `docs/architecture/v1-scope.md`
-- `docs/cli-reference.md`
-- `docs/schemas.md`
-- `docs/migration.md`
+## Documentation
+
+- [How It Works](docs/how-it-works.md) -- sync pipeline, idempotency, what gets created
+- [CLI Reference](docs/cli-reference.md) -- all flags and commands
+- [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
+- [Architecture / v1 Scope](docs/architecture/v1-scope.md) -- what's in and out of scope
+- [Migration Guide](docs/migration.md) -- upgrading from previous versions
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for setup and development instructions.
+
+## License
+
+[MIT](LICENSE)

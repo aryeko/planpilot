@@ -1,19 +1,66 @@
-[project]
-name = "plan-gh-project-sync"
+[tool.poetry]
+name = "planpilot"
 version = "0.1.0"
-description = "Sync plan epics/stories to GitHub Issues and Projects"
+description = "Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2"
 readme = "README.md"
-requires-python = ">=3.10"
-license = {text = "MIT"}
-authors = [
-  {name = "aryeko"}
+license = "MIT"
+authors = ["aryeko"]
+homepage = "https://github.com/aryeko/planpilot"
+repository = "https://github.com/aryeko/planpilot"
+keywords = ["github", "projects", "roadmap", "sync", "issues"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Topic :: Software Development :: Build Tools",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+]
+packages = [{include = "planpilot", from = "src"}]
+
+[tool.poetry.scripts]
+planpilot = "planpilot.cli:main"
+planpilot-slice = "planpilot.slice:slice_cli"
+
+[tool.poetry.dependencies]
+python = ">=3.10"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=7.0"
+ruff = ">=0.4"
+mypy = ">=1.0"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "F",   # pyflakes
+    "I",   # isort
+    "UP",  # pyupgrade
+    "B",   # bugbear
+    "SIM", # simplify
+    "RUF", # ruff-specific
 ]
 
-[project.scripts]
-plan-gh-project-sync = "plan_gh_project_sync.cli:main"
+[tool.ruff.lint.isort]
+known-first-party = ["planpilot"]
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-
-[tool.setuptools.packages.find]
-where = ["src"]
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false

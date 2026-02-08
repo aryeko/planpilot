@@ -3,26 +3,40 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [ main ]
+    branches: [main]
 
 jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: pipx install poetry
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Ruff check
+        run: poetry run ruff check .
+      - name: Ruff format check
+        run: poetry run ruff format --check .
+
   test:
     runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - run: pipx install poetry
+      - uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install package
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install -e .
-      - name: Run unit tests
-        run: |
-          PYTHONPATH=src python -m unittest discover -s tests -p "test_*.py"
-      - name: Verify CLI help
-        run: |
-          PYTHONPATH=src python -m plan_gh_project_sync --help
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Run tests
+        run: poetry run pytest -v
+      - name: Verify CLI
+        run: poetry run planpilot --help

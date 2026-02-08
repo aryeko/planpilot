@@ -83,7 +83,7 @@ Default recommendation: Full.
    - Required fields exist per schema
 
 Required schema style:
-- Match `spec-to-plan` / `plan-to-github-project` expectations:
+- Match `spec-to-plan` / `planpilot` expectations:
   - `epics.json`: `id,title,goal,spec_ref,story_ids` (+ optional fields)
   - `stories.json`: `id,epic_id,title,goal,spec_ref,task_ids` (+ optional fields)
   - `tasks.json`: `id,story_id,title,motivation,spec_ref,requirements,acceptance_criteria,verification,artifacts,depends_on`
@@ -93,8 +93,8 @@ Required schema style:
 1. `gh auth status`
 2. Confirm target repo and project URL
 3. Confirm tool availability:
-   - preferred: `plan-gh-project-sync`
-   - fallback: `PYTHONPATH=<tool_src> python3 -m plan_gh_project_sync`
+   - preferred: `planpilot` (installed via pip/poetry)
+   - fallback: `python3 -m planpilot`
 
 If auth fails, STOP and request login.
 
@@ -103,7 +103,7 @@ If auth fails, STOP and request login.
 The current sync tool validates exactly one epic per run.
 
 If `len(epics.json) > 1`:
-- run helper script `helpers/slice_epics_for_sync.py`
+- run `planpilot-slice` or the helper script `helpers/slice_epics_for_sync.py`
 - this generates per-epic slices in `.plans/tmp`
 - cross-epic `depends_on` are filtered out for each per-epic task slice
 
@@ -118,7 +118,7 @@ For each epic slice:
 Command template:
 
 ```bash
-PYTHONPATH="<tool_src>" python3 -m plan_gh_project_sync \
+planpilot \
   --repo <owner/repo> \
   --project-url <project-url> \
   --epics-path .plans/tmp/epics.<epic_id>.json \
@@ -134,7 +134,7 @@ PYTHONPATH="<tool_src>" python3 -m plan_gh_project_sync \
   --dry-run --verbose
 ```
 
-Then rerun without `--dry-run`.
+Then rerun without `--dry-run` and add `--apply`.
 
 ### 6) Post-sync verification
 

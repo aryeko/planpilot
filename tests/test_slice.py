@@ -3,7 +3,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from plan_gh_project_sync.slice import slice_epics_for_sync
+from planpilot.slice import slice_epics_for_sync
 
 
 class TestSliceEpicsForSync(unittest.TestCase):
