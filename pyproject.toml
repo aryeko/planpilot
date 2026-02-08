@@ -69,7 +69,6 @@ disallow_untyped_defs = false
 version_toml = ["pyproject.toml:tool.poetry.version"]
 version_variables = ["src/planpilot/__init__.py:__version__"]
 commit_parser = "conventional"
-build_command = false
 tag_format = "v{version}"
 major_on_zero = false
 allow_zero_version = true
