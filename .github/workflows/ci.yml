@@ -6,6 +6,15 @@ on:
     branches: [main]
 
 jobs:
+  commitlint:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+      - uses: opensource-nepal/commitlint@v1
+
   lint:
     runs-on: ubuntu-latest
     steps:
