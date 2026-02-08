@@ -1,40 +1,15 @@
-<p align="center">
-  <img
-    src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png"
-    alt="planpilot logo"
-    width="96"
-    height="96"
-  />
-</p>
+# <img src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" height="32" align="absmiddle" /> planpilot
 
-<h1 align="center">planpilot</h1>
+[![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
+[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
+[![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
+[![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
+[![Downloads](https://static.pepy.tech/badge/planpilot)](https://pepy.tech/project/planpilot)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/aryeko/planpilot/blob/main/LICENSE)
 
-<p align="center">
-  <a href="https://github.com/aryeko/planpilot/actions/workflows/ci.yml">
-    <img alt="CI" src="https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg" />
-  </a>
-  <a href="https://codecov.io/gh/aryeko/planpilot">
-    <img alt="codecov" src="https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI" />
-  </a>
-  <a href="https://pypi.org/project/planpilot/">
-    <img alt="PyPI" src="https://img.shields.io/pypi/v/planpilot" />
-  </a>
-  <a href="https://pypi.org/project/planpilot/">
-    <img alt="Python" src="https://img.shields.io/pypi/pyversions/planpilot" />
-  </a>
-  <a href="https://pepy.tech/project/planpilot">
-    <img alt="Downloads" src="https://static.pepy.tech/badge/planpilot" />
-  </a>
-  <a href="https://github.com/aryeko/planpilot/blob/main/LICENSE">
-    <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" />
-  </a>
-</p>
+Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2.
 
-<p align="center">Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2.</p>
-
-<p align="center">
-  ⭐ If planpilot helps you manage your roadmaps, consider <a href="https://github.com/aryeko/planpilot">giving it a star</a>!
-</p>
+> **⭐ If planpilot helps you manage your roadmaps, consider [giving it a star](https://github.com/aryeko/planpilot)!**
 
 ## What it does
 
