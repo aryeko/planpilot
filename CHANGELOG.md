@@ -2,6 +2,29 @@
 
 <!-- version list -->
 
+## Unreleased
+
+### Chores
+
+- Enhance OSS polish and discoverability ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+### Documentation
+
+- Make CoC reporting private ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+- Regenerate full changelog with all release versions
+  ([#11](https://github.com/aryeko/planpilot/pull/11),
+  [`b3d284f`](https://github.com/aryeko/planpilot/commit/b3d284f77df6177f27762de70e90b2f8f247b62e))
+
+### Testing
+
+- Suppress coverage runtime warnings in pytest config
+  ([#12](https://github.com/aryeko/planpilot/pull/12),
+  [`1da07ea`](https://github.com/aryeko/planpilot/commit/1da07ea88bdf991200bd21c153b14cb69455e1ac))
+
+
 ## v1.1.2 (2026-02-08)
 
 ### Bug Fixes
