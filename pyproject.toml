@@ -67,6 +67,11 @@ check = ["lint", "format-check", "test"]
 testpaths = ["tests"]
 addopts = "--cov=planpilot --cov-report=term-missing --cov-report=xml:.coverage/coverage.xml"
 asyncio_mode = "auto"
+filterwarnings = [
+    "error",
+    "ignore::RuntimeWarning:coverage",
+    "ignore::pytest.PytestUnraisableExceptionWarning",
+]
 
 [tool.coverage.run]
 source = ["planpilot"]
