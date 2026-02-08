@@ -2,6 +2,15 @@
 
 <!-- version list -->
 
+## v1.1.2 (2026-02-08)
+
+### Bug Fixes
+
+- **ci**: Add insertion flag to CHANGELOG.md for PSR update mode
+  ([#10](https://github.com/aryeko/planpilot/pull/10),
+  [`8a30d8b`](https://github.com/aryeko/planpilot/commit/8a30d8bc42fe8fbd968e16752e94b4b31163c0af))
+
+
 ## v1.0.1 (2026-02-08)
 
 ### Bug Fixes
