@@ -59,6 +59,19 @@ Commit messages are linted in CI via [commitlint](https://github.com/opensource-
 
 ## Pull requests
 
+```mermaid
+flowchart LR
+    A[Branch] --> B[Commit with\nConventional Commits]
+    B --> C[Push & open PR]
+    C --> D{CI checks}
+    D -->|commitlint| D1[Commit format ✓]
+    D -->|ruff| D2[Lint + format ✓]
+    D -->|pytest| D3[Tests ✓]
+    D1 & D2 & D3 --> E[Review & approve]
+    E --> F[Merge to main]
+    F --> G[Auto-release\nif feat:/fix:]
+```
+
 - Keep changes focused and well-tested.
 - Use Conventional Commit format for all commits (enforced by CI).
 - Include rationale and verification steps.
