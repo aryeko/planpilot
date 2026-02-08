@@ -48,7 +48,7 @@ jobs:
       - name: Run tests
         run: poetry run pytest -v
       - name: Upload coverage
-        if: matrix.python-version == '3.12'
+        if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
         with:
           files: .coverage/coverage.xml
