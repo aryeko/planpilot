@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+
 from pydantic import BaseModel, Field
 
 
@@ -36,3 +38,44 @@ class SyncResult(BaseModel):
     stories_created: int = 0
     tasks_created: int = 0
     dry_run: bool = False
+
+
+def merge_sync_maps(sync_maps: list[SyncMap]) -> SyncMap:
+    """Merge per-epic sync maps into one combined map.
+
+    Raises:
+        ValueError: If input is empty, contains incompatible metadata, or has duplicate entity IDs.
+    """
+    if not sync_maps:
+        raise ValueError("cannot merge empty sync map list")
+
+    repo = sync_maps[0].repo
+    project_url = sync_maps[0].project_url
+    plan_ids = sorted(sync_map.plan_id for sync_map in sync_maps)
+    combined_hash = hashlib.sha1("|".join(plan_ids).encode("utf-8")).hexdigest()[:12]
+
+    merged = SyncMap(
+        plan_id=f"combined-{combined_hash}",
+        repo=repo,
+        project_url=project_url,
+    )
+
+    for sync_map in sync_maps:
+        if sync_map.repo != repo:
+            raise ValueError(f"incompatible repo in sync map: {sync_map.repo!r} != {repo!r}")
+        if sync_map.project_url != project_url:
+            raise ValueError(
+                f"incompatible project_url in sync map: {sync_map.project_url!r} != {project_url!r}"
+            )
+
+        for entity_type, source, destination in (
+            ("epic", sync_map.epics, merged.epics),
+            ("story", sync_map.stories, merged.stories),
+            ("task", sync_map.tasks, merged.tasks),
+        ):
+            for entity_id, entry in source.items():
+                if entity_id in destination:
+                    raise ValueError(f"duplicate {entity_type} id while merging sync maps: {entity_id}")
+                destination[entity_id] = entry.model_copy(deep=True)
+
+    return merged
