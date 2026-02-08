@@ -36,12 +36,19 @@ jobs:
       version:  ${{ steps.psr.outputs.version }}
 
     steps:
+      - name: Generate GitHub App token
+        id: app-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+
       - name: Checkout CI-tested commit
         uses: actions/checkout@v6
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
-          token: ${{ secrets.RELEASE_BOT_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
 
       - run: pipx install poetry
       - uses: actions/setup-python@v6
@@ -56,9 +63,9 @@ jobs:
         id: psr
         uses: python-semantic-release/python-semantic-release@v10.5.3
         with:
-          github_token: ${{ secrets.RELEASE_BOT_TOKEN }}
-          git_committer_name: "github-actions"
-          git_committer_email: "actions@users.noreply.github.com"
+          github_token: ${{ steps.app-token.outputs.token }}
+          git_committer_name: "planpilot-release[bot]"
+          git_committer_email: "2821859+planpilot-release[bot]@users.noreply.github.com"
           vcs_release: "false"
           build: "false"
 

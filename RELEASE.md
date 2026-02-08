@@ -94,16 +94,16 @@ The `main` branch is protected:
 - Stale reviews are dismissed on new pushes
 - Direct pushes to `main` are blocked
 
-### Release bot token
+### Release bot (GitHub App)
 
-Because branch protection blocks direct pushes to `main`, the release workflow uses a fine-grained PAT (`RELEASE_BOT_TOKEN`) to push the version bump commit and tag. This token is scoped to this repo only:
+Because branch protection blocks direct pushes to `main`, the release workflow uses a [GitHub App](https://docs.github.com/en/apps) (`planpilot-release`) to push the version bump commit and tag. The app mints a short-lived installation token at the start of each run via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) — no long-lived PATs to rotate.
 
-| Permission | Level |
-|------------|-------|
-| Contents | Read & Write |
-| Metadata | Read |
+| Secret | What it holds |
+|--------|--------------|
+| `RELEASE_APP_ID` | GitHub App ID |
+| `RELEASE_APP_PRIVATE_KEY` | App private key (`.pem`) |
 
-The token is stored as a repository secret and used only in the `release` job (checkout + PSR steps). All other jobs use `GITHUB_TOKEN`.
+The app has minimal permissions (Contents: Read & Write) and is installed only on this repo. Release commits appear as `planpilot-release[bot]` in the git log. All other jobs use `GITHUB_TOKEN`.
 
 ## Manual override
 
