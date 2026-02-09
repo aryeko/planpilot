@@ -57,7 +57,7 @@ class FieldConfig(BaseModel):
     """Whether to map PlanItem.estimate.tshirt to the size field."""
 ```
 
-**Cross-provider field mapping:** These field names use GitHub Projects v2 terminology but map naturally to other providers. Each provider interprets them in its own context:
+**Cross-provider field mapping:** These field names use GitHub Projects v2 terminology and are defaults, not guarantees. Providers interpret them in their own context and may require target-specific field names to exist:
 
 | FieldConfig field | GitHub | Jira |
 |-------------------|--------|------|
@@ -65,6 +65,8 @@ class FieldConfig(BaseModel):
 | `priority` | Priority field | Priority field |
 | `iteration` | Iteration field | Sprint |
 | `size_field` | Custom "Size" field | Story points field |
+
+If a configured field does not exist in the provider target, provider setup must fail fast with a clear `ConfigError`/`ProviderError`.
 
 ### `PlanPaths`
 
@@ -146,6 +148,16 @@ class PlanPilotConfig(BaseModel):
     model_config = {"frozen": True}
 ```
 
+**Auth/token validation rules:**
+
+| `auth` value | `token` value | Result |
+|--------------|---------------|--------|
+| `"gh-cli"` | `None` | Valid |
+| `"env"` | `None` | Valid |
+| `"token"` | non-empty string | Valid |
+| `"token"` | `None` / empty | Invalid (`ConfigError`) |
+| `"gh-cli"` or `"env"` | non-empty string | Invalid (`ConfigError`, prevents ambiguous secret source) |
+
 **Design decisions:**
 
 | Decision | Rationale |
@@ -156,6 +168,11 @@ class PlanPilotConfig(BaseModel):
 | No `dry_run` field | Dry-run is a per-invocation execution mode, not persisted config. Passed as a parameter to `PlanPilot.sync(dry_run=...)` by the CLI or SDK caller |
 | No `verbose` field | Logging verbosity is a CLI concern, not a config concern. The SDK uses standard `logging` levels |
 | `frozen = True` | Config is immutable after creation — prevents accidental mutation during sync |
+
+**Boardless behavior (`board_url=None`):**
+- Items are still created and reconciled.
+- `field_config` remains valid config but board field updates (`status`, `priority`, `iteration`, `size`) are skipped.
+- No error is raised solely due to `board_url=None`.
 
 ## Path Resolution
 
@@ -184,6 +201,8 @@ project/
 ```
 
 When loaded via `load_config("project/planpilot.json")`, `plan_paths.epics` resolves to `project/plans/epics.json`.
+
+CLI summaries should display the resolved absolute sync-map path for deterministic output.
 
 ## Config Loader
 

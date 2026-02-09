@@ -25,3 +25,36 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 - **[SDK](./sdk.md)** — SDK module spec defining the public API facade.
 - **[CLI](./cli.md)** — CLI module spec with config-file-driven interface.
 - **[GitHub Provider Research](./github-provider-research.md)** — Evaluation of implementation approaches for the GitHub provider (githubkit, ariadne-codegen, gh CLI, etc.).
+
+## Locked v2 Decisions
+
+- Discovery is provider-search-first using metadata marker query (`PLAN_ID:<plan_id>`).
+- All renderers emit a shared plain-text metadata block (`PLANPILOT_META_V1` ... `END_PLANPILOT_META`).
+- Reconciliation ownership is hybrid:
+  - plan-authoritative: title/body/type/label/size/relations
+  - provider-authoritative: status/priority/iteration after creation
+- Exit codes are differentiated (`0`, `2`, `3`, `4`, `5`, `1`).
+- SDK is the composition root via `PlanPilot.from_config(...)`.
+
+## Review Findings Closure Matrix
+
+| Finding Area | Resolution Location |
+|--------------|---------------------|
+| Discovery contract and idempotency source of truth | `engine.md`, `providers.md`, `architecture.md` |
+| Renderer-agnostic marker format | `renderers.md`, `engine.md`, `architecture.md` |
+| Deterministic plan hash across load order | `plan.md`, `architecture.md` |
+| Reconcile behavior for existing items | `engine.md`, `providers.md` |
+| Non-atomic create and partial-failure recovery | `providers.md`, `github-provider-research.md`, `architecture.md` |
+| Label bootstrap and operations inventory gaps | `providers.md`, `github-provider-research.md` |
+| Relation capability gating | `providers.md`, `github-provider-research.md` |
+| Retry/backoff/pagination requirements | `providers.md`, `github-provider-research.md` |
+| Plan hierarchy/source-of-truth ambiguity | `plan.md`, `architecture.md` |
+| Unified plan JSON shape clarity | `plan.md`, `config.md` |
+| Auth/token validation and boardless behavior | `config.md` |
+| CLI/SDK composition and exit code clarity | `cli.md`, `sdk.md`, `architecture.md` |
+
+## Known v2 Limitations
+
+- Engine execution remains sequential (epics -> stories -> tasks); concurrent provider operations are not required.
+- Workflow board fields (`status`, `priority`, `iteration`) are provider-authoritative after create and not plan-controlled in v2.
+- Relation mutations are capability-gated and may be skipped in environments where APIs are unavailable.

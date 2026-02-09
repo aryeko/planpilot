@@ -31,8 +31,8 @@ class PlanLoader:
             plan_paths: PlanPaths configuration from the config domain.
                 Supports two modes:
                 - Multi-file: separate epics/stories/tasks paths set
-                - Single-file (unified): one file with all items, each
-                  having an explicit `type` field
+                - Single-file (unified): one file with an `items` array,
+                  each item having an explicit `type` field
 
         Returns:
             A validated Plan instance with flat items list.
@@ -52,6 +52,23 @@ class PlanLoader:
 6. Return validated `Plan`
 
 **Error handling:** All file I/O and JSON parse errors are wrapped in `PlanLoadError` with descriptive messages. Pydantic `ValidationError` is also wrapped.
+
+**Unified file shape (canonical):**
+
+```json
+{
+  "items": [
+    {
+      "id": "E1",
+      "type": "EPIC",
+      "title": "Epic title",
+      "goal": "Outcome",
+      "requirements": ["R1"],
+      "acceptance_criteria": ["A1"]
+    }
+  ]
+}
+```
 
 ### PlanValidator
 
@@ -73,9 +90,8 @@ class PlanValidator:
 |------|------------|
 | No duplicate IDs | All item IDs must be globally unique |
 | Valid type | Every item must have a valid `PlanItemType` |
-| Parent ref | If `parent_id` is set, it must reference an existing item of the correct parent type (task→story, story→epic) |
-| Sub-item consistency | If item A lists B in `sub_item_ids`, then B's `parent_id` must point to A. If B's `parent_id` points to A, then A must list B in `sub_item_ids` |
-| Hierarchy type | If `parent_id` is set, it must follow type hierarchy: task→story, story→epic, epic→epic |
+| Parent hierarchy | `parent_id` is canonical. Allowed parent transitions: task→story, story→epic. Epics cannot have a parent in v2 |
+| Sub-item consistency | `sub_item_ids` is optional/derived. If provided, it must match the inverse of `parent_id` references |
 | Dependency refs | Every entry in `depends_on` must reference an existing item |
 | Type-specific required fields | See per-type matrix below |
 
@@ -97,6 +113,8 @@ class PlanValidator:
 
 **Error aggregation:** All errors are collected and raised together in a single `PlanValidationError`, so users see every issue in one pass.
 
+**Rationale for strict required fields:** v2 intentionally enforces `goal`, `requirements`, and `acceptance_criteria` for epics, stories, and tasks to keep plan quality consistent and make rendered issue bodies actionable by default.
+
 ### PlanHasher
 
 Computes a deterministic plan identifier for idempotent syncs.
@@ -115,11 +133,12 @@ class PlanHasher:
 ```
 
 **Algorithm:**
-1. Serialize `plan.items` via Pydantic `model_dump(mode="json", by_alias=True)`
-2. JSON-encode with `sort_keys=True, separators=(",", ":")`  (canonical form)
-3. SHA-256 hash, truncate to first 12 hex characters
+1. Canonicalize item order: sort `plan.items` by `(item.type.value, item.id)`
+2. Serialize canonicalized items via Pydantic `model_dump(mode="json", by_alias=True)`
+3. JSON-encode with `sort_keys=True, separators=(",", ":")` (canonical form)
+4. SHA-256 hash, truncate to first 12 hex characters
 
-**Idempotency guarantee:** Two plans with identical content produce the same `plan_id`, regardless of file paths or load order. This is how the engine detects already-synced plans via body markers.
+**Idempotency guarantee:** Two plans with identical content produce the same `plan_id`, regardless of file paths or load order, because both ordering and serialization are canonicalized. This is how the engine detects already-synced plans via metadata markers.
 
 ## Contracts Validation
 
@@ -131,7 +150,7 @@ The plan module confirms these plan domain types are sufficient:
 | `PlanItem` | `.id`, `.type`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.goal`, `.requirements`, `.acceptance_criteria`, `.verification` |
 | `PlanItemType` | `EPIC`, `STORY`, `TASK` — used for hierarchy and type-specific validation |
 
-All fields live on the flat `PlanItem` class. Entity type is determined by `item.type`. The validator uses the type to enforce hierarchy rules (e.g. tasks must parent to stories).
+All fields live on the flat `PlanItem` class. Entity type is determined by `item.type`. The validator treats `parent_id` as canonical hierarchy data and validates optional `sub_item_ids` as a consistency projection.
 
 ## Changes from v1
 

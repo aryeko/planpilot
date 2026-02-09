@@ -15,7 +15,7 @@ In v2, the CLI shifts from argument-driven configuration to **config-file-driven
 | Source | Types/Functions Used |
 |--------|---------------------|
 | **SDK public API** | `PlanPilot`, `PlanItemType`, `SyncResult`, `PlanPilotConfig` |
-| **SDK public API** | `load_config`, `create_provider`, `create_renderer`, `create_token_resolver` |
+| **SDK public API** | `load_config` |
 | **SDK public API** | `PlanPilotError` (and subclasses) |
 | **stdlib** | `argparse`, `asyncio`, `sys`, `logging` |
 
@@ -95,11 +95,8 @@ flowchart TB
     Logging -- Yes --> SetDebug["logging.basicConfig(DEBUG)"]
     Logging -- No --> LoadConfig
     SetDebug --> LoadConfig["config = load_config(args.config)"]
-    LoadConfig --> Auth["resolver = create_token_resolver(config)"]
-    Auth --> Token["token = await resolver.resolve()"]
-    Token --> Provider["provider = create_provider(..., token=token)"]
-    Provider --> Renderer["renderer = create_renderer('markdown')"]
-    Renderer --> SDK["pp = PlanPilot(provider, renderer, config)"]
+    LoadConfig --> SDKBuild["pp = await PlanPilot.from_config(config, renderer_name='markdown')"]
+    SDKBuild --> SDK
     SDK --> Sync["result = await pp.sync(dry_run=args.dry_run)"]
     Sync --> Format["print summary"]
     Format --> Exit["exit 0"]
@@ -115,21 +112,7 @@ async def _run_sync(args: argparse.Namespace) -> None:
         args: Parsed CLI namespace.
     """
     config = load_config(args.config)
-
-    resolver = create_token_resolver(config)
-    token = await resolver.resolve()
-
-    provider = create_provider(
-        config.provider,
-        target=config.target,
-        token=token,
-        board_url=config.board_url,
-        label=config.label,
-        field_config=config.field_config,
-    )
-    renderer = create_renderer("markdown")
-
-    pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+    pp = await PlanPilot.from_config(config, renderer_name="markdown")
     result = await pp.sync(dry_run=args.dry_run)
 
     print(_format_summary(result, config))
@@ -142,7 +125,13 @@ def main() -> int:
     """Entry point for the planpilot CLI command.
 
     Returns:
-        Exit code: 0 on success, 2 on error.
+        Exit code:
+            0 success
+            2 usage/argparse failure
+            3 config/plan validation failure
+            4 auth/provider/network failure
+            5 sync/reconciliation failure
+            1 unexpected internal error
     """
     args = _parse_args()
 
@@ -156,9 +145,18 @@ def main() -> int:
     try:
         asyncio.run(_run_sync(args))
         return 0
+    except (ConfigError, PlanLoadError, PlanValidationError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 3
+    except (AuthenticationError, ProviderError) as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 4
+    except SyncError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 5
     except PlanPilotError as exc:
         print(f"error: {exc}", file=sys.stderr)
-        return 2
+        return 1
 ```
 
 ## Output Formatting
@@ -195,7 +193,7 @@ planpilot - sync complete (apply)
   Story  S1      #44    https://github.com/owner/repo/issues/44
   ...
 
-  Sync map:  sync-map.json
+  Sync map:  /abs/path/to/sync-map.json
 
   [dry-run] No changes were made  (only in dry-run mode)
 ```
@@ -232,7 +230,16 @@ error: Plan validation failed:
   - Item T3 depends on non-existent item T99
 ```
 
-Exit code `2` for all PlanPilot errors (same as argparse's exit code `2` for usage errors — both indicate failure, not distinguishable by code alone).
+Exit codes are intentionally differentiated for automation:
+
+| Code | Meaning |
+|------|---------|
+| `0` | Success |
+| `2` | Usage/argument parsing failure (argparse) |
+| `3` | Config or plan validation failure |
+| `4` | Authentication/provider/network failure |
+| `5` | Sync/reconciliation failure |
+| `1` | Unexpected internal failure |
 
 ## File Structure
 
@@ -260,7 +267,7 @@ raise SystemExit(main())
 | No `--provider`, `--target`, etc. | All in config file. CLI stays minimal |
 | `--verbose` is CLI-only | Logging level is a runtime concern. SDK uses standard `logging` module |
 | Renderer hardcoded to "markdown" | GitHub is the primary provider; renderer selection could be added to config later |
-| Error handling catches `PlanPilotError` only | Unexpected exceptions (bugs) should produce a full traceback, not a swallowed message |
+| Error handling maps known failure classes to stable exit codes | Automation can distinguish validation/auth/sync failures without parsing stderr |
 
 ## Changes from v1
 

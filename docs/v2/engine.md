@@ -49,19 +49,21 @@ In dry-run mode, only Upsert runs (with placeholder entries, no API calls). Disc
 
 **Goal:** Find items that already exist in the provider for this plan, so we can skip re-creating them.
 
+**Source of truth:** Discovery is provider-search-first. The sync map is persisted output/cache, not the canonical source for finding existing items.
+
 **Contract calls:**
 
 ```python
 filters = ItemSearchFilters(
     labels=[config.label],
-    body_contains=f"PLAN_ID: {plan_id}",
+    body_contains=f"PLAN_ID:{plan_id}",
 )
 existing_items: list[Item] = await provider.search_items(filters)
 ```
 
 **Internal logic:**
 
-The engine parses body markers from each `Item.body` to extract `plan_id` and `item_id`. Items whose `plan_id` matches are indexed into a lookup dict:
+The engine parses the metadata block from each `Item.body` to extract `plan_id` and `item_id`. Items whose `plan_id` matches are indexed into a lookup dict:
 
 ```python
 existing_map: dict[str, Item]
@@ -74,7 +76,18 @@ existing_map: dict[str, Item]
 - `Provider.search_items(ItemSearchFilters) -> list[Item]`
 
 **Internal utilities:**
-- `parse_markers(body: str) -> dict[str, str]` — extracts `PLAN_ID` and `ITEM_ID` from body text. This is an engine-internal utility, not a contract.
+- `parse_metadata_block(body: str) -> dict[str, str]` — extracts metadata block keys (`PLAN_ID`, `ITEM_ID`) from body text. This is an engine-internal utility, not a contract.
+
+**Marker contract used by discovery (renderer-agnostic):**
+
+```text
+PLANPILOT_META_V1
+PLAN_ID:<plan_id>
+ITEM_ID:<item_id>
+END_PLANPILOT_META
+```
+
+The block must appear verbatim at the top of rendered item bodies for all renderers.
 
 ## Phase 2: Upsert
 
@@ -123,7 +136,7 @@ sync_map.entries[plan_item.id] = entry
 
 ## Phase 3: Enrich
 
-**Goal:** Update all bodies with resolved cross-references (now that all items exist and have keys).
+**Goal:** Reconcile existing items with plan-authoritative fields (now that all items exist and have keys).
 
 **Contract calls per item:**
 
@@ -142,15 +155,25 @@ body: str = renderer.render(plan_item, context)
 # 3. Update the item
 await provider.update_item(
     entry.id,
-    UpdateItemInput(body=body),
+    UpdateItemInput(
+        title=plan_item.title,
+        body=body,
+        item_type=plan_item.type,
+        labels=[config.label],
+        size=plan_item.estimate.tshirt if plan_item.estimate else None,
+    ),
 )
 ```
 
 **Contract types required:**
 - `RenderContext` — same as upsert, but now populated with resolved sub_items and dependencies
 - `BodyRenderer.render(PlanItem, RenderContext) -> str`
-- `UpdateItemInput` — needs `body: str | None` (only non-None fields applied)
+- `UpdateItemInput` — needs `title`, `body`, `item_type`, `labels`, `size` fields (only non-None fields applied)
 - `Provider.update_item(str, UpdateItemInput) -> Item`
+
+**Ownership rule during reconcile:**
+- Plan-authoritative fields: `title`, `body`, `item_type`, `labels`, `size`, and relations.
+- Provider-authoritative fields after create: board workflow fields (`status`, `priority`, `iteration`) are not overwritten by Enrich.
 
 ## Phase 4: Relations
 
@@ -212,7 +235,7 @@ These are engine-internal, not Contracts:
 
 | Utility | Signature | Purpose |
 |---------|-----------|---------|
-| `parse_markers` | `(body: str) -> dict[str, str]` | Extract PLAN_ID, ITEM_ID from issue body |
+| `parse_metadata_block` | `(body: str) -> dict[str, str]` | Extract PLAN_ID, ITEM_ID from metadata block in item body |
 | `compute_parent_blocked_by` | `(items: list[PlanItem], item_type: PlanItemType) -> set[tuple[str, str]]` | Roll up child deps to parent level |
 
 ## Contracts Summary
@@ -233,7 +256,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 |------|-------------------|
 | `Item` | `.id`, `.key`, `.url`, `.body`, `.set_parent()`, `.add_dependency()` |
 | `CreateItemInput` | `.title`, `.body`, `.item_type`, `.labels`, `.size` |
-| `UpdateItemInput` | `.body` |
+| `UpdateItemInput` | `.title`, `.body`, `.item_type`, `.labels`, `.size` |
 | `ItemSearchFilters` | `.labels`, `.body_contains` |
 
 ### sync domain
@@ -277,6 +300,6 @@ Complete list of all Contract types the engine requires, organized by domain:
 | Engine calls `load_plan()`, `validate_plan()`, `compute_plan_id()` | SDK handles plan loading and hashing; engine receives `Plan` + `plan_id` | Engine is pure orchestration, no I/O or cross-Core imports |
 | Engine calls `renderer.render_epic()`, `render_story()`, `render_task()` | Single `renderer.render(item, context)` | Decouples renderer from entity types |
 | Engine knows about `RepoContext`, `ProjectContext`, field resolution | Provider handles all setup in `__aenter__`; engine just calls CRUD | Engine doesn't know about provider internals |
-| Engine calls `provider.set_issue_type()`, `add_to_project()`, `set_project_field()` | `Provider.create_item()` handles all of this atomically | Simpler engine, smarter provider |
+| Engine calls `provider.set_issue_type()`, `add_to_project()`, `set_project_field()` | `Provider.create_item()` handles these as an idempotent multi-step workflow | Simpler engine, provider owns platform-specific setup |
 | Engine builds `#123` refs using `issue_number` | Engine uses `SyncEntry.key` (provider-agnostic) | Works for any provider, not just GitHub |
 | Relations use `node_id` and `get_issue_relations()` for idempotency | `Item.add_dependency()` and `Item.set_parent()` handle idempotency internally | Moves complexity into provider where it belongs |

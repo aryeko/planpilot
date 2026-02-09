@@ -30,7 +30,7 @@ No dependency on CLI.
 
 ## PlanPilot Class
 
-The main facade class. Callers construct it with a provider, renderer, and config, then call `sync()`.
+The main facade class. Standard usage is `PlanPilot.from_config(...)`, which keeps composition in the SDK. Direct dependency injection via `__init__` remains available for advanced/testing scenarios.
 
 ```python
 class PlanPilot:
@@ -41,11 +41,8 @@ class PlanPilot:
     persistence.
 
     Usage:
-        resolver = create_token_resolver(config)
-        token = await resolver.resolve()
-        provider = create_provider(config.provider, target=config.target, token=token)
-        renderer = create_renderer("markdown")
-        pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+        config = load_config("planpilot.json")
+        pp = await PlanPilot.from_config(config, renderer_name="markdown")
         result = await pp.sync()
     """
 
@@ -62,6 +59,22 @@ class PlanPilot:
             provider: Provider instance (not yet entered).
             renderer: Body renderer instance.
             config: Validated configuration.
+        """
+
+    @classmethod
+    async def from_config(
+        cls,
+        config: PlanPilotConfig,
+        *,
+        renderer_name: str = "markdown",
+    ) -> PlanPilot:
+        """Create PlanPilot from config.
+
+        SDK-owned composition flow:
+        1. Resolve token via create_token_resolver(config)
+        2. Build provider via create_provider(...)
+        3. Build renderer via create_renderer(renderer_name)
+        4. Return PlanPilot(provider, renderer, config)
         """
 
     async def sync(
@@ -201,27 +214,13 @@ def load_plan(*paths: str | Path) -> Plan:
 
 ## Programmatic Usage Examples
 
-### Standard config-file flow
+### Standard config-file flow (recommended)
 
 ```python
-from planpilot import (
-    PlanPilot, PlanItemType, create_provider, create_renderer,
-    create_token_resolver, load_config,
-)
+from planpilot import PlanPilot, PlanItemType, load_config
 
 config = load_config("planpilot.json")
-
-# Resolve auth token (reads config.auth to pick strategy)
-resolver = create_token_resolver(config)
-token = await resolver.resolve()
-
-# Construct provider and renderer
-provider = create_provider(config.provider, target=config.target,
-                           token=token, board_url=config.board_url,
-                           label=config.label, field_config=config.field_config)
-renderer = create_renderer("markdown")
-
-pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync()
 
 print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
@@ -230,40 +229,22 @@ print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
 ### Pre-loaded plan
 
 ```python
-from planpilot import (
-    PlanPilot, create_provider, create_renderer,
-    create_token_resolver, load_config, load_plan,
-)
+from planpilot import PlanPilot, load_config, load_plan
 
 config = load_config("planpilot.json")
 plan = load_plan("epics.json", "stories.json", "tasks.json")
 
-resolver = create_token_resolver(config)
-token = await resolver.resolve()
-
-provider = create_provider(config.provider, target=config.target, token=token)
-renderer = create_renderer("markdown")
-
-pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync(plan=plan)
 ```
 
 ### Dry-run mode
 
 ```python
-from planpilot import (
-    PlanPilot, create_provider, create_renderer,
-    create_token_resolver, load_config,
-)
+from planpilot import PlanPilot, load_config
 
 config = load_config("planpilot.json")
-resolver = create_token_resolver(config)
-token = await resolver.resolve()
-
-provider = create_provider(config.provider, target=config.target, token=token)
-renderer = create_renderer("markdown")
-
-pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync(dry_run=True)
 assert result.dry_run is True
 ```
@@ -280,13 +261,14 @@ src/planpilot/
 
 | Decision | Rationale |
 |----------|-----------|
-| `PlanPilot` takes pre-constructed provider and renderer | Dependency injection — caller controls construction, SDK controls lifecycle |
+| `PlanPilot.from_config()` is the default entrypoint | SDK remains composition root; CLI and most callers avoid Core wiring details |
+| `PlanPilot.__init__` still accepts injected provider/renderer | Advanced/testing scenarios still support explicit dependency injection |
 | `sync()` manages provider lifecycle internally | Simple API — caller doesn't need `async with` boilerplate |
 | `plan` parameter is optional on `sync()` | Supports both config-driven (load from paths) and programmatic (pass Plan directly) usage |
 | SDK persists sync map, not engine | Engine is pure orchestration (no I/O). Persistence is an SDK concern |
 | `load_config()` is a standalone function, not a method | It's used before `PlanPilot` construction, so it can't be an instance method |
 | Re-exports in `__init__.py` | CLI and external callers import from one place. Contracts are accessible without knowing the internal package structure |
-| Factory functions re-exported, not wrapped | No extra abstraction layer — factories are already simple enough |
+| Factory functions are still re-exported | Advanced callers can opt into manual composition when needed |
 
 ## Changes from v1
 

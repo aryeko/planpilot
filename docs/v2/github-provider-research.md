@@ -7,6 +7,7 @@ The v2 `GitHubProvider` needs:
 | Operation | API | Notes |
 |-----------|-----|-------|
 | Fetch repo context | GraphQL | Repo ID, issue types, labels |
+| Create label (if missing) | GraphQL | Bootstrap discovery label |
 | Create issue | GraphQL | `createIssue` mutation |
 | Update issue | GraphQL | `updateIssue` mutation (body, type) |
 | Search issues | GraphQL | By label + body text |
@@ -14,6 +15,7 @@ The v2 `GitHubProvider` needs:
 | Add to project | GraphQL | `addProjectV2ItemById` |
 | Set project field | GraphQL | `updateProjectV2ItemFieldValue` |
 | Fetch project fields | GraphQL | Field IDs, options, iterations |
+| Fetch project items | GraphQL | Build/refresh issue->project item map |
 | Add sub-issue | GraphQL | `addSubIssue` — confirmed in public schema |
 | Add blocked-by | GraphQL | `addBlockedBy` — confirmed in public schema |
 | Fetch relations | GraphQL | `parent`, `blockedBy` on Issue type |
@@ -148,8 +150,14 @@ include_comments = "stable"
 query FetchRepo($owner: String!, $name: String!, $label: String!) {
   repository(owner: $owner, name: $name) {
     id
-    issueTypes(first: 100) { nodes { id name } }
-    labels(query: $label, first: 1) { nodes { id name } }
+    issueTypes(first: 100) {
+      nodes { id name }
+      pageInfo { hasNextPage endCursor }
+    }
+    labels(query: $label, first: 20) {
+      nodes { id name }
+      pageInfo { hasNextPage endCursor }
+    }
   }
 }
 ```
@@ -215,7 +223,7 @@ class GitHubProvider(Provider):
         return self
 
     async def create_item(self, input: CreateItemInput) -> Item:
-        result = await self._client.create_issue(
+        result = await self._retryable(self._client.create_issue,
             input=GqlCreateIssueInput(
                 repository_id=self._ctx.repo_id,
                 title=input.title,
@@ -225,9 +233,47 @@ class GitHubProvider(Provider):
         )
         # result.create_issue.issue is fully typed — .id, .number, .url
         issue = result.create_issue.issue
-        # ... add to project, set fields, etc.
+        # ... idempotent ensure_* steps: type, project item, fields
         return GitHubItem(...)
 ```
+
+## Operational Hardening Requirements
+
+### Idempotent Multi-Step Create
+
+`create_item()` is not atomic at API level. It must execute retry-safe ensure steps:
+
+1. Create issue
+2. Ensure issue type
+3. Ensure label assignment
+4. Ensure project item (if board configured)
+5. Ensure project fields (`size` always; workflow fields only on create)
+
+On partial failure, provider errors should include enough context for reconciliation (created issue ID and completed steps).
+
+### Capability Gating for Relations
+
+Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable in some environments. Provider startup should detect capabilities and set flags in context. Relation methods should no-op with warning when unsupported, not fail the whole sync.
+
+### Retry and Rate-Limit Policy
+
+- Use bounded exponential backoff for retryable failures (transport timeouts, 5xx, secondary rate limits).
+- Respect `Retry-After` when present.
+- Treat schema/validation/auth failures as terminal (no retry).
+- Log retry attempts with operation name and attempt count.
+
+### Pagination Requirements
+
+The provider must paginate through:
+- repo issue types
+- label lookup queries
+- search results
+- project item listing (`FetchProjectItems`)
+- relation fetches when needed for idempotency checks
+
+### Project Field Type Handling
+
+`updateProjectV2ItemFieldValue` requires type-specific payloads. Implementation must branch by field kind (single-select, iteration, number) and validate config values before mutation.
 
 ## File Structure
 
@@ -241,7 +287,9 @@ providers/github/
 ├── schema.graphql           # GitHub's public GraphQL schema (vendored)
 ├── operations/              # .graphql operation files (source of truth)
 │   ├── fetch_repo.graphql
+│   ├── create_label.graphql
 │   ├── fetch_project.graphql
+│   ├── fetch_project_items.graphql
 │   ├── search_issues.graphql
 │   ├── create_issue.graphql
 │   ├── update_issue.graphql
@@ -276,11 +324,12 @@ Complete list of GraphQL operations PlanPilot needs:
 | Operation | Type | GraphQL Operation | Used By |
 |-----------|------|-------------------|---------|
 | Fetch repo context | Query | `FetchRepo` | `__aenter__` |
+| Create label | Mutation | `CreateLabel` | `__aenter__` (if label missing) |
 | Fetch project fields | Query | `FetchProject` | `__aenter__` |
 | Search issues | Query | `SearchIssues` | `search_items()` |
 | Create issue | Mutation | `CreateIssue` | `create_item()` |
 | Update issue | Mutation | `UpdateIssue` | `update_item()` |
-| Add label | Mutation | `AddLabels` | `create_item()` (if needed) |
+| Add label | Mutation | `AddLabels` | `create_item()` ensure label assignment |
 | Set issue type | Mutation | `UpdateIssueType` | `create_item()` |
 | Add to project | Mutation | `AddProjectItem` | `create_item()` |
 | Set project field | Mutation | `UpdateProjectField` | `create_item()` |
@@ -289,7 +338,7 @@ Complete list of GraphQL operations PlanPilot needs:
 | Add blocked-by | Mutation | `AddBlockedBy` | `GitHubItem.add_dependency()` |
 | Fetch relations | Query | `FetchRelations` | `GitHubItem` (idempotency check) |
 
-**13 operations total.** All confirmed available in the public GitHub GraphQL schema.
+**14 operations total.** All confirmed available in the public GitHub GraphQL schema, with relation ops capability-gated at runtime.
 
 ## Schema Update Workflow
 
@@ -342,7 +391,7 @@ def create_token_resolver(config: PlanPilotConfig) -> TokenResolver:
     return cls()
 ```
 
-The SDK wires auth and provider together:
+The SDK wires auth and provider together (inside `PlanPilot.from_config(...)`):
 
 ```python
 # sdk.py (inside sync())

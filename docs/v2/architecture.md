@@ -83,7 +83,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 - `PlanItem` — Single flat model for all plan entities. The `type` field discriminates between epics, stories, and tasks. All properties live on one class; fields that don't apply to a given type are validated by `PlanValidator`:
   - **Required (all types):** `id: str`, `type: PlanItemType`, `title: str`
   - **Optional / type-dependent:** `goal`, `motivation`, `spec_ref`, `scope`
-  - **Hierarchy:** `parent_id`, `sub_item_ids`, `depends_on`
+  - **Hierarchy:** `parent_id` (canonical), `sub_item_ids` (optional consistency projection), `depends_on`
   - **Detail fields:** `assumptions`, `risks`, `estimate`
   - **Story/task fields:** `requirements`, `acceptance_criteria`, `success_metrics`
   - **Task fields:** `verification`
@@ -100,7 +100,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `CreateItemInput` — Fields required to create a new item
-- `UpdateItemInput` — Fields for updating an existing item
+- `UpdateItemInput` — Fields for reconciling an existing item (`title`, `body`, `item_type`, `labels`, `size`)
 - `ItemSearchFilters` — Filters for searching items
 - `ItemFields` — Base fields shared by inputs/filters
 
@@ -180,7 +180,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `RenderContext` — Resolved cross-references the engine computed for rendering:
-  - `plan_id` — Deterministic plan hash for the marker comment
+  - `plan_id` — Deterministic plan hash for the metadata block
   - `parent_ref` — Human-readable reference to parent item (e.g. "#42")
   - `sub_items` — List of (key, title) tuples for child items
   - `dependencies` — Dict of {dep_id: issue_ref} for blocked-by links
@@ -221,7 +221,7 @@ Four peer modules that contain all business logic. Each depends only on Contract
 
 1. **`engine/`** — Sync orchestration
    - `SyncEngine` class — orchestrates the 5-phase sync pipeline
-   - `discovery.py` — parse body markers, build existing item maps
+   - `discovery.py` — parse metadata blocks, build existing item maps
    - `relations.py` — compute blocked-by roll-ups (story -> epic)
 
 2. **`plan/`** — Plan file operations
@@ -254,7 +254,7 @@ The public API surface. Wires Core modules together.
 
 **Contents:**
 - `PlanPilot` class — main facade
-- Exposes provider/renderer factories as convenience functions
+- `PlanPilot.from_config(...)` async constructor — builds token resolver, provider, and renderer from config
 - Handles plan loading, dependency injection, engine construction
 - Handles sync map persistence to disk after engine returns `SyncResult`
 
@@ -447,8 +447,8 @@ sequenceDiagram
     participant Renderer as BodyRenderer
 
     User->>CLI: planpilot sync --config planpilot.json --apply
-    CLI->>CLI: resolve token via create_token_resolver(config)
-    CLI->>SDK: PlanPilot(provider, renderer, config)
+    CLI->>SDK: config = load_config(path)
+    CLI->>SDK: pp = await PlanPilot.from_config(config, renderer_name="markdown")
     CLI->>SDK: sync(dry_run=False)
     SDK->>SDK: load_plan(config.plan_paths)
     SDK->>Provider: __aenter__()
@@ -489,25 +489,14 @@ sequenceDiagram
 ### Programmatic Usage
 
 ```python
-from planpilot import (
-    PlanPilot, PlanItemType, create_provider, create_renderer,
-    create_token_resolver, load_config, load_plan,
-)
+from planpilot import PlanPilot, PlanItemType, load_config, load_plan
 
 # Load config from file
 config = load_config("planpilot.json")
 
-# Resolve auth token (strategy determined by config.auth)
-resolver = create_token_resolver(config)
-token = await resolver.resolve()
-
-# Construct provider and renderer (by name, via factories)
-provider = create_provider(config.provider, target=config.target, token=token)
-renderer = create_renderer("markdown")
-
-# Create SDK instance and sync (loads plan from config.plan_paths)
+# Create SDK instance from config (SDK owns composition)
 # Provider lifecycle (__aenter__/__aexit__) is managed internally by sync()
-pp = PlanPilot(provider=provider, renderer=renderer, config=config)
+pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync(dry_run=False)
 
 # Or pass a Plan directly for programmatic use
@@ -657,6 +646,10 @@ Contracts are not a single `models/` bucket. They are organized into six focused
 
 The interfaces define **what the system needs** from external adapters. They are part of the domain vocabulary alongside `Item` and `Plan`. Core contains only **how** — concrete implementations and factories.
 
+### Deterministic plan hashing is canonicalized
+
+`PlanHasher` computes `plan_id` from canonically ordered plan items plus canonical JSON serialization. Item order in source files does not affect hash output.
+
 ### Engine and Providers are Core peers
 
 The engine doesn't know any concrete provider exists. It receives a `Provider` (the ABC) and calls its methods. Concrete adapters implement `Provider` but don't know the engine exists. They communicate only through Contracts. This is dependency inversion.
@@ -673,11 +666,20 @@ The CLI is pure I/O — argument parsing and output formatting. It never reaches
 
 ### Sync map compatibility
 
-v2 is a major version — sync maps are not backward-compatible with v1. v1 sync maps should be discarded. On first v2 run, the Discovery phase re-detects previously created issues via body markers and rebuilds the sync map in v2 format. No issues are duplicated.
+v2 is a major version — sync maps are not backward-compatible with v1. v1 sync maps should be discarded. On first v2 run, the Discovery phase re-detects previously created issues via provider search (`PLAN_ID:<plan_id>` metadata query) and rebuilds the sync map in v2 format.
 
 ### Partial failure recovery
 
-The Discovery phase re-detects previously created items via body markers (`PLAN_ID`/`ITEM_ID` embedded in issue bodies). If a sync crashes mid-upsert, re-running will find already-created items during Discovery and skip them, continuing from where it left off. This makes the sync pipeline idempotent and crash-safe.
+Item bodies contain a renderer-agnostic metadata block used for discovery:
+
+```text
+PLANPILOT_META_V1
+PLAN_ID:<plan_id>
+ITEM_ID:<item_id>
+END_PLANPILOT_META
+```
+
+If a sync crashes mid-upsert, re-running performs provider-search-first discovery using the `PLAN_ID` marker and reconciles already-created items. Provider `create_item()` is required to be idempotent multi-step, so partial setup converges on retry.
 
 ### Concurrency
 

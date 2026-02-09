@@ -38,7 +38,7 @@ class BodyRenderer(ABC):
 
 ```python
 class RenderContext:
-    plan_id: str                              # Deterministic plan hash
+    plan_id: str                              # Deterministic plan hash embedded in metadata block
     parent_ref: str | None                    # Human-readable ref to parent (e.g. "#42"), None for items without a parent
     sub_items: list[tuple[str, str]]          # (key, title) of child items
     dependencies: dict[str, str]              # {dep_id: issue_ref} for blocked-by links
@@ -62,8 +62,10 @@ The renderer uses a **field-driven** approach: it iterates over the item's field
 The rendered body follows this template (sections included only when the field has content):
 
 ```markdown
-<!-- PLAN_ID: {context.plan_id} -->
-<!-- ITEM_ID: {item.id} -->
+PLANPILOT_META_V1
+PLAN_ID:{context.plan_id}
+ITEM_ID:{item.id}
+END_PLANPILOT_META
 
 ## Goal
 
@@ -148,8 +150,10 @@ Blocked by:
 
 | Section | Rendered When | Format |
 |---------|--------------|--------|
-| PLAN_ID marker | Always | HTML comment |
-| ITEM_ID marker | Always | HTML comment |
+| Metadata header | Always | Plain text (`PLANPILOT_META_V1`) |
+| PLAN_ID marker | Always | Plain text (`PLAN_ID:<value>`) |
+| ITEM_ID marker | Always | Plain text (`ITEM_ID:<value>`) |
+| Metadata footer | Always | Plain text (`END_PLANPILOT_META`) |
 | Goal | `item.goal` is non-empty | Plain text |
 | Motivation | `item.motivation` is non-empty | Plain text |
 | Parent | `context.parent_ref` is not None | Bullet with ref (None for items without a parent) |
@@ -164,6 +168,12 @@ Blocked by:
 | Success Metrics | `item.success_metrics` is non-empty | Bullet list |
 | Sub-items | `context.sub_items` is non-empty | Checklist |
 | Dependencies | `context.dependencies` is non-empty | Blocked-by list |
+
+### Metadata Block Requirements
+
+- Every renderer must emit the metadata block verbatim and at the top of the body.
+- The block is provider-searchable and engine-parseable; do not wrap in renderer-specific comments.
+- Values are single-line tokens without extra spaces around `:`.
 
 ### Helper Functions
 
