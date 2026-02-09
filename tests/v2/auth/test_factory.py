@@ -62,3 +62,20 @@ def test_factory_uses_hostname_from_target_for_gh_cli() -> None:
 
     assert isinstance(resolver, GhCliTokenResolver)
     assert resolver.hostname == "github.example.com"
+
+
+@pytest.mark.parametrize(
+    ("target", "expected_hostname"),
+    [
+        ("https://github.example.com:8443/org/repo", "github.example.com"),
+        ("github.example.com:8443", "github.example.com"),
+        ("git@github.example.com:owner/repo", "github.example.com"),
+        ("github.example.com", "github.example.com"),
+        ("owner/repo", "github.com"),
+    ],
+)
+def test_factory_hostname_parsing_edge_cases(target: str, expected_hostname: str) -> None:
+    resolver = create_token_resolver(_make_config(auth="gh-cli", target=target))
+
+    assert isinstance(resolver, GhCliTokenResolver)
+    assert resolver.hostname == expected_hostname

@@ -20,16 +20,24 @@ RESOLVERS: dict[str, type[TokenResolver]] = {
 
 def _hostname_from_target(target: str) -> str:
     raw = target.strip()
+    if not raw:
+        return "github.com"
+
     if "://" in raw:
         parsed = urlparse(raw)
         if parsed.hostname:
             return parsed.hostname
 
-    parts = raw.split("/")
-    if len(parts) >= 2 and "." in parts[0]:
-        return parts[0]
-    if "/" not in raw and "." in raw:
-        return raw
+    prefix, separator, remainder = raw.partition(":")
+    if separator and "@" in prefix and "/" in remainder:
+        _, _, host = prefix.rpartition("@")
+        if host:
+            return host
+
+    candidate = raw.split("/", 1)[0]
+    parsed_candidate = urlparse(f"//{candidate}")
+    if parsed_candidate.hostname and "." in parsed_candidate.hostname:
+        return parsed_candidate.hostname
 
     return "github.com"
 
