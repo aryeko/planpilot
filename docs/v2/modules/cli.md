@@ -18,7 +18,7 @@ v2 uses a subcommand pattern to allow future expansion (e.g. `planpilot validate
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `--config` | `str` | Yes | — | Path to `planpilot.json` config file |
-| `--dry-run` | flag | One of | — | Preview mode — no provider mutations |
+| `--dry-run` | flag | One of | — | Preview mode — uses `DryRunProvider` (no auth/network, no provider mutations) |
 | `--apply` | flag | these | — | Apply mode — create/update items in provider |
 | `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
 

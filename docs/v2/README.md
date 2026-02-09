@@ -33,12 +33,13 @@ A complete redesign focused on SDK-first development with clean layered architec
 
 - Discovery is provider-search-first using metadata marker query (`PLAN_ID:<plan_id>`)
 - All renderers emit a shared plain-text metadata block (`PLANPILOT_META_V1` ... `END_PLANPILOT_META`)
-- Discovery uses provider-native search APIs with fail-fast on truncation/capability limits
+- Discovery uses provider-native search APIs with partitioning as needed and fail-fast on truncation/capability limits
 - Reconciliation ownership is hybrid:
   - Plan-authoritative: title/body/type/label/size/relations
   - Provider-authoritative: status/priority/iteration after creation
 - Exit codes are differentiated (`0`, `2`, `3`, `4`, `5`, `1`)
 - SDK is the composition root via `PlanPilot.from_config(...)`
+- Dry-run uses a `DryRunProvider` (no auth/network calls, no provider mutations)
 - Dry-run sync maps are persisted to `<sync_path>.dry-run`
 - Engine owns dispatch concurrency (`max_concurrent`); provider owns per-call retries and rate-limit coordination
 
@@ -48,6 +49,7 @@ A complete redesign focused on SDK-first development with clean layered architec
 - Workflow board fields (`status`, `priority`, `iteration`) are provider-authoritative after create
 - Relation mutations are capability-gated and produce explicit errors when unsupported
 - CLI text summary is human-oriented, not a stable machine interface
+- In `validation_mode=partial`, unresolved parent/dependency references are omitted from rendered context and relations for that run
 
 ## Migration from v1
 

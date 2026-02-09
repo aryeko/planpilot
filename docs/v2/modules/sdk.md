@@ -12,7 +12,7 @@ The SDK contains no business logic — pure orchestration and wiring.
 class PlanPilot:
     """PlanPilot SDK — the public API for programmatic plan syncing."""
 
-    def __init__(self, *, provider: Provider, renderer: BodyRenderer,
+    def __init__(self, *, provider: Provider | None, renderer: BodyRenderer,
                  config: PlanPilotConfig) -> None:
         """Initialize with injected dependencies (advanced/testing)."""
 
@@ -21,10 +21,9 @@ class PlanPilot:
                           renderer_name: str = "markdown") -> PlanPilot:
         """Create PlanPilot from config (recommended).
 
-        1. Resolve token via create_token_resolver(config)
-        2. Build provider via create_provider(...)
-        3. Build renderer via create_renderer(renderer_name)
-        4. Return PlanPilot(provider, renderer, config)
+        1. Build renderer via create_renderer(renderer_name)
+        2. Defer provider/auth construction to sync() mode branch
+        3. Return PlanPilot(provider=None, renderer, config)
         """
 
     async def sync(self, plan: Plan | None = None, *,
@@ -45,26 +44,35 @@ flowchart TB
     LoadPlan -- Yes --> Validate
     Load --> Validate["PlanValidator.validate(plan, mode=config.validation_mode)"]
     Validate --> Hash["PlanHasher.compute_plan_id(plan)"]
-    Hash --> Enter["provider.__aenter__()"]
+    Hash --> Mode{"dry_run?"}
+    Mode -- Yes --> DryProv["provider = DryRunProvider(...)"]
+    Mode -- No --> Auth["resolve token + create provider"]
+    Auth --> Enter["provider.__aenter__()"]
     Enter --> Engine["SyncEngine(provider, renderer, config, dry_run)"]
+    DryProv --> Engine
     Engine --> Run["engine.sync(plan, plan_id)"]
-    Run --> Exit["provider.__aexit__()"]
-    Exit --> Persist["persist sync map to config.sync_path (or .dry-run)"]
+    Run --> Exit{"apply mode?"}
+    Exit -- Yes --> ProviderExit["provider.__aexit__()"]
+    Exit -- No --> Persist["persist sync map to config.sync_path (or .dry-run)"]
+    ProviderExit --> Persist
     Persist --> Return["return SyncResult"]
 ```
 
 1. **Load plan** (if not provided) — `PlanLoader().load(config.plan_paths)`
 2. **Validate plan** — `PlanValidator().validate(plan, mode=config.validation_mode)`
 3. **Compute plan ID** — `PlanHasher().compute_plan_id(plan)` -> 12-char hex hash
-4. **Enter provider** — `async with provider` manages auth + context resolution
-5. **Construct + run engine** — `SyncEngine(provider, renderer, config, dry_run).sync(plan, plan_id)`
-6. **Exit provider** — `__aexit__` ensures cleanup even on error
-7. **Persist sync map** — apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`
-8. **Return result**
+4. **Choose provider by mode**
+   - `dry_run=True`: use `DryRunProvider` (no token, no network)
+   - `dry_run=False`: resolve token + build configured provider
+5. **Enter provider for apply mode** — `async with provider` manages auth + context resolution
+6. **Construct + run engine** — `SyncEngine(provider, renderer, config, dry_run).sync(plan, plan_id)`
+7. **Exit provider in apply mode** — `__aexit__` ensures cleanup even on error
+8. **Persist sync map** — apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`
+9. **Return result**
 
-**Provider lifecycle:** `sync()` manages `__aenter__`/`__aexit__` internally. Callers don't need `async with`.
+**Provider lifecycle:** `sync()` manages provider construction and lifecycle internally. Callers never manage `async with`.
 
-**Error handling:** If engine/provider raises, `__aexit__` is still called. Exception propagates after cleanup.
+**Error handling:** In apply mode, if engine/provider raises, `__aexit__` is still called. Exception propagates after cleanup.
 
 ## load_config()
 

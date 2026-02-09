@@ -186,7 +186,7 @@ classDiagram
     }
 
     class PlanPilot {
-        -Provider provider
+        -Provider | None provider
         -BodyRenderer renderer
         -PlanPilotConfig config
         +sync(plan: Plan | None, *, dry_run: bool) SyncResult
@@ -219,12 +219,16 @@ sequenceDiagram
     User->>CLI: planpilot sync --config planpilot.json --apply
     CLI->>SDK: config = load_config(path)
     CLI->>SDK: pp = await PlanPilot.from_config(config, renderer_name="markdown")
-    CLI->>SDK: sync(dry_run=False)
+    CLI->>SDK: sync(dry_run=False | true)
     SDK->>SDK: load_plan(config.plan_paths)
-    SDK->>Provider: __aenter__()
-    Provider-->>SDK: authenticated provider
-
     SDK->>SDK: compute_plan_id(plan)
+    alt apply mode
+        SDK->>SDK: resolve token + create provider
+        SDK->>Provider: __aenter__()
+        Provider-->>SDK: authenticated provider
+    else dry-run mode
+        SDK->>SDK: create DryRunProvider (no auth/network)
+    end
     SDK->>Engine: SyncEngine(provider, renderer, config, dry_run)
     SDK->>Engine: sync(plan, plan_id)
 
@@ -249,7 +253,9 @@ sequenceDiagram
 
     Engine-->>SDK: SyncResult
     SDK->>SDK: persist sync map to disk (apply path or .dry-run)
-    SDK->>Provider: __aexit__()
+    alt apply mode
+        SDK->>Provider: __aexit__()
+    end
     SDK-->>CLI: SyncResult
     CLI-->>User: formatted output
 ```

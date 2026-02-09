@@ -17,7 +17,7 @@ class TokenResolver(ABC):
         """
 ```
 
-The resolver is called once during SDK setup (before provider construction). The returned token is passed to the provider factory.
+The resolver is called only for apply-mode runs during `PlanPilot.sync(dry_run=False)`, before provider construction. The returned token is passed to the provider factory.
 
 ## Concrete Resolvers
 
@@ -58,7 +58,7 @@ sequenceDiagram
     Provider->>Provider: __aenter__() with Bearer token
 ```
 
-Token resolution happens in the SDK's `PlanPilot.from_config()`, before the provider is constructed. The provider never knows which resolver was used.
+Token resolution happens in the SDK's apply-mode sync path, before the provider is constructed. Dry-run does not resolve tokens. The provider never knows which resolver was used.
 
 ## Token Resolver Factory
 

@@ -20,14 +20,14 @@ class SyncEngine:
     async def sync(self, plan: Plan, plan_id: str) -> SyncResult: ...
 ```
 
-The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, config, and a `dry_run` flag. The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation.
+The engine receives a fully constructed `Provider`, a `BodyRenderer`, config, and a `dry_run` flag. In apply mode, the provider is already entered/authenticated by the SDK. In dry-run mode, the SDK injects `DryRunProvider` (no external I/O). The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation.
 
 ### Concurrency Model
 
 The engine processes item types sequentially (epics -> stories -> tasks) — parents must exist before children. Within each type level, operations are dispatched concurrently, gated by `asyncio.Semaphore(config.max_concurrent)`.
 
 ```python
-self._semaphore = asyncio.Semaphore(config.max_concurrent)  # default 1 = sequential
+self._semaphore = asyncio.Semaphore(config.max_concurrent)  # valid range: 1..10
 
 async def _guarded(self, coro: Coroutine) -> T:
     async with self._semaphore:
@@ -83,13 +83,15 @@ flowchart TB
     Discovery --> Upsert --> Enrich --> Relations --> Result
 ```
 
-In dry-run mode, only Upsert runs (with placeholder entries, no API calls). Discovery, Enrich, and Relations are skipped. The SDK persists dry-run output to `<sync_path>.dry-run`.
+In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The SDK persists dry-run output to `<sync_path>.dry-run`.
 
 ## Phase 1: Discovery
 
 **Goal:** Find items that already exist in the provider for this plan, so we can skip re-creating them.
 
 **Source of truth:** Provider-search-first. The sync map is persisted output/cache, not the canonical source for finding existing items.
+
+Discovery may be partitioned by the provider to stay within search caps. The engine treats provider search results as canonical and consumes the provider's de-duplicated union.
 
 ```python
 filters = ItemSearchFilters(
@@ -129,9 +131,10 @@ for item_type in [PlanItemType.EPIC, PlanItemType.STORY, PlanItemType.TASK]:
             tg.create_task(self._upsert_item(plan_item, plan_id))
 
 async def _upsert_item(self, plan_item: PlanItem, plan_id: str) -> None:
+    parent_entry = sync_map.entries.get(plan_item.parent_id) if plan_item.parent_id else None
     context = RenderContext(
         plan_id=plan_id,
-        parent_ref=parent_entry.key,
+        parent_ref=parent_entry.key if parent_entry else None,
         sub_items=[],
         dependencies={},
     )
@@ -151,7 +154,7 @@ async def _upsert_item(self, plan_item: PlanItem, plan_id: str) -> None:
 
 **Failure semantics:** `asyncio.TaskGroup` propagates the first exception and cancels remaining tasks in the level (fail-fast). Partially created items are recoverable on next sync via Discovery.
 
-**Dry-run behavior:** Skips all provider calls and creates placeholder `SyncEntry` objects with `key="dry-run"`, `url="dry-run"`.
+**Dry-run behavior:** Uses `DryRunProvider` implementations of provider methods (in-memory `create/update/search` and no-op relations), so no external API calls occur.
 
 ## Phase 3: Enrich
 
@@ -165,11 +168,17 @@ async with asyncio.TaskGroup() as tg:
         tg.create_task(self._enrich_item(plan_item, plan_id))
 
 async def _enrich_item(self, plan_item: PlanItem, plan_id: str) -> None:
+    parent_entry = sync_map.entries.get(plan_item.parent_id) if plan_item.parent_id else None
+    dep_entries = {
+        dep_id: sync_map.entries[dep_id].key
+        for dep_id in sorted(plan_item.depends_on)
+        if dep_id in sync_map.entries
+    }
     context = RenderContext(
         plan_id=plan_id,
-        parent_ref=parent_entry.key,
+        parent_ref=parent_entry.key if parent_entry else None,
         sub_items=sorted([(child_entry.key, child_item.title) for child in children], key=lambda p: (p[0], p[1])),
-        dependencies={dep_id: sync_map.entries[dep_id].key for dep_id in sorted(plan_item.depends_on)},
+        dependencies=dep_entries,
     )
     body = renderer.render(plan_item, context)
 
@@ -180,6 +189,11 @@ async def _enrich_item(self, plan_item: PlanItem, plan_id: str) -> None:
             size=plan_item.estimate.tshirt if plan_item.estimate else None,
         ))
 ```
+
+`validation_mode=partial` behavior:
+- Unresolved `parent_id` / `depends_on` references are omitted from `RenderContext`
+- Renderer includes only fields provided in the context/item
+- Relations for unresolved references are skipped for that run with warnings
 
 **Reconciliation ownership:**
 - **Plan-authoritative:** `title`, `body`, `item_type`, `labels`, `size`, relations
@@ -199,6 +213,8 @@ async with asyncio.TaskGroup() as tg:
     for item, blocker_item in dependency_pairs:
         tg.create_task(self._guarded(item.add_dependency(blocker_item)))
 ```
+
+Only resolved relations are dispatched. In `validation_mode=partial`, unresolved references are skipped with warnings (not errors).
 
 **Roll-up logic:** If a child in parent A depends on a child in parent B (A != B), then parent A is blocked by parent B. This rolls up recursively (task deps -> story level, story deps -> epic level). Cyclic edges are de-duplicated and skipped with warnings.
 

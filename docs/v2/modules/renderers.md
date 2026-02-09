@@ -17,6 +17,8 @@ class MarkdownRenderer(BodyRenderer):
 
 Field-driven: iterates over the item's fields and renders each non-empty one as a Markdown section. Empty/None fields are skipped.
 
+The renderer must render only provided fields from `PlanItem` and `RenderContext`; unresolved references are omitted by the engine in partial mode.
+
 ### Output Structure
 
 Sections are included only when the field has content:

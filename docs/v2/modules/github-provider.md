@@ -75,6 +75,11 @@ class GitHubProviderContext(ProviderContext):
     create_type_map: dict[str, str]
 ```
 
+Concurrency note:
+- Immutable-after-enter fields: resolved IDs, capability booleans, create-type strategy/map
+- Mutable cache fields: `project_item_ids`, relation cache snapshots
+- Mutable caches must be guarded by provider-local locks before read/modify/write
+
 ## Authentication
 
 Token resolution is handled by the auth module (see [auth.md](auth.md) for `TokenResolver` ABC, concrete resolvers, factory, and auth flow diagram). The provider receives a resolved token string — it does not know which resolver was used.
@@ -182,28 +187,42 @@ self._client = AsyncClient(
 
 ### Shared Rate-Limit Pause
 
-When any concurrent call receives a 429 or secondary rate limit, the provider sets a shared `asyncio.Event` that pauses all in-flight and queued operations until the `Retry-After` period expires. This prevents thundering-herd retries.
+When any concurrent call receives a 429 or secondary rate limit, the provider updates a shared pause deadline and blocks all queued calls until that deadline passes. The pause coordinator must be race-safe under concurrent rate-limit responses.
 
 ```python
 class GitHubProvider:
-    _rate_limit_clear: asyncio.Event  # set = ok to proceed, clear = paused
+    _rate_limit_clear: asyncio.Event
+    _rate_limit_lock: asyncio.Lock
+    _rate_limit_pause_until: float  # monotonic timestamp
 
     async def _wait_for_rate_limit(self) -> None:
         await self._rate_limit_clear.wait()
 
     async def _apply_rate_limit_pause(self, retry_after: float) -> None:
-        self._rate_limit_clear.clear()
-        await asyncio.sleep(retry_after)
-        self._rate_limit_clear.set()
+        async with self._rate_limit_lock:
+            until = monotonic() + retry_after
+            if until <= self._rate_limit_pause_until:
+                return
+            self._rate_limit_pause_until = until
+            self._rate_limit_clear.clear()
+        await asyncio.sleep(max(0.0, self._rate_limit_pause_until - monotonic()))
+        async with self._rate_limit_lock:
+            if monotonic() >= self._rate_limit_pause_until:
+                self._rate_limit_clear.set()
 ```
 
-All provider operations call `_wait_for_rate_limit()` before executing. The first call to hit a rate limit triggers the pause; all others block until it clears.
+All provider operations call `_wait_for_rate_limit()` before executing. Concurrent 429s extend pause windows, never shorten them.
 
 ### Pagination Requirements
 
 Must paginate: repo issue types, label lookups, search results, project items, relation fetches.
 
 Rules: cursor until `hasNextPage == false`, bounded page size (50-100), max-page safety budget with loud failure on exceed, discovery must fail if pagination truncates results.
+
+Discovery partitioning:
+- Keep search as the source of truth
+- Split discovery into deterministic partitions when needed (for example by `item_type` label or metadata shard)
+- Union and de-duplicate all partition results by issue ID before returning to engine
 
 ### Project Field Type Handling
 

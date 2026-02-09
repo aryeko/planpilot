@@ -102,7 +102,7 @@ class PlanPilotConfig(BaseModel):
     label: str = "planpilot"
     """Label to apply to all created items."""
 
-    max_concurrent: int = Field(default=1, ge=1)
+    max_concurrent: int = Field(default=1, ge=1, le=10)
     """Max concurrent provider operations per engine phase. Default 1 = sequential."""
 
     field_config: FieldConfig = FieldConfig()
@@ -126,8 +126,9 @@ class PlanPilotConfig(BaseModel):
 | `max_concurrent` value | Result |
 |------------------------|--------|
 | `1` (default) | Valid — fully sequential |
-| `2`–`100` | Valid — concurrent within engine phases |
+| `2`–`10` | Valid — concurrent within engine phases |
 | `0` or negative | Invalid (`ConfigError`) |
+| `>10` | Invalid (`ConfigError`) |
 
 ### GitHub-Specific Config Rules (v2 launch)
 

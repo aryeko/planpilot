@@ -14,6 +14,7 @@ Providers must support discovery semantics used by the engine:
 
 - `search_items()` must apply `labels` and `body_contains` as a conjunctive filter
 - `search_items()` must use provider-native search semantics with mandatory pagination
+- `search_items()` may execute partitioned queries and must return the de-duplicated union
 - Discovery must fail fast if search limits/caps would truncate results (no silent partial discovery)
 - If a provider cannot satisfy these semantics, it must fail fast in `__aenter__` with `ProviderCapabilityError`
 
@@ -74,7 +75,8 @@ The engine dispatches concurrent provider calls gated by `config.max_concurrent`
 
 - All `Provider` methods must be safe for concurrent invocation from the engine
 - Multiple `create_item()`, `update_item()`, and relation calls may be in-flight simultaneously
-- Provider-internal state (e.g. `ProviderContext`) must be read-only after `__aenter__` completes
+- Provider context setup fields (resolved IDs, capabilities, static mappings) must be immutable after `__aenter__`
+- Mutable caches are allowed, but must be synchronized (lock/atomic update) and safe for concurrent readers/writers
 
 ### Retry Responsibility
 
@@ -95,7 +97,7 @@ The provider owns per-call reliability. The engine does not retry — it calls o
 - Do **not** retry permanent failures (auth errors, schema/validation errors)
 - Log retry attempts with operation name and attempt count
 - Cap total retries per call (e.g. 3-5 attempts)
-- On rate-limit (429), coordinate pause across all concurrent in-flight calls via shared signal
+- On rate-limit (429), coordinate pause across all concurrent in-flight calls via a race-safe shared coordinator
 
 ### Connection Pooling
 
@@ -125,6 +127,15 @@ def create_provider(
 Launch provider for GitHub Issues + Projects v2. Uses ariadne-codegen + httpx for typed async GraphQL (see [ADR-001](../decisions/001-ariadne-codegen.md) for rationale).
 
 See [github-provider.md](github-provider.md) for full implementation details: core classes, authentication, codegen setup, operational hardening, operations inventory, and file structure.
+
+## DryRunProvider
+
+`DryRunProvider` is an in-memory provider used by `sync(dry_run=True)`.
+
+- No auth/token resolution required
+- No network calls
+- Implements provider methods with deterministic placeholders and no-op relation mutations
+- Enables renderer/context flow without mutating external systems
 
 ## Adding a New Provider
 
