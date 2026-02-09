@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-09 20:56 (Asia/Jerusalem)
-**Commit:** 96c0f26
+**Generated:** 2026-02-09 (Asia/Jerusalem)
+**Commit:** d5e87d6
 **Branch:** v2
 
 ## OVERVIEW
@@ -12,16 +12,19 @@ Core stack: Pydantic contracts, async orchestration engine, generated GraphQL cl
 ```text
 planpilot/
 |- src/planpilot/              # Runtime package (SDK + engine + providers)
-|  |- cli.py                   # CLI parser + command execution
+|  |- cli.py                   # CLI parser + command execution (sync, init)
 |  |- sdk.py                   # Composition root and sync-map persistence
+|  |- scaffold.py              # Config scaffolding, env detection, plan stubs
 |  |- engine/engine.py         # Discovery -> upsert -> enrich -> relations
 |  |- providers/github/        # GitHub adapter + generated GraphQL client
 |  |- contracts/               # Provider-agnostic types and ABCs
 |  `- plan/                    # Plan loading, validation, hashing
 |- tests/                      # Mirrors runtime domains; includes offline E2E
 |- docs/                       # Architecture, module specs, decisions
-|- docs/AGENTS.md              # Documentation map and doc-specific guardrails
-|- src/planpilot/providers/AGENTS.md  # Provider factory + dry-run + extension rules
+|- skills/                     # Agent skill and install files
+|  |- roadmap-to-github-project/SKILL.md  # Planning + sync skill definition
+|  |- INSTALL.md               # Manual skill install instructions
+|  `- INSTALL.agent.md         # Agent self-install (fetch-and-follow)
 `- .github/workflows/          # CI, release, TestPyPI/PyPI pipeline
 ```
 
@@ -29,6 +32,8 @@ planpilot/
 | Task | Location | Notes |
 |------|----------|-------|
 | CLI flow and exits | `src/planpilot/cli.py` | `build_parser()`, `main()`, summary text |
+| Config init wizard | `src/planpilot/cli.py` | `_run_init_interactive()`, `_run_init_defaults()` |
+| Config scaffolding | `src/planpilot/scaffold.py` | `detect_target()`, `detect_plan_paths()`, `scaffold_config()` |
 | Runtime composition | `src/planpilot/sdk.py` | `PlanPilot.from_config()` + `sync()` orchestration entry |
 | Sync pipeline | `src/planpilot/engine/engine.py` | 5-phase flow and relation wiring |
 | Provider contract boundary | `src/planpilot/contracts/provider.py` | Provider ABC expected by engine |
@@ -36,6 +41,8 @@ planpilot/
 | Provider extension points | `src/planpilot/providers/factory.py`, `src/planpilot/providers/dry_run.py` | Provider mapping and offline apply path |
 | Plan semantics | `src/planpilot/plan/validator.py` | Strict/partial validation behavior |
 | Renderer output markers | `src/planpilot/renderers/markdown.py` | Metadata block drives idempotent discovery |
+| Agent skill | `skills/roadmap-to-github-project/SKILL.md` | Schema, scoping rules, workflow, CLI reference |
+| Skill install | `skills/INSTALL.md`, `skills/INSTALL.agent.md` | Manual and agent self-install paths |
 | Release behavior | `.github/workflows/release.yml`, `RELEASE.md` | Semantic release -> TestPyPI smoke -> PyPI |
 
 ## CODE MAP
@@ -45,7 +52,10 @@ planpilot/
 | `SyncEngine` | class | `src/planpilot/engine/engine.py` | high | Core pipeline coordinator |
 | `Provider` | ABC | `src/planpilot/contracts/provider.py` | medium | Adapter contract used by engine |
 | `GitHubProvider` | class | `src/planpilot/providers/github/provider.py` | high | Concrete GitHub implementation |
-| `build_parser` | function | `src/planpilot/cli.py` | medium | CLI argument schema |
+| `build_parser` | function | `src/planpilot/cli.py` | medium | CLI argument schema (sync + init) |
+| `scaffold_config` | function | `src/planpilot/scaffold.py` | medium | Config builder with validation |
+| `detect_target` | function | `src/planpilot/scaffold.py` | low | Git remote auto-detection |
+| `detect_plan_paths` | function | `src/planpilot/scaffold.py` | low | Plan file auto-discovery |
 
 ## CONVENTIONS
 - Source/tests mirror by domain (`src/planpilot/<module>` <-> `tests/<module>`).
