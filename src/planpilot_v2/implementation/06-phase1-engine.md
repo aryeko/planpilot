@@ -70,7 +70,7 @@ Return `SyncResult(sync_map, items_created, dry_run)`.
 
 ### Dry-run Behavior
 
-Only Phase 2 runs with placeholder entries (`key="dry-run"`, `url="dry-run"`). No API calls. Phases 1, 3, 4 are skipped.
+Dry-run executes the same 5-phase pipeline using an injected `DryRunProvider`, so discovery/upsert/enrich/relations logic is exercised end-to-end. No external API calls occur in dry-run mode.
 
 ---
 
@@ -106,4 +106,4 @@ def compute_parent_blocked_by(
 
 | Test File | Key Cases |
 |-----------|-----------|
-| `test_engine.py` | **Discovery:** search_items called with correct filters, metadata parsed to build existing_map. **Upsert:** new items created via provider, existing items skipped, type-level ordering (epics before stories before tasks). **Enrich:** update_item called with full context, cross-refs resolved. **Relations:** set_parent/add_dependency called correctly, parent roll-up. **Dry-run:** no provider calls, placeholder entries. **Concurrency:** semaphore respected. **Errors:** CreateItemPartialFailureError wrapped in SyncError. **Result:** SyncResult has correct counts and sync_map. |
+| `test_engine.py` | **Discovery:** search_items called with correct filters, metadata parsed to build existing_map. **Upsert:** new items created via provider, existing items skipped, type-level ordering (epics before stories before tasks). **Enrich:** update_item called with full context, cross-refs resolved. **Relations:** set_parent/add_dependency called correctly, parent roll-up. **Dry-run:** full pipeline runs against `DryRunProvider` with no external API calls. **Concurrency:** semaphore respected. **Errors:** CreateItemPartialFailureError wrapped in SyncError. **Result:** SyncResult has correct counts and sync_map. |
