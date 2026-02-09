@@ -1,83 +1,106 @@
-"""Relational validation for a Plan (cross-entity integrity checks)."""
+"""Plan relational validation."""
 
 from __future__ import annotations
 
-from planpilot.exceptions import PlanValidationError
-from planpilot.models.plan import Plan
+from collections import Counter
+
+from planpilot.contracts.exceptions import PlanValidationError
+from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 
 
-def validate_plan(plan: Plan) -> None:
-    """Validate relational integrity of a plan.
+class PlanValidator:
+    """Validate semantic integrity of a loaded Plan."""
 
-    Supports single-epic and multi-epic plans. Validates cross-entity
-    references: epic↔story, story↔task, and task dependencies.
+    def validate(self, plan: Plan, *, mode: str = "strict") -> None:
+        if mode not in {"strict", "partial"}:
+            raise PlanValidationError(f"invalid validation mode: {mode}")
 
-    Raises:
-        PlanValidationError: Aggregated list of all validation errors found.
-    """
-    errors: list[str] = []
+        errors: list[str] = []
+        items_by_id = self._index_items(plan, errors)
 
-    if len({epic.id for epic in plan.epics}) != len(plan.epics):
-        errors.append("plan contains duplicate epic ids")
-    if len({story.id for story in plan.stories}) != len(plan.stories):
-        errors.append("plan contains duplicate story ids")
-    if len({task.id for task in plan.tasks}) != len(plan.tasks):
-        errors.append("plan contains duplicate task ids")
+        for item in plan.items:
+            self._validate_type(item, errors)
+            self._validate_required_fields(item, errors)
+            self._validate_parent_and_hierarchy(item, items_by_id, mode=mode, errors=errors)
+            self._validate_dependencies(item, items_by_id, mode=mode, errors=errors)
+            self._validate_sub_item_consistency(item, items_by_id, errors)
 
-    if len(plan.epics) < 1:
-        errors.append("plan must contain at least one epic")
+        if errors:
+            raise PlanValidationError("\n".join(errors))
 
-    epic_ids = {e.id for e in plan.epics}
-    story_ids = {s.id for s in plan.stories}
-    task_ids = {t.id for t in plan.tasks}
-    task_by_id = {t.id: t for t in plan.tasks}
-    story_by_id = {story.id: story for story in plan.stories}
+    @staticmethod
+    def _index_items(plan: Plan, errors: list[str]) -> dict[str, PlanItem]:
+        counts = Counter(item.id for item in plan.items)
+        for item_id, count in counts.items():
+            if count > 1:
+                errors.append(f"duplicate item id: {item_id}")
+        return {item.id: item for item in plan.items}
 
-    # Track which tasks belong to which story
-    story_tasks: dict[str, list[str]] = {sid: [] for sid in story_ids}
+    @staticmethod
+    def _validate_type(item: PlanItem, errors: list[str]) -> None:
+        if not isinstance(item.type, PlanItemType):
+            errors.append(f"invalid type for {item.id}: {item.type!r}")
 
-    for task in plan.tasks:
-        if task.story_id not in story_ids:
-            errors.append(f"task {task.id} story_id '{task.story_id}' not found in stories")
-            continue
-        story_tasks[task.story_id].append(task.id)
-        for dep in task.depends_on:
-            if dep not in task_ids:
-                errors.append(f"task {task.id} depends_on '{dep}' not found in tasks")
+    @staticmethod
+    def _validate_required_fields(item: PlanItem, errors: list[str]) -> None:
+        if item.type is PlanItemType.EPIC and item.parent_id is not None:
+            errors.append(f"epic cannot have parent_id: {item.id}")
+        if not item.goal or not item.goal.strip():
+            errors.append(f"missing required goal: {item.id}")
+        if not item.requirements:
+            errors.append(f"missing required requirements: {item.id}")
+        if not item.acceptance_criteria:
+            errors.append(f"missing required acceptance_criteria: {item.id}")
 
-    for story in plan.stories:
-        if story.epic_id not in epic_ids:
-            errors.append(f"story {story.id} epic_id '{story.epic_id}' not found in epics")
-        missing = [tid for tid in story.task_ids if tid not in task_ids]
-        if missing:
-            errors.append(f"story {story.id} references unknown task_ids {missing}")
-        # Verify referenced tasks actually belong to this story
-        for tid in story.task_ids:
-            if tid in task_by_id and task_by_id[tid].story_id != story.id:
-                errors.append(
-                    f"story {story.id} references task {tid} but task.story_id is '{task_by_id[tid].story_id}'"
-                )
-        extras = set(story_tasks.get(story.id, [])) - set(story.task_ids)
-        if extras:
-            errors.append(f"story {story.id} missing task_ids for {sorted(extras)}")
-        if not story.task_ids and not story_tasks.get(story.id):
-            errors.append(f"story {story.id} has no tasks")
+    def _validate_parent_and_hierarchy(
+        self,
+        item: PlanItem,
+        items_by_id: dict[str, PlanItem],
+        *,
+        mode: str,
+        errors: list[str],
+    ) -> None:
+        if item.parent_id is None:
+            return
 
-    for epic in plan.epics:
-        missing_stories = [sid for sid in epic.story_ids if sid not in story_ids]
-        if missing_stories:
-            errors.append(f"epic {epic.id} references unknown story_ids {missing_stories}")
+        parent = items_by_id.get(item.parent_id)
+        if parent is None:
+            if mode == "strict":
+                errors.append(f"missing parent reference: {item.id} -> {item.parent_id}")
+            return
 
-        wrong_epic_stories = [
-            sid for sid in epic.story_ids if sid in story_by_id and story_by_id[sid].epic_id != epic.id
-        ]
-        if wrong_epic_stories:
-            errors.append(f"epic {epic.id} references story_ids owned by a different epic: {wrong_epic_stories}")
+        if item.type is PlanItemType.STORY and parent.type is not PlanItemType.EPIC:
+            errors.append(f"story parent must be epic: {item.id} -> {item.parent_id}")
+        if item.type is PlanItemType.TASK and parent.type is not PlanItemType.STORY:
+            errors.append(f"task parent must be story: {item.id} -> {item.parent_id}")
 
-        epic_story_ids = {story.id for story in plan.stories if story.epic_id == epic.id}
-        extras = epic_story_ids - set(epic.story_ids)
-        if extras:
-            errors.append(f"epic {epic.id} missing story_ids for {sorted(extras)}")
+    @staticmethod
+    def _validate_dependencies(
+        item: PlanItem,
+        items_by_id: dict[str, PlanItem],
+        *,
+        mode: str,
+        errors: list[str],
+    ) -> None:
+        for dep_id in item.depends_on:
+            if dep_id in items_by_id:
+                continue
+            if mode == "strict":
+                errors.append(f"missing dependency reference: {item.id} -> {dep_id}")
 
-    if errors:
-        raise PlanValidationError(errors)
+    @staticmethod
+    def _validate_sub_item_consistency(item: PlanItem, items_by_id: dict[str, PlanItem], errors: list[str]) -> None:
+        for sub_item_id in item.sub_item_ids:
+            sub_item = items_by_id.get(sub_item_id)
+            if sub_item is None:
+                continue
+            if sub_item.parent_id != item.id:
+                errors.append(f"sub-item parent mismatch: {item.id} -> {sub_item_id}")
+
+        if item.parent_id is None:
+            return
+        parent = items_by_id.get(item.parent_id)
+        if parent is None:
+            return
+        if item.id not in parent.sub_item_ids:
+            errors.append(f"parent missing sub_item_ids inverse: {item.id} -> {item.parent_id}")

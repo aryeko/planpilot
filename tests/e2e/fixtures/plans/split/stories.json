@@ -1,0 +1,11 @@
+[
+  {
+    "id": "S1",
+    "title": "Offline split story",
+    "goal": "Validate split story lifecycle",
+    "parent_id": "E1",
+    "requirements": ["Story links to epic"],
+    "acceptance_criteria": ["Story appears in summary output"],
+    "sub_item_ids": ["T1"]
+  }
+]

@@ -1,6 +1,4 @@
-"""Allow running planpilot as ``python -m planpilot``."""
-
-from __future__ import annotations
+"""Module entrypoint for ``python -m planpilot``."""
 
 from planpilot.cli import main
 

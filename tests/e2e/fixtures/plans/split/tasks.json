@@ -1,0 +1,10 @@
+[
+  {
+    "id": "T1",
+    "title": "Offline split task",
+    "goal": "Validate split task lifecycle",
+    "parent_id": "S1",
+    "requirements": ["Task links to story"],
+    "acceptance_criteria": ["Task appears in summary output"]
+  }
+]

@@ -26,7 +26,6 @@ classifiers = [
 ]
 packages = [
     {include = "planpilot", from = "src"},
-    {include = "planpilot_v2", from = "src"},
 ]
 exclude = ["skills"]
 
@@ -37,7 +36,6 @@ exclude = ["skills"]
 
 [tool.poetry.scripts]
 planpilot = "planpilot.cli:main"
-planpilot_v2 = "planpilot_v2.cli:main"
 
 [tool.poetry.dependencies]
 python = ">=3.11"
@@ -64,16 +62,12 @@ build-backend = "poetry.core.masonry.api"
 lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
-test = "pytest -v"
+test = "pytest -v --ignore=tests/e2e"
+test-e2e = "pytest -v tests/e2e/test_cli_e2e.py"
 coverage = "pytest -v --cov-report=html:.coverage/html"
+coverage-e2e = "pytest -v tests/e2e/test_cli_e2e.py --cov-report=term-missing --cov-report=xml:.coverage/coverage-e2e.xml"
 typecheck = "mypy src/planpilot"
 check = ["lint", "format-check", "test"]
-lint-v2 = "ruff check src/planpilot_v2 tests/v2"
-format-v2 = "ruff format src/planpilot_v2 tests/v2"
-format-check-v2 = "ruff format --check src/planpilot_v2 tests/v2"
-test-v2 = "pytest -o addopts='' -v tests/v2 --cov=planpilot_v2 --cov-fail-under=95 --cov-report=term-missing --cov-report=xml:.coverage/coverage-v2.xml"
-typecheck-v2 = "mypy src/planpilot_v2"
-check-v2 = ["lint-v2", "format-check-v2", "test-v2", "typecheck-v2"]
 
 [tool.poe.tasks.gen-schema]
 help = "Introspect GitHub GraphQL API and download schema"
@@ -81,7 +75,7 @@ shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ari
 
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot_v2/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot_v2/providers/github/github_gql && ruff format src/planpilot_v2/providers/github/github_gql"
+shell = "rm -rf src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot/providers/github/github_gql && ruff format src/planpilot/providers/github/github_gql"
 
 [tool.poe.tasks.gen-gql]
 help = "Download schema and generate GraphQL client"
@@ -102,7 +96,7 @@ source = ["planpilot"]
 branch = true
 data_file = ".coverage/coverage.db"
 omit = [
-    "src/planpilot_v2/providers/github/github_gql/*",
+    "src/planpilot/providers/github/github_gql/*",
 ]
 
 [tool.coverage.report]
@@ -131,10 +125,10 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/planpilot_v2/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
+"src/planpilot/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["planpilot", "planpilot_v2"]
+known-first-party = ["planpilot"]
 
 [tool.mypy]
 python_version = "3.11"
@@ -142,7 +136,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
-exclude = "(^src/planpilot_v2/providers/github/github_gql/)"
+exclude = "(^src/planpilot/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
@@ -167,10 +161,10 @@ mode = "update"
 type = "github"
 
 [tool.ariadne-codegen]
-schema_path = "src/planpilot_v2/providers/github/schema.graphql"
-queries_path = "src/planpilot_v2/providers/github/operations"
+schema_path = "src/planpilot/providers/github/schema.graphql"
+queries_path = "src/planpilot/providers/github/operations"
 target_package_name = "github_gql"
-target_package_path = "src/planpilot_v2/providers/github"
+target_package_path = "src/planpilot/providers/github"
 client_name = "GitHubGraphQLClient"
 client_file_name = "client"
 async_client = true

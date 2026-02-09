@@ -1,0 +1,10 @@
+[
+  {
+    "id": "E1",
+    "title": "Offline split epic",
+    "goal": "Ship split-input dry-run flow",
+    "requirements": ["Keep CLI sync offline"],
+    "acceptance_criteria": ["Dry-run summary is rendered"],
+    "sub_item_ids": ["S1"]
+  }
+]
