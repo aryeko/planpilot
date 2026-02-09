@@ -18,31 +18,43 @@ If Python is not installed, STOP and tell the user:
 
 > Python 3.11+ is required. Please install it from https://python.org and try again.
 
-## Step 2: Install planpilot
+## Step 2: Ensure pipx is available
 
-Try each in order until one succeeds:
-
-```bash
-pip install --upgrade planpilot
-```
+Check if `pipx` is installed:
 
 ```bash
-pip3 install --upgrade planpilot
+pipx --version
 ```
+
+If `pipx` is **not found**, install it:
+
+- **macOS (Homebrew)**:
+  ```bash
+  brew install pipx
+  pipx ensurepath
+  ```
+- **Debian / Ubuntu**:
+  ```bash
+  sudo apt install -y pipx
+  pipx ensurepath
+  ```
+- **Other / fallback**:
+  ```bash
+  python3 -m pip install --user pipx
+  python3 -m pipx ensurepath
+  ```
+
+After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for the PATH update to take effect.
+
+## Step 3: Install planpilot
 
 ```bash
-python3 -m pip install --upgrade planpilot
+pipx install planpilot
 ```
 
-```bash
-python -m pip install --upgrade planpilot
-```
+If this fails, STOP and tell the user the error output.
 
-If all fail, STOP and tell the user the error output. Common issues:
-- No pip: suggest `python3 -m ensurepip --upgrade`
-- Permission denied: suggest adding `--user` flag
-
-## Step 3: Verify planpilot
+## Step 4: Verify planpilot
 
 Run (try in order until one succeeds):
 
@@ -60,7 +72,7 @@ python -m planpilot --version
 
 If none work, STOP and report the failure to the user.
 
-## Step 4: Install the skill
+## Step 5: Install the skill
 
 ```bash
 mkdir -p ~/.agents/skills/roadmap-to-github-project
@@ -78,15 +90,15 @@ wget -qO ~/.agents/skills/roadmap-to-github-project/SKILL.md \
   "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md"
 ```
 
-## Step 5: Verify skill install
+## Step 6: Verify skill install
 
 ```bash
 head -5 ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-The output must contain `name: roadmap-to-github-project`. If not, the download failed — retry Step 4.
+The output must contain `name: roadmap-to-github-project`. If not, the download failed — retry Step 5.
 
-## Step 6: Report to user
+## Step 7: Report to user
 
 Tell the user:
 

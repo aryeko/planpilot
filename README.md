@@ -62,23 +62,34 @@ See [docs/design/architecture.md](docs/design/architecture.md) for the full arch
 ## Installation
 
 ```bash
+# Install pipx if you don't have it
+brew install pipx && pipx ensurepath   # macOS
+# or: sudo apt install -y pipx && pipx ensurepath   # Debian/Ubuntu
+
+# Install planpilot
+pipx install planpilot
+```
+
+[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments -- avoids PEP 668 / "externally managed environment" errors on macOS Homebrew and system Python.
+
+<details>
+<summary>Alternative: pip (inside a virtualenv)</summary>
+
+```bash
+python3 -m venv .venv && source .venv/bin/activate
 pip install planpilot
 ```
 
-Or with Poetry:
+</details>
+
+<details>
+<summary>From source (Poetry)</summary>
 
 ```bash
 poetry add planpilot
 ```
 
-Verify Python and pip:
-
-```bash
-python3 --version
-python3 -m pip --version
-```
-
-Note: `python3 -m pip install -g planpilot` is invalid (`pip` has no `-g` flag). Use `pip install` with `--user`, a virtualenv, or your system package policy.
+</details>
 
 ## Install Agent Skill
 

@@ -18,7 +18,7 @@ Before any action, list available skills and invoke all that apply. If installed
 ## Prerequisites
 
 - Python 3.11+
-- `planpilot` installed: `pip install planpilot`
+- `planpilot` installed: `pipx install planpilot`
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use
@@ -479,30 +479,33 @@ python -m planpilot --version
 **If none of the above succeed**, run diagnostics:
 
 ```bash
-which python3 python
+which python3 python pipx
 python3 --version
-python --version
-pip list 2>/dev/null | grep -i planpilot
-pip3 list 2>/dev/null | grep -i planpilot
+pipx list 2>/dev/null | grep -i planpilot
 ```
 
 Report findings to the user and explain:
 
-> `planpilot` is not installed in the current Python environment. Would you like me to install it?
+> `planpilot` is not installed. Would you like me to install it?
 
-If the user agrees, install:
+If the user agrees:
 
-```bash
-pip install planpilot
-```
+1. **Ensure `pipx` is available** — check `pipx --version`. If not found, install it:
 
-Or if only `pip3` is available:
+   ```bash
+   brew install pipx && pipx ensurepath   # macOS
+   # or: sudo apt install -y pipx && pipx ensurepath   # Debian/Ubuntu
+   ```
 
-```bash
-pip3 install planpilot
-```
+   The user may need to restart their shell after `ensurepath`.
 
-After install, re-verify with `planpilot --version`. If still failing, check that the pip install target is on `PATH` and suggest `python3 -m pip install planpilot` as a fallback.
+2. **Install planpilot**:
+
+   ```bash
+   pipx install planpilot
+   ```
+
+3. **Re-verify** with `planpilot --version`. If still failing, check that `~/.local/bin` is on `PATH`.
 
 **Remember which invocation worked** (`planpilot`, `python3 -m planpilot`, or `python -m planpilot`) and use that form for all subsequent commands in this session.
 
