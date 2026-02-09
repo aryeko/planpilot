@@ -19,9 +19,7 @@ def _make_issue_core(
     label_names: list[str] | None = None,
 ) -> IssueCore:
     """Build a typed IssueCore instance for tests."""
-    labels = IssueCoreLabels(
-        nodes=[IssueCoreLabelsNodes(id=f"lbl-{n}", name=n) for n in (label_names or [])]
-    )
+    labels = IssueCoreLabels(nodes=[IssueCoreLabelsNodes(id=f"lbl-{n}", name=n) for n in (label_names or [])])
     return IssueCore(id=id, number=number, url=url, title=title, body=body, labels=labels)
 
 
@@ -200,9 +198,7 @@ async def test_update_item_uses_update_issue(monkeypatch: pytest.MonkeyPatch) ->
     )
 
     async def fake_get_item(item_id: str):
-        return provider._item_from_issue_core(
-            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
-        )
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
 
     async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
         return _make_issue_core(
@@ -313,9 +309,7 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
     )
 
     async def fake_get_item(item_id: str):
-        return provider._item_from_issue_core(
-            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
-        )
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
 
     async def fake_get_labels(item_id: str) -> list[str]:
         return ["existing"]
@@ -381,9 +375,7 @@ async def test_update_item_issue_type_strategy_sets_type_atomically(monkeypatch:
     )
 
     async def fake_get_item(item_id: str):
-        return provider._item_from_issue_core(
-            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
-        )
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
 
     update_calls: list[tuple[str, UpdateItemInput]] = []
 

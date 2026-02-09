@@ -13,9 +13,7 @@ class FetchOrgProject(BaseModel):
 
 
 class FetchOrgProjectOrganization(BaseModel):
-    project_v_2: Optional["FetchOrgProjectOrganizationProjectV2"] = Field(
-        alias="projectV2"
-    )
+    project_v_2: Optional["FetchOrgProjectOrganizationProjectV2"] = Field(alias="projectV2")
 
 
 class FetchOrgProjectOrganizationProjectV2(BaseModel):

@@ -9,16 +9,12 @@ from .base_model import BaseModel
 
 
 class RemoveSubIssue(BaseModel):
-    remove_sub_issue: Optional["RemoveSubIssueRemoveSubIssue"] = Field(
-        alias="removeSubIssue"
-    )
+    remove_sub_issue: Optional["RemoveSubIssueRemoveSubIssue"] = Field(alias="removeSubIssue")
 
 
 class RemoveSubIssueRemoveSubIssue(BaseModel):
     issue: Optional["RemoveSubIssueRemoveSubIssueIssue"]
-    sub_issue: Optional["RemoveSubIssueRemoveSubIssueSubIssue"] = Field(
-        alias="subIssue"
-    )
+    sub_issue: Optional["RemoveSubIssueRemoveSubIssueSubIssue"] = Field(alias="subIssue")
 
 
 class RemoveSubIssueRemoveSubIssueIssue(BaseModel):

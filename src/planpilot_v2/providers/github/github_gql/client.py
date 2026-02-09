@@ -60,9 +60,7 @@ def gql(q: str) -> str:
 
 
 class GitHubGraphQLClient(AsyncBaseClient):
-    async def add_blocked_by(
-        self, blocked_id: str, blocker_id: str, **kwargs: Any
-    ) -> "AddBlockedBy":
+    async def add_blocked_by(self, blocked_id: str, blocker_id: str, **kwargs: Any) -> "AddBlockedBy":
         from .add_blocked_by import AddBlockedBy
 
         variables: dict[str, object] = {
@@ -70,35 +68,23 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "blockerId": blocker_id,
         }
         response = await self.execute(
-            query=ADD_BLOCKED_BY_GQL,
-            operation_name="AddBlockedBy",
-            variables=variables,
-            **kwargs
+            query=ADD_BLOCKED_BY_GQL, operation_name="AddBlockedBy", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return AddBlockedBy.model_validate(data)
 
-    async def add_labels(
-        self, labelable_id: str, label_ids: list[str], **kwargs: Any
-    ) -> "AddLabels":
+    async def add_labels(self, labelable_id: str, label_ids: list[str], **kwargs: Any) -> "AddLabels":
         from .add_labels import AddLabels
 
         variables: dict[str, object] = {
             "labelableId": labelable_id,
             "labelIds": label_ids,
         }
-        response = await self.execute(
-            query=ADD_LABELS_GQL,
-            operation_name="AddLabels",
-            variables=variables,
-            **kwargs
-        )
+        response = await self.execute(query=ADD_LABELS_GQL, operation_name="AddLabels", variables=variables, **kwargs)
         data = self.get_data(response)
         return AddLabels.model_validate(data)
 
-    async def add_project_item(
-        self, project_id: str, content_id: str, **kwargs: Any
-    ) -> "AddProjectItem":
+    async def add_project_item(self, project_id: str, content_id: str, **kwargs: Any) -> "AddProjectItem":
         from .add_project_item import AddProjectItem
 
         variables: dict[str, object] = {
@@ -106,20 +92,13 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "contentId": content_id,
         }
         response = await self.execute(
-            query=ADD_PROJECT_ITEM_GQL,
-            operation_name="AddProjectItem",
-            variables=variables,
-            **kwargs
+            query=ADD_PROJECT_ITEM_GQL, operation_name="AddProjectItem", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return AddProjectItem.model_validate(data)
 
     async def add_sub_issue(
-        self,
-        parent_id: str,
-        child_id: str,
-        replace_parent: Union[Optional[bool], "UnsetType"] = UNSET,
-        **kwargs: Any
+        self, parent_id: str, child_id: str, replace_parent: Union[Optional[bool], "UnsetType"] = UNSET, **kwargs: Any
     ) -> "AddSubIssue":
         from .add_sub_issue import AddSubIssue
 
@@ -129,19 +108,13 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "replaceParent": replace_parent,
         }
         response = await self.execute(
-            query=ADD_SUB_ISSUE_GQL,
-            operation_name="AddSubIssue",
-            variables=variables,
-            **kwargs
+            query=ADD_SUB_ISSUE_GQL, operation_name="AddSubIssue", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return AddSubIssue.model_validate(data)
 
     async def close_issue(
-        self,
-        issue_id: str,
-        state_reason: Union[Optional["IssueClosedStateReason"], "UnsetType"] = UNSET,
-        **kwargs: Any
+        self, issue_id: str, state_reason: Union[Optional["IssueClosedStateReason"], "UnsetType"] = UNSET, **kwargs: Any
     ) -> "CloseIssue":
         from .close_issue import CloseIssue
 
@@ -149,12 +122,7 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "issueId": issue_id,
             "stateReason": state_reason,
         }
-        response = await self.execute(
-            query=CLOSE_ISSUE_GQL,
-            operation_name="CloseIssue",
-            variables=variables,
-            **kwargs
-        )
+        response = await self.execute(query=CLOSE_ISSUE_GQL, operation_name="CloseIssue", variables=variables, **kwargs)
         data = self.get_data(response)
         return CloseIssue.model_validate(data)
 
@@ -167,7 +135,7 @@ class GitHubGraphQLClient(AsyncBaseClient):
         issue_type_id: Union[Optional[str], "UnsetType"] = UNSET,
         project_v_2_ids: Union[Optional[list[str]], "UnsetType"] = UNSET,
         parent_issue_id: Union[Optional[str], "UnsetType"] = UNSET,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "CreateIssue":
         from .create_issue import CreateIssue
 
@@ -181,73 +149,49 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "parentIssueId": parent_issue_id,
         }
         response = await self.execute(
-            query=CREATE_ISSUE_GQL,
-            operation_name="CreateIssue",
-            variables=variables,
-            **kwargs
+            query=CREATE_ISSUE_GQL, operation_name="CreateIssue", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return CreateIssue.model_validate(data)
 
-    async def create_label(
-        self, repository_id: str, name: str, **kwargs: Any
-    ) -> "CreateLabel":
+    async def create_label(self, repository_id: str, name: str, **kwargs: Any) -> "CreateLabel":
         from .create_label import CreateLabel
 
         variables: dict[str, object] = {"repositoryId": repository_id, "name": name}
         response = await self.execute(
-            query=CREATE_LABEL_GQL,
-            operation_name="CreateLabel",
-            variables=variables,
-            **kwargs
+            query=CREATE_LABEL_GQL, operation_name="CreateLabel", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return CreateLabel.model_validate(data)
 
-    async def fetch_org_project(
-        self, owner: str, number: int, **kwargs: Any
-    ) -> "FetchOrgProject":
+    async def fetch_org_project(self, owner: str, number: int, **kwargs: Any) -> "FetchOrgProject":
         from .fetch_org_project import FetchOrgProject
 
         variables: dict[str, object] = {"owner": owner, "number": number}
         response = await self.execute(
-            query=FETCH_ORG_PROJECT_GQL,
-            operation_name="FetchOrgProject",
-            variables=variables,
-            **kwargs
+            query=FETCH_ORG_PROJECT_GQL, operation_name="FetchOrgProject", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return FetchOrgProject.model_validate(data)
 
-    async def fetch_project_fields(
-        self, project_id: str, **kwargs: Any
-    ) -> "FetchProjectFields":
+    async def fetch_project_fields(self, project_id: str, **kwargs: Any) -> "FetchProjectFields":
         from .fetch_project_fields import FetchProjectFields
 
         variables: dict[str, object] = {"projectId": project_id}
         response = await self.execute(
-            query=FETCH_PROJECT_FIELDS_GQL,
-            operation_name="FetchProjectFields",
-            variables=variables,
-            **kwargs
+            query=FETCH_PROJECT_FIELDS_GQL, operation_name="FetchProjectFields", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return FetchProjectFields.model_validate(data)
 
     async def fetch_project_items(
-        self,
-        project_id: str,
-        cursor: Union[Optional[str], "UnsetType"] = UNSET,
-        **kwargs: Any
+        self, project_id: str, cursor: Union[Optional[str], "UnsetType"] = UNSET, **kwargs: Any
     ) -> "FetchProjectItems":
         from .fetch_project_items import FetchProjectItems
 
         variables: dict[str, object] = {"projectId": project_id, "cursor": cursor}
         response = await self.execute(
-            query=FETCH_PROJECT_ITEMS_GQL,
-            operation_name="FetchProjectItems",
-            variables=variables,
-            **kwargs
+            query=FETCH_PROJECT_ITEMS_GQL, operation_name="FetchProjectItems", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return FetchProjectItems.model_validate(data)
@@ -257,10 +201,7 @@ class GitHubGraphQLClient(AsyncBaseClient):
 
         variables: dict[str, object] = {"ids": ids}
         response = await self.execute(
-            query=FETCH_RELATIONS_GQL,
-            operation_name="FetchRelations",
-            variables=variables,
-            **kwargs
+            query=FETCH_RELATIONS_GQL, operation_name="FetchRelations", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return FetchRelations.model_validate(data)
@@ -269,42 +210,25 @@ class GitHubGraphQLClient(AsyncBaseClient):
         from .fetch_repo import FetchRepo
 
         variables: dict[str, object] = {"owner": owner, "name": name}
-        response = await self.execute(
-            query=FETCH_REPO_GQL,
-            operation_name="FetchRepo",
-            variables=variables,
-            **kwargs
-        )
+        response = await self.execute(query=FETCH_REPO_GQL, operation_name="FetchRepo", variables=variables, **kwargs)
         data = self.get_data(response)
         return FetchRepo.model_validate(data)
 
-    async def fetch_user_project(
-        self, owner: str, number: int, **kwargs: Any
-    ) -> "FetchUserProject":
+    async def fetch_user_project(self, owner: str, number: int, **kwargs: Any) -> "FetchUserProject":
         from .fetch_user_project import FetchUserProject
 
         variables: dict[str, object] = {"owner": owner, "number": number}
         response = await self.execute(
-            query=FETCH_USER_PROJECT_GQL,
-            operation_name="FetchUserProject",
-            variables=variables,
-            **kwargs
+            query=FETCH_USER_PROJECT_GQL, operation_name="FetchUserProject", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return FetchUserProject.model_validate(data)
 
-    async def find_labels(
-        self, owner: str, name: str, query: str, **kwargs: Any
-    ) -> "FindLabels":
+    async def find_labels(self, owner: str, name: str, query: str, **kwargs: Any) -> "FindLabels":
         from .find_labels import FindLabels
 
         variables: dict[str, object] = {"owner": owner, "name": name, "query": query}
-        response = await self.execute(
-            query=FIND_LABELS_GQL,
-            operation_name="FindLabels",
-            variables=variables,
-            **kwargs
-        )
+        response = await self.execute(query=FIND_LABELS_GQL, operation_name="FindLabels", variables=variables, **kwargs)
         data = self.get_data(response)
         return FindLabels.model_validate(data)
 
@@ -312,18 +236,11 @@ class GitHubGraphQLClient(AsyncBaseClient):
         from .get_issue import GetIssue
 
         variables: dict[str, object] = {"id": id}
-        response = await self.execute(
-            query=GET_ISSUE_GQL,
-            operation_name="GetIssue",
-            variables=variables,
-            **kwargs
-        )
+        response = await self.execute(query=GET_ISSUE_GQL, operation_name="GetIssue", variables=variables, **kwargs)
         data = self.get_data(response)
         return GetIssue.model_validate(data)
 
-    async def remove_blocked_by(
-        self, blocked_id: str, blocker_id: str, **kwargs: Any
-    ) -> "RemoveBlockedBy":
+    async def remove_blocked_by(self, blocked_id: str, blocker_id: str, **kwargs: Any) -> "RemoveBlockedBy":
         from .remove_blocked_by import RemoveBlockedBy
 
         variables: dict[str, object] = {
@@ -331,17 +248,12 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "blockerId": blocker_id,
         }
         response = await self.execute(
-            query=REMOVE_BLOCKED_BY_GQL,
-            operation_name="RemoveBlockedBy",
-            variables=variables,
-            **kwargs
+            query=REMOVE_BLOCKED_BY_GQL, operation_name="RemoveBlockedBy", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return RemoveBlockedBy.model_validate(data)
 
-    async def remove_labels(
-        self, labelable_id: str, label_ids: list[str], **kwargs: Any
-    ) -> "RemoveLabels":
+    async def remove_labels(self, labelable_id: str, label_ids: list[str], **kwargs: Any) -> "RemoveLabels":
         from .remove_labels import RemoveLabels
 
         variables: dict[str, object] = {
@@ -349,43 +261,29 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "labelIds": label_ids,
         }
         response = await self.execute(
-            query=REMOVE_LABELS_GQL,
-            operation_name="RemoveLabels",
-            variables=variables,
-            **kwargs
+            query=REMOVE_LABELS_GQL, operation_name="RemoveLabels", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return RemoveLabels.model_validate(data)
 
-    async def remove_sub_issue(
-        self, parent_id: str, child_id: str, **kwargs: Any
-    ) -> "RemoveSubIssue":
+    async def remove_sub_issue(self, parent_id: str, child_id: str, **kwargs: Any) -> "RemoveSubIssue":
         from .remove_sub_issue import RemoveSubIssue
 
         variables: dict[str, object] = {"parentId": parent_id, "childId": child_id}
         response = await self.execute(
-            query=REMOVE_SUB_ISSUE_GQL,
-            operation_name="RemoveSubIssue",
-            variables=variables,
-            **kwargs
+            query=REMOVE_SUB_ISSUE_GQL, operation_name="RemoveSubIssue", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return RemoveSubIssue.model_validate(data)
 
     async def search_issues(
-        self,
-        query: str,
-        cursor: Union[Optional[str], "UnsetType"] = UNSET,
-        **kwargs: Any
+        self, query: str, cursor: Union[Optional[str], "UnsetType"] = UNSET, **kwargs: Any
     ) -> "SearchIssues":
         from .search_issues import SearchIssues
 
         variables: dict[str, object] = {"query": query, "cursor": cursor}
         response = await self.execute(
-            query=SEARCH_ISSUES_GQL,
-            operation_name="SearchIssues",
-            variables=variables,
-            **kwargs
+            query=SEARCH_ISSUES_GQL, operation_name="SearchIssues", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return SearchIssues.model_validate(data)
@@ -397,7 +295,7 @@ class GitHubGraphQLClient(AsyncBaseClient):
         body: Union[Optional[str], "UnsetType"] = UNSET,
         issue_type_id: Union[Optional[str], "UnsetType"] = UNSET,
         label_ids: Union[Optional[list[str]], "UnsetType"] = UNSET,
-        **kwargs: Any
+        **kwargs: Any,
     ) -> "UpdateIssue":
         from .update_issue import UpdateIssue
 
@@ -409,21 +307,13 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "labelIds": label_ids,
         }
         response = await self.execute(
-            query=UPDATE_ISSUE_GQL,
-            operation_name="UpdateIssue",
-            variables=variables,
-            **kwargs
+            query=UPDATE_ISSUE_GQL, operation_name="UpdateIssue", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return UpdateIssue.model_validate(data)
 
     async def update_project_field(
-        self,
-        project_id: str,
-        item_id: str,
-        field_id: str,
-        option_id: str,
-        **kwargs: Any
+        self, project_id: str, item_id: str, field_id: str, option_id: str, **kwargs: Any
     ) -> "UpdateProjectField":
         from .update_project_field import UpdateProjectField
 
@@ -434,10 +324,7 @@ class GitHubGraphQLClient(AsyncBaseClient):
             "optionId": option_id,
         }
         response = await self.execute(
-            query=UPDATE_PROJECT_FIELD_GQL,
-            operation_name="UpdateProjectField",
-            variables=variables,
-            **kwargs
+            query=UPDATE_PROJECT_FIELD_GQL, operation_name="UpdateProjectField", variables=variables, **kwargs
         )
         data = self.get_data(response)
         return UpdateProjectField.model_validate(data)

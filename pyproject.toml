@@ -102,7 +102,6 @@ branch = true
 data_file = ".coverage/coverage.db"
 omit = [
     "src/planpilot_v2/providers/github/github_gql/*",
-    "src/planpilot_v2/providers/github/_retrying_transport.py",
 ]
 
 [tool.coverage.report]

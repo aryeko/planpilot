@@ -74,9 +74,13 @@ class GitHubProvider(Provider):
         priority_field: ResolvedField | None = None
         iteration_field: ResolvedField | None = None
         if project_id:
-            size_field_id, size_options, status_field, priority_field, iteration_field = (
-                await self._resolve_project_fields(project_id)
-            )
+            (
+                size_field_id,
+                size_options,
+                status_field,
+                priority_field,
+                iteration_field,
+            ) = await self._resolve_project_fields(project_id)
 
         create_type_strategy, create_type_map = self._resolve_create_type_policy(owner_type)
 
@@ -273,9 +277,9 @@ class GitHubProvider(Provider):
         # Resolve issue types
         issue_type_ids: dict[str, str] = {}
         if repository.issue_types and repository.issue_types.nodes:
-            for node in repository.issue_types.nodes:
-                if node:
-                    issue_type_ids[node.name.upper()] = node.id
+            for it_node in repository.issue_types.nodes:
+                if it_node:
+                    issue_type_ids[it_node.name.upper()] = it_node.id
 
         return repo_id, label_id, issue_type_ids
 
@@ -283,16 +287,18 @@ class GitHubProvider(Provider):
         client = self._require_client()
         owner_type, owner, number = parse_project_url(self._board_url)
 
+        project_id: str | None = None
         if owner_type == "org":
-            data = await client.fetch_org_project(owner=owner, number=number)
-            org = data.organization
-            project = org.project_v_2 if org else None
+            org_data = await client.fetch_org_project(owner=owner, number=number)
+            org = org_data.organization
+            if org and org.project_v_2:
+                project_id = org.project_v_2.id
         else:
-            data = await client.fetch_user_project(owner=owner, number=number)
-            user = data.user
-            project = user.project_v_2 if user else None
+            user_data = await client.fetch_user_project(owner=owner, number=number)
+            user = user_data.user
+            if user and user.project_v_2:
+                project_id = user.project_v_2.id
 
-        project_id = project.id if project else None
         return owner_type, owner, number, project_id
 
     def _resolve_create_type_policy(self, owner_type: str) -> tuple[str, dict[str, str]]:
@@ -389,9 +395,7 @@ class GitHubProvider(Provider):
                 input.item_type.value
             )
             if issue_type_id is None:
-                _LOG.warning(
-                    "Could not resolve issue type ID for %r; issue created without a type", mapped_name
-                )
+                _LOG.warning("Could not resolve issue type ID for %r; issue created without a type", mapped_name)
 
         # Resolve project IDs
         project_ids = [self.context.project_id] if self.context.project_id else None

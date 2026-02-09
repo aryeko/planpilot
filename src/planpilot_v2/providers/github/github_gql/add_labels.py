@@ -9,9 +9,7 @@ from .base_model import BaseModel
 
 
 class AddLabels(BaseModel):
-    add_labels_to_labelable: Optional["AddLabelsAddLabelsToLabelable"] = Field(
-        alias="addLabelsToLabelable"
-    )
+    add_labels_to_labelable: Optional["AddLabelsAddLabelsToLabelable"] = Field(alias="addLabelsToLabelable")
 
 
 class AddLabelsAddLabelsToLabelable(BaseModel):

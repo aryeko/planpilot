@@ -320,22 +320,14 @@ class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationField(BaseMode
     id: str
     name: str
     data_type: ProjectV2FieldType = Field(alias="dataType")
-    configuration: (
-        "FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfiguration"
-    )
+    configuration: "FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfiguration"
 
 
-class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfiguration(
-    BaseModel
-):
-    iterations: list[
-        "FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfigurationIterations"
-    ]
+class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfiguration(BaseModel):
+    iterations: list["FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfigurationIterations"]
 
 
-class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfigurationIterations(
-    BaseModel
-):
+class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationFieldConfigurationIterations(BaseModel):
     id: str
     title: str
     start_date: date = Field(alias="startDate")
@@ -347,14 +339,10 @@ class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectField(BaseM
     id: str
     name: str
     data_type: ProjectV2FieldType = Field(alias="dataType")
-    options: list[
-        "FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectFieldOptions"
-    ]
+    options: list["FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectFieldOptions"]
 
 
-class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectFieldOptions(
-    BaseModel
-):
+class FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectFieldOptions(BaseModel):
     id: str
     name: str
 

@@ -9,9 +9,7 @@ from .base_model import BaseModel
 
 
 class AddProjectItem(BaseModel):
-    add_project_v_2_item_by_id: Optional["AddProjectItemAddProjectV2ItemById"] = Field(
-        alias="addProjectV2ItemById"
-    )
+    add_project_v_2_item_by_id: Optional["AddProjectItemAddProjectV2ItemById"] = Field(alias="addProjectV2ItemById")
 
 
 class AddProjectItemAddProjectV2ItemById(BaseModel):

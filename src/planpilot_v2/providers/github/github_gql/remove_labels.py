@@ -9,8 +9,8 @@ from .base_model import BaseModel
 
 
 class RemoveLabels(BaseModel):
-    remove_labels_from_labelable: Optional["RemoveLabelsRemoveLabelsFromLabelable"] = (
-        Field(alias="removeLabelsFromLabelable")
+    remove_labels_from_labelable: Optional["RemoveLabelsRemoveLabelsFromLabelable"] = Field(
+        alias="removeLabelsFromLabelable"
     )
 
 

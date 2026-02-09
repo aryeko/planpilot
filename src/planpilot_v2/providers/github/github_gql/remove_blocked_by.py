@@ -9,9 +9,7 @@ from .base_model import BaseModel
 
 
 class RemoveBlockedBy(BaseModel):
-    remove_blocked_by: Optional["RemoveBlockedByRemoveBlockedBy"] = Field(
-        alias="removeBlockedBy"
-    )
+    remove_blocked_by: Optional["RemoveBlockedByRemoveBlockedBy"] = Field(alias="removeBlockedBy")
 
 
 class RemoveBlockedByRemoveBlockedBy(BaseModel):
