@@ -19,7 +19,7 @@ class PlanHasher:
         return hashlib.sha256(encoded.encode("utf-8")).hexdigest()[:12]
 
     def _canonical_item(self, item: PlanItem) -> dict[str, Any]:
-        dumped = item.model_dump(mode="json", by_alias=True, exclude_none=True)
+        dumped = cast(dict[str, Any], item.model_dump(mode="json", by_alias=True, exclude_none=True))
         return cast(dict[str, Any], self._drop_empty_containers(dumped))
 
     def _drop_empty_containers(self, value: Any) -> Any:

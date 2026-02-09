@@ -41,6 +41,7 @@ planpilot = "planpilot.cli:main"
 [tool.poetry.dependencies]
 python = ">=3.11"
 pydantic = "^2.12.5"
+httpx = "^0.28"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=7.0"
@@ -51,6 +52,8 @@ pytest-asyncio = "^1.3.0"
 commitlint = ">=1.3"
 poethepoet = "^0.40.0"
 python-semantic-release = {version = "10.5.3", python = ">=3.11,<4.0"}
+# ariadne-codegen is run via pipx (click conflict with python-semantic-release)
+# pipx run --spec "ariadne-codegen>=0.17,<0.18" ariadne-codegen
 
 [build-system]
 requires = ["poetry-core"]
@@ -71,6 +74,18 @@ test-v2 = "pytest -o addopts='' -v tests/v2 --cov=planpilot_v2 --cov-fail-under=
 typecheck-v2 = "mypy src/planpilot_v2"
 check-v2 = ["lint-v2", "format-check-v2", "test-v2", "typecheck-v2"]
 
+[tool.poe.tasks.gen-schema]
+help = "Introspect GitHub GraphQL API and download schema"
+shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen graphqlschema --config tools/ariadne-schema.toml"
+
+[tool.poe.tasks.gen-client]
+help = "Generate typed GraphQL client from schema and operations"
+shell = "rm -rf src/planpilot_v2/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot_v2/providers/github/github_gql && ruff format src/planpilot_v2/providers/github/github_gql"
+
+[tool.poe.tasks.gen-gql]
+help = "Download schema and generate GraphQL client"
+sequence = ["gen-schema", "gen-client"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "--cov=planpilot --cov-report=term-missing --cov-report=xml:.coverage/coverage.xml"
@@ -85,6 +100,9 @@ filterwarnings = [
 source = ["planpilot"]
 branch = true
 data_file = ".coverage/coverage.db"
+omit = [
+    "src/planpilot_v2/providers/github/github_gql/*",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -111,6 +129,9 @@ select = [
     "RUF", # ruff-specific
 ]
 
+[tool.ruff.lint.per-file-ignores]
+"src/planpilot_v2/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
+
 [tool.ruff.lint.isort]
 known-first-party = ["planpilot", "planpilot_v2"]
 
@@ -120,6 +141,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+exclude = "(^src/planpilot_v2/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
@@ -142,3 +164,62 @@ mode = "update"
 
 [tool.semantic_release.remote]
 type = "github"
+
+[tool.ariadne-codegen]
+schema_path = "src/planpilot_v2/providers/github/schema.graphql"
+queries_path = "src/planpilot_v2/providers/github/operations"
+target_package_name = "github_gql"
+target_package_path = "src/planpilot_v2/providers/github"
+client_name = "GitHubGraphQLClient"
+client_file_name = "client"
+async_client = true
+convert_to_snake_case = true
+include_all_inputs = false
+include_all_enums = false
+include_comments = "stable"
+enable_custom_operations = false
+opentelemetry_client = false
+plugins = [
+    "ariadne_codegen.contrib.extract_operations.ExtractOperationsPlugin",
+    "ariadne_codegen.contrib.client_forward_refs.ClientForwardRefsPlugin",
+    "ariadne_codegen.contrib.shorter_results.ShorterResultsPlugin",
+]
+
+[tool.ariadne-codegen.extract_operations]
+operations_module_name = "operations"
+
+[tool.ariadne-codegen.scalars.Date]
+type = "datetime.date"
+
+[tool.ariadne-codegen.scalars.DateTime]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.PreciseDateTime]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.GitTimestamp]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.BigInt]
+type = "int"
+
+[tool.ariadne-codegen.scalars.URI]
+type = "str"
+
+[tool.ariadne-codegen.scalars.Base64String]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitObjectID]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitRefname]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitSSHRemote]
+type = "str"
+
+[tool.ariadne-codegen.scalars.HTML]
+type = "str"
+
+[tool.ariadne-codegen.scalars.X509Certificate]
+type = "str"

@@ -1,0 +1,17 @@
+mutation UpdateIssue(
+  $id: ID!
+  $title: String
+  $body: String
+  $issueTypeId: ID
+  $labelIds: [ID!]
+) {
+  updateIssue(input: {
+    id: $id
+    title: $title
+    body: $body
+    issueTypeId: $issueTypeId
+    labelIds: $labelIds
+  }) {
+    issue { ...IssueCore }
+  }
+}

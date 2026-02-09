@@ -1,0 +1,5 @@
+query GetIssue($id: ID!) {
+  node(id: $id) {
+    ... on Issue { ...IssueCore }
+  }
+}

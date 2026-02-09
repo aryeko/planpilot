@@ -1,0 +1,29 @@
+query FetchProjectFields($projectId: ID!) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      fields(first: 50) {
+        nodes {
+          ... on ProjectV2Field {
+            id
+            name
+            dataType
+          }
+          ... on ProjectV2SingleSelectField {
+            id
+            name
+            dataType
+            options { id name }
+          }
+          ... on ProjectV2IterationField {
+            id
+            name
+            dataType
+            configuration {
+              iterations { id title startDate duration }
+            }
+          }
+        }
+      }
+    }
+  }
+}
