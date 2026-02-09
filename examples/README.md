@@ -24,6 +24,8 @@ E-1 User Authentication
 
 ## Running
 
+To generate your own config interactively, use `planpilot init` instead of creating `planpilot.json` by hand.
+
 ### Dry-run (preview, fully offline)
 
 ```bash

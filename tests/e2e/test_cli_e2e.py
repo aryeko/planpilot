@@ -1,7 +1,10 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -369,3 +372,359 @@ def test_cli_exit_code_mappings_in_process(
     captured = capsys.readouterr()
     assert "error:" in captured.err
     assert str(error) in captured.err
+
+
+# ---------------------------------------------------------------------------
+# planpilot init — e2e tests
+# ---------------------------------------------------------------------------
+
+
+class _FakeQuestion:
+    """Mimics questionary.Question — returns a canned value from .ask()."""
+
+    def __init__(self, value: Any) -> None:
+        self._value = value
+
+    def ask(self) -> Any:
+        return self._value
+
+
+def _build_fake_questionary(answers: dict[str, Any]) -> SimpleNamespace:
+    """Build a fake questionary module that resolves prompts by keyword match."""
+
+    def _find(prompt: str) -> Any:
+        for key, value in answers.items():
+            if key.lower() in prompt.lower():
+                return value
+        raise KeyError(f"no answer configured for prompt: {prompt!r}")  # pragma: no cover
+
+    return SimpleNamespace(
+        select=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
+        text=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
+        confirm=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
+        Choice=lambda label, value: value,
+    )
+
+
+# -- defaults mode -----------------------------------------------------------
+
+
+def test_e2e_init_defaults_generates_valid_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """``planpilot init --defaults`` creates a parseable config file."""
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: "e2e-org/e2e-repo")
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    exit_code = main(["init", "--defaults", "--output", str(output)])
+
+    assert exit_code == 0
+    assert output.exists()
+    config = json.loads(output.read_text())
+    assert config["provider"] == "github"
+    assert config["target"] == "e2e-org/e2e-repo"
+    assert "plan_paths" in config
+    captured = capsys.readouterr()
+    assert "Config written to" in captured.out
+
+
+def test_e2e_init_defaults_refuses_overwrite(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "planpilot.json"
+    output.write_text("{}")
+
+    exit_code = main(["init", "--defaults", "--output", str(output)])
+
+    assert exit_code == 2
+    assert "already exists" in capsys.readouterr().err
+
+
+def test_e2e_init_defaults_then_dry_run_sync(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Generate config via ``init --defaults``, patch plan_paths to real
+    fixtures, then run ``sync --dry-run`` — full pipeline round-trip."""
+    split_dir = FIXTURES_ROOT / "split"
+    config_path = tmp_path / "planpilot.json"
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: "owner/repo")
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    # Step 1: generate config
+    init_exit = main(["init", "--defaults", "--output", str(config_path)])
+    _ = capsys.readouterr()
+    assert init_exit == 0
+
+    # Step 2: patch plan_paths and board_url to point to real fixtures
+    config = json.loads(config_path.read_text())
+    config["plan_paths"] = {
+        "epics": str(split_dir / "epics.json"),
+        "stories": str(split_dir / "stories.json"),
+        "tasks": str(split_dir / "tasks.json"),
+    }
+    config["board_url"] = "https://github.com/orgs/owner/projects/1"
+    config["sync_path"] = str(tmp_path / "sync-map.json")
+    config_path.write_text(json.dumps(config))
+
+    # Step 3: dry-run sync with the generated config
+    sync_exit = main(["sync", "--config", str(config_path), "--dry-run"])
+
+    assert sync_exit == 0
+    captured = capsys.readouterr()
+    assert "planpilot - sync complete (dry-run)" in captured.out
+    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert (tmp_path / "sync-map.json.dry-run").exists()
+
+
+# -- interactive mode ---------------------------------------------------------
+
+
+def test_e2e_init_interactive_split_generates_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Interactive wizard (split layout) produces a valid config and stubs."""
+    output = tmp_path / "planpilot.json"
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "org/repo",
+            "Board URL": "https://github.com/orgs/org/projects/1",
+            "Plan file layout": "split",
+            "Epics file": ".plans/epics.json",
+            "Stories file": ".plans/stories.json",
+            "Tasks file": ".plans/tasks.json",
+            "Sync map": ".plans/sync-map.json",
+            "Authentication": "gh-cli",
+            "Configure advanced": False,
+            "Create empty": True,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["target"] == "org/repo"
+    assert config["plan_paths"]["epics"] == ".plans/epics.json"
+    # Verify stubs were created
+    assert (tmp_path / ".plans" / "epics.json").exists()
+    assert (tmp_path / ".plans" / "stories.json").exists()
+    assert (tmp_path / ".plans" / "tasks.json").exists()
+    captured = capsys.readouterr()
+    assert "Next steps:" in captured.out
+
+
+def test_e2e_init_interactive_unified_generates_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Interactive wizard (unified layout) produces a valid config."""
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "org/repo",
+            "Board URL": "https://github.com/orgs/org/projects/1",
+            "Plan file layout": "unified",
+            "Unified plan": ".plans/plan.json",
+            "Sync map": ".plans/sync-map.json",
+            "Authentication": "gh-cli",
+            "Configure advanced": False,
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["plan_paths"] == {"unified": ".plans/plan.json"}
+
+
+def test_e2e_init_interactive_then_dry_run_sync(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Full round-trip: interactive init -> sync --dry-run.
+
+    The wizard creates a config pointing to real fixture plan files,
+    then sync uses that config to produce a valid dry-run output.
+    """
+    split_dir = FIXTURES_ROOT / "split"
+    config_path = tmp_path / "planpilot.json"
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "owner/repo",
+            "Board URL": "https://github.com/orgs/owner/projects/1",
+            "Plan file layout": "split",
+            "Epics file": str(split_dir / "epics.json"),
+            "Stories file": str(split_dir / "stories.json"),
+            "Tasks file": str(split_dir / "tasks.json"),
+            "Sync map": str(tmp_path / "sync-map.json"),
+            "Authentication": "gh-cli",
+            "Configure advanced": False,
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    # Step 1: interactive init
+    init_exit = main(["init", "--output", str(config_path)])
+    _ = capsys.readouterr()
+    assert init_exit == 0
+    assert config_path.exists()
+
+    # Step 2: dry-run sync with the generated config
+    sync_exit = main(["sync", "--config", str(config_path), "--dry-run"])
+
+    assert sync_exit == 0
+    captured = capsys.readouterr()
+    assert "planpilot - sync complete (dry-run)" in captured.out
+    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+
+
+def test_e2e_init_interactive_with_advanced_options(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Interactive wizard with advanced options enabled."""
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "org/repo",
+            "Board URL": "https://github.com/orgs/org/projects/1",
+            "Plan file layout": "split",
+            "Epics file": ".plans/epics.json",
+            "Stories file": ".plans/stories.json",
+            "Tasks file": ".plans/tasks.json",
+            "Sync map": ".plans/sync-map.json",
+            "Authentication": "env",
+            "Configure advanced": True,
+            "Validation mode": "partial",
+            "Max concurrent": "5",
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["auth"] == "env"
+    assert config["validation_mode"] == "partial"
+    assert config["max_concurrent"] == 5
+
+
+def test_e2e_init_interactive_ctrl_c_aborts(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Ctrl+C during the wizard returns exit code 2."""
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    # Return None from first prompt to simulate Ctrl+C
+    fake_q = _build_fake_questionary({"Provider": None})
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 2
+    assert not output.exists()
+    assert "Aborted" in capsys.readouterr().out
+
+
+def test_e2e_init_interactive_overwrite_declined(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """User declines overwrite of existing file."""
+    output = tmp_path / "planpilot.json"
+    output.write_text('{"original": true}')
+
+    fake_q = _build_fake_questionary({"already exists": False})
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 2
+    # Original file is preserved
+    assert json.loads(output.read_text()) == {"original": True}
+
+
+def test_e2e_init_interactive_overwrite_accepted_then_sync(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """User accepts overwrite, new config works for sync."""
+    split_dir = FIXTURES_ROOT / "split"
+    config_path = tmp_path / "planpilot.json"
+    config_path.write_text('{"stale": true}')
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "already exists": True,
+            "Provider": "github",
+            "Target repository": "owner/repo",
+            "Board URL": "https://github.com/orgs/owner/projects/1",
+            "Plan file layout": "split",
+            "Epics file": str(split_dir / "epics.json"),
+            "Stories file": str(split_dir / "stories.json"),
+            "Tasks file": str(split_dir / "tasks.json"),
+            "Sync map": str(tmp_path / "sync-map.json"),
+            "Authentication": "gh-cli",
+            "Configure advanced": False,
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    # Step 1: overwrite existing config
+    init_exit = main(["init", "--output", str(config_path)])
+    _ = capsys.readouterr()
+    assert init_exit == 0
+    config = json.loads(config_path.read_text())
+    assert "stale" not in config
+
+    # Step 2: sync with the new config
+    sync_exit = main(["sync", "--config", str(config_path), "--dry-run"])
+
+    assert sync_exit == 0
+    captured = capsys.readouterr()
+    assert "planpilot - sync complete (dry-run)" in captured.out

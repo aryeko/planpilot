@@ -119,7 +119,13 @@ Full standalone instructions:
 
 ## Quickstart
 
-### 1. Create `planpilot.json`
+### 1. Generate `planpilot.json`
+
+```bash
+planpilot init
+```
+
+The interactive wizard auto-detects your git remote and guides you through provider, target repo, board URL, plan layout, and auth. Or create the config manually:
 
 ```bash
 cat > planpilot.json <<'JSON'
@@ -157,7 +163,16 @@ planpilot supports multi-epic plans natively. Keep all epics/stories/tasks in th
 planpilot sync --config ./planpilot.json --apply
 ```
 
-## CLI flags
+## CLI commands
+
+### `planpilot init`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--output`, `-o` | `planpilot.json` | Output file path |
+| `--defaults` | off | Generate config with auto-detected defaults (no prompts) |
+
+### `planpilot sync`
 
 | Flag | Default | Description |
 |------|---------|-------------|

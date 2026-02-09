@@ -41,6 +41,8 @@ Design choices:
 
 Current E2E cases:
 
+**Sync subcommand:**
+
 1. Split input happy path (`--dry-run`).
 2. Split input happy path (`--apply` with `provider: dry-run`).
 3. Unified input happy path (`--dry-run` and `--apply`).
@@ -61,6 +63,19 @@ Current E2E cases:
    - `AuthenticationError` / `ProviderError` -> `4`
    - `SyncError` -> `5`
    - unexpected error -> `1`
+
+**Init subcommand:**
+
+12. `init --defaults` generates a valid, parseable config.
+13. `init --defaults` refuses to overwrite existing files (exit code `2`).
+14. `init --defaults` -> `sync --dry-run` round-trip (generated config feeds into sync).
+15. Interactive wizard (split layout) produces valid config + stub plan files.
+16. Interactive wizard (unified layout) produces valid config.
+17. Interactive wizard -> `sync --dry-run` round-trip with real fixtures.
+18. Interactive wizard with advanced options (validation mode, max concurrent).
+19. Interactive wizard Ctrl+C abort -> exit code `2`, no file written.
+20. Interactive overwrite declined -> exit code `2`, original file preserved.
+21. Interactive overwrite accepted -> `sync --dry-run` round-trip.
 
 ## DryRunProvider instrumentation
 
@@ -109,8 +124,8 @@ poetry run poe check
 
 As of 2026-02-09:
 
-- `tests/e2e/test_cli_e2e.py`: 16 tests passing.
-- Full suite: 218 tests passing via `poetry run poe check`.
+- `tests/e2e/test_cli_e2e.py`: 26 tests passing (16 sync + 10 init).
+- Full suite: 287 tests passing.
 
 Treat these numbers as a moving baseline; update this section when adding/removing cases.
 

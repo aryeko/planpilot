@@ -9,9 +9,10 @@ The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles arg
 ```
 planpilot [--version]
 planpilot sync --config <path> (--dry-run | --apply) [--verbose]
+planpilot init [--output <path>] [--defaults]
 ```
 
-v2 uses a subcommand pattern to allow future expansion (e.g. `planpilot validate`, `planpilot status`).
+v2 uses a subcommand pattern to allow future expansion.
 
 ### `sync` Subcommand
 
@@ -81,12 +82,29 @@ This summary is human-oriented and not a stable machine contract. Automation sho
 
 All errors go to stderr with user-friendly messages from `PlanPilotError` subclasses.
 
+### `init` Subcommand
+
+Interactively generate a `planpilot.json` config file.
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `--output`, `-o` | `str` | No | `planpilot.json` | Output file path |
+| `--defaults` | flag | No | `False` | Generate config with auto-detected defaults (no prompts) |
+
+**Interactive mode** (default): step-by-step wizard using [questionary](https://github.com/tmbo/questionary) prompts. Asks for provider, target repo, board URL, plan layout, paths, auth strategy, and advanced options.
+
+**Defaults mode** (`--defaults`): auto-detects the git remote for `target`, scans for existing plan files, and writes a config with sensible defaults. No user interaction required.
+
+Both modes refuse to overwrite an existing file unless the user confirms (interactive) or a different `--output` path is specified (defaults).
+
+The `init` command calls the SDK scaffold functions (`detect_target`, `detect_plan_paths`, `scaffold_config`) which are also available programmatically.
+
 ## Exit Codes
 
 | Code | Meaning |
 |------|---------|
 | `0` | Success |
-| `2` | Usage/argument parsing failure (argparse) |
+| `2` | Usage/argument error or user abort (argparse, init cancelled, file exists) |
 | `3` | Config or plan validation failure |
 | `4` | Authentication/provider/network failure |
 | `5` | Sync/reconciliation failure |
@@ -108,6 +126,7 @@ All errors go to stderr with user-friendly messages from `PlanPilotError` subcla
 
 ```
 src/planpilot/
-├── cli.py                 # build_parser, main, _run_sync, _format_summary
+├── cli.py                 # build_parser, main, _run_sync, _run_init, _format_summary
+├── scaffold.py            # detect_target, detect_plan_paths, scaffold_config, write_config, create_plan_stubs
 └── __main__.py            # python -m planpilot support
 ```

@@ -19,6 +19,7 @@ from planpilot.contracts.renderer import BodyRenderer, RenderContext
 from planpilot.contracts.sync import SyncEntry, SyncMap, SyncResult
 from planpilot.providers import create_provider
 from planpilot.renderers import create_renderer
+from planpilot.scaffold import create_plan_stubs, detect_plan_paths, detect_target, scaffold_config, write_config
 from planpilot.sdk import PlanPilot, load_config, load_plan
 
 __all__ = [
@@ -43,9 +44,14 @@ __all__ = [
     "SyncMap",
     "SyncResult",
     "__version__",
+    "create_plan_stubs",
     "create_provider",
     "create_renderer",
     "create_token_resolver",
+    "detect_plan_paths",
+    "detect_target",
     "load_config",
     "load_plan",
+    "scaffold_config",
+    "write_config",
 ]

@@ -104,6 +104,30 @@ def load_plan(*, unified: str | Path | None = None, epics: str | Path | None = N
     """
 ```
 
+## Scaffold Functions
+
+Config scaffolding and environment detection helpers, defined in `scaffold.py` and re-exported via the public API.
+
+### `detect_target() -> str | None`
+
+Best-effort detection of `owner/repo` from the current git remote. Parses SSH and HTTPS formats. Returns `None` if not in a git repo, git is not installed, or the remote URL cannot be parsed.
+
+### `detect_plan_paths(base: Path | None = None) -> PlanPaths | None`
+
+Scans common directories (`.plans/`, `plans/`) for existing plan files. Returns a `PlanPaths` when a coherent set is found (all three split files or a unified file), or `None` otherwise.
+
+### `scaffold_config(*, target, board_url, ...) -> dict`
+
+Builds and validates a planpilot config dict. Accepts all config fields as keyword arguments with sensible defaults, validates through `PlanPilotConfig`, and returns a minimal JSON-serialisable dict with default-valued fields omitted. Raises `ConfigError` on validation failure.
+
+### `write_config(config: dict, path: Path) -> None`
+
+Writes a config dict to a JSON file, creating parent directories as needed.
+
+### `create_plan_stubs(plan_paths: dict, *, base: Path | None = None) -> list[Path]`
+
+Creates empty plan files for paths that don't already exist. Returns the list of created paths.
+
 ## Public API Surface (re-exports)
 
 The SDK re-exports selected types so callers import from one place:
@@ -111,6 +135,7 @@ The SDK re-exports selected types so callers import from one place:
 | Category | Types |
 |----------|-------|
 | **SDK** | `PlanPilot`, `load_config`, `load_plan` |
+| **Scaffold** | `scaffold_config`, `detect_target`, `detect_plan_paths`, `write_config`, `create_plan_stubs` |
 | **Config** | `PlanPilotConfig`, `PlanPaths`, `FieldConfig` |
 | **Plan** | `Plan`, `PlanItem`, `PlanItemType` |
 | **Sync** | `SyncResult`, `SyncMap`, `SyncEntry` |
@@ -121,11 +146,7 @@ The SDK re-exports selected types so callers import from one place:
 ## Programmatic Usage
 
 ```python
-# Dev (v2 branch):
 from planpilot import PlanPilot, PlanItemType, load_config
-
-# Ship-time (after rename):
-# from planpilot import PlanPilot, PlanItemType, load_config
 
 config = load_config("planpilot.json")
 pp = await PlanPilot.from_config(config, renderer_name="markdown")
@@ -133,6 +154,22 @@ result = await pp.sync(dry_run=False)
 
 print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
 print(f"Sync map: {result.sync_map.model_dump_json()}")
+```
+
+### Scaffold Usage
+
+```python
+from planpilot import detect_target, detect_plan_paths, scaffold_config, write_config
+from pathlib import Path
+
+target = detect_target() or "owner/repo"
+plan_paths = detect_plan_paths()
+
+config = scaffold_config(
+    target=target,
+    board_url="https://github.com/orgs/myorg/projects/1",
+)
+write_config(config, Path("planpilot.json"))
 ```
 
 ## Design Decisions
@@ -152,4 +189,5 @@ print(f"Sync map: {result.sync_map.model_dump_json()}")
 src/planpilot/
 ├── __init__.py            # Re-exports
 ├── sdk.py                 # PlanPilot, load_config(), load_plan()
+├── scaffold.py            # detect_target(), detect_plan_paths(), scaffold_config(), write_config(), create_plan_stubs()
 ```
