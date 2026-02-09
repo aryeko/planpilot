@@ -10,7 +10,7 @@ The v2 `GitHubProvider` needs:
 | Create label (if missing) | GraphQL | Bootstrap discovery label |
 | Create issue | GraphQL | `createIssue` mutation |
 | Update issue | GraphQL | `updateIssue` mutation (title/body, additive labels) |
-| Update issue type | GraphQL | `updateIssueType` mutation (mode-dependent) |
+| Update issue type | GraphQL | `updateIssueType` mutation (when create-type strategy is `issue-type`) |
 | Search issues | GraphQL | By label + body text |
 | Add label | GraphQL | `addLabelsToLabelable` — no REST needed |
 | Add to project | GraphQL | `addProjectV2ItemById` |
@@ -21,7 +21,7 @@ The v2 `GitHubProvider` needs:
 | Add blocked-by | GraphQL | `addBlockedBy` — confirmed in public schema |
 | Fetch relations | GraphQL | `parent`, `blockedBy` on Issue type |
 
-**Key finding:** All operations are GraphQL. PlanPilot does not need REST at all.
+**Key finding:** All required operations are available via GraphQL. Discovery uses the GraphQL `search` query (https://docs.github.com/en/graphql/reference/queries#search) and must fail fast on result-cap limits/truncation.
 
 ## Architecture: Two Separated Concerns
 
@@ -45,9 +45,12 @@ class TokenResolver(ABC):
 
 class GhCliTokenResolver(TokenResolver):
     """Resolve token via `gh auth token` (single subprocess call)."""
+    def __init__(self, hostname: str = "github.com") -> None:
+        self._hostname = hostname
+
     async def resolve(self) -> str:
         proc = await asyncio.create_subprocess_exec(
-            "gh", "auth", "token", stdout=PIPE, stderr=PIPE,
+            "gh", "auth", "token", "--hostname", self._hostname, stdout=PIPE, stderr=PIPE,
         )
         stdout, _ = await proc.communicate()
         if proc.returncode != 0:
@@ -90,11 +93,22 @@ The config file specifies which resolver to use:
 
 | `auth` value | Resolver | Notes |
 |-------------|----------|-------|
-| `"gh-cli"` (default) | `GhCliTokenResolver` | Shells out to `gh auth token` once |
+| `"gh-cli"` (default) | `GhCliTokenResolver` | Shells out to `gh auth token --hostname <host>` once |
 | `"env"` | `EnvTokenResolver` | Reads `GITHUB_TOKEN` env var |
 | `"token"` | `StaticTokenResolver` | Reads `token` field from config (not recommended for committed files) |
 
 If `auth` is omitted, defaults to `"gh-cli"`.
+
+**Required GitHub token permissions (minimum):**
+
+| Capability | Required permission/scope |
+|------------|---------------------------|
+| Read/create/update issues and labels | Repository Issues (write) |
+| Read/add/update project items/fields | Project (write) |
+| Read org-owned project metadata | Organization metadata/read access (for org projects) |
+| GraphQL discovery + relation mutations | GraphQL access with above repo/project permissions |
+
+Provider startup should execute capability probes and return explicit missing-permission errors that name the failing operation and required permission.
 
 ### 2. Provider Implementation (Typed API Client)
 
@@ -208,7 +222,7 @@ The provider constructs the generated client with a token and delegates all API 
 
 ```python
 class GitHubProvider(Provider):
-    def __init__(self, *, target: str, token: str, board_url: str | None, ...) -> None:
+    def __init__(self, *, target: str, token: str, board_url: str, ...) -> None:
         self._target = target
         self._token = token
         self._board_url = board_url
@@ -245,9 +259,9 @@ class GitHubProvider(Provider):
 `create_item()` is not atomic at API level. It must execute retry-safe ensure steps:
 
 1. Create issue
-2. Ensure issue type
+2. Ensure create type (issue type or type label based on strategy)
 3. Ensure label assignment
-4. Ensure project item (if board configured)
+4. Ensure project item
 5. Ensure project fields (`size` when present; workflow fields only on create)
 
 On partial failure, provider errors should include enough context for reconciliation:
@@ -259,22 +273,33 @@ On partial failure, provider errors should include enough context for reconcilia
 
 Metadata must be present in the body at issue-creation time so discovery can recover from partial setup. If creation happens without metadata due provider/API anomaly, provider should perform a best-effort fallback discovery (`label + title + recent-created window`) and emit a warning.
 
-### Issue Type Mapping and Compatibility
+### Create Type Strategy and Compatibility
 
-Issue type updates are controlled by provider mode:
-- `required` -> missing mapping/capability is a hard failure
-- `best-effort` -> missing mapping/capability logs warning and continues
-- `disabled` -> no issue type mutation is attempted
+Create type behavior is controlled by config strategy:
+- `issue-type` -> map `EPIC/STORY/TASK` to provider issue types (`updateIssueType`)
+- `label` -> map `EPIC/STORY/TASK` to labels (for example `type:epic`)
 
-Mapping defaults: `EPIC->Epic`, `STORY->Story`, `TASK->Task`; providers may override via config.
+Compatibility rules:
+- project owner type is resolved from `board_url`
+- organization-owned projects may use either strategy (subject to capability checks)
+- user-owned projects must use `label` strategy in v2 launch
+- unsupported strategy/capability combinations are hard failures at provider setup
 
 ### Capability Gating for Relations
 
-Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable in some environments. Provider startup should detect capabilities and set flags in context. Relation methods should no-op with warning when unsupported, not fail the whole sync.
+Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable in some environments. Provider startup should detect capabilities and set flags in context. Relation calls must raise explicit capability errors when unsupported.
 
 Recommended detection mechanism:
 - startup probe query against schema/introspection or a dedicated capability query
 - cache booleans in provider context (`supports_sub_issues`, `supports_blocked_by`)
+
+### Project URL Owner Resolution
+
+Owner type must be derived from `board_url`:
+- `https://github.com/orgs/<org>/projects/<n>` -> org-owned project
+- `https://github.com/users/<user>/projects/<n>` -> user-owned project
+
+Any other URL shape is a configuration error.
 
 ### Retry and Rate-Limit Policy
 
@@ -293,7 +318,7 @@ Retry classification matrix:
 | HTTP 429 / secondary rate limit | Yes | Respect `Retry-After`, reduce concurrency |
 | GraphQL `errors` with transient classification | Yes | Parse `errors[*].extensions` and message |
 | GraphQL schema/validation errors | No | Operation/spec mismatch |
-| Authentication/authorization failures | No | Requires config/token fix |
+| Authentication/authorization failures | No | Requires config/token permission fix |
 
 ### Pagination Requirements
 
@@ -369,7 +394,7 @@ Complete list of GraphQL operations PlanPilot needs:
 | Create issue | Mutation | `CreateIssue` | `create_item()` |
 | Update issue | Mutation | `UpdateIssue` | `update_item()` |
 | Add label | Mutation | `AddLabels` | `create_item()` ensure label assignment |
-| Set issue type | Mutation | `UpdateIssueType` | `create_item()` |
+| Set issue type | Mutation | `UpdateIssueType` | `create_item()` when strategy is `issue-type` |
 | Add to project | Mutation | `AddProjectItem` | `create_item()` |
 | Set project field | Mutation | `UpdateProjectField` | `create_item()` |
 | Fetch project items | Query | `FetchProjectItems` | `__aenter__` (item map) |
@@ -377,7 +402,7 @@ Complete list of GraphQL operations PlanPilot needs:
 | Add blocked-by | Mutation | `AddBlockedBy` | `GitHubItem.add_dependency()` |
 | Fetch relations | Query | `FetchRelations` | `GitHubItem` (idempotency check) |
 
-**14 operations total.** All confirmed available in the public GitHub GraphQL schema, with relation ops capability-gated at runtime.
+**14 operations total.** All confirmed available in the public GitHub GraphQL schema, with startup capability checks and hard-fail semantics for unsupported configured features.
 
 ## Schema Update Workflow
 
@@ -443,11 +468,12 @@ provider = GitHubProvider(target=config.target, token=token, ...)
 
 | Concern | Solution |
 |---------|----------|
-| **Auth** | `TokenResolver` ABC — `gh auth token`, `GITHUB_TOKEN`, or direct injection |
+| **Auth** | `TokenResolver` ABC — `gh auth token --hostname`, `GITHUB_TOKEN`, or direct injection |
 | **GraphQL client** | ariadne-codegen — typed async client generated from schema + operations |
 | **Transport** | httpx with connection pooling (via ariadne-codegen's default base client) |
 | **Type safety** | Full Pydantic models for every response, validated at codegen time |
 | **REST** | Not needed — all operations are available via GraphQL |
+| **Permissions** | Startup capability probes and explicit missing-scope/permission errors |
 | **Schema source** | [octokit/graphql-schema](https://github.com/octokit/graphql-schema) (public, auto-updated) |
 | **Runtime deps** | pydantic + httpx (already in stack) |
 | **Dev deps** | ariadne-codegen (codegen only) |

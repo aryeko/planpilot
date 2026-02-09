@@ -193,7 +193,8 @@ planpilot - sync complete (apply)
   Story  S1      #44    https://github.com/owner/repo/issues/44
   ...
 
-  Sync map:  /abs/path/to/sync-map.json
+  Sync map:  /abs/path/to/sync-map.json   (apply mode)
+  Sync map:  /abs/path/to/sync-map.json.dry-run   (dry-run mode)
 
   [dry-run] No changes were made  (only in dry-run mode)
 ```

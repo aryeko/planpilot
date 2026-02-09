@@ -137,13 +137,13 @@ Manual steps:
 
 ## Sub-items
 
-* [ ] {key} {title}  (for each in context.sub_items)
+* [ ] {key} {title}  (for each in sorted(context.sub_items))
 
 ## Dependencies
 
 Blocked by:
 
-* {ref}  (for each in context.dependencies)
+* {ref}  (for each in dependencies sorted by dep_id)
 ```
 
 ### Section Rendering Rules
@@ -174,6 +174,13 @@ Blocked by:
 - Every renderer must emit the metadata block verbatim and at the top of the body.
 - The block is provider-searchable and engine-parseable; do not wrap in renderer-specific comments.
 - Values are single-line tokens without extra spaces around `:`.
+
+### Deterministic Ordering Requirements
+
+- Renderers must produce byte-stable output for identical inputs.
+- `context.sub_items` must be rendered in deterministic order (`key`, then `title`).
+- `context.dependencies` must be rendered in deterministic order by dependency ID.
+- Ordering must not depend on insertion order from provider responses.
 
 ### Helper Functions
 

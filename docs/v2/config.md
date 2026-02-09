@@ -56,15 +56,23 @@ class FieldConfig(BaseModel):
     size_from_tshirt: bool = True
     """Whether to map PlanItem.estimate.tshirt to the size field."""
 
-    issue_type_mode: str = "best-effort"
-    """Issue type behavior: "required", "best-effort", or "disabled"."""
+    create_type_strategy: str = "issue-type"
+    """Create type behavior: "issue-type" or "label".
 
-    issue_type_map: dict[str, str] = {
+    - issue-type: map EPIC/STORY/TASK to provider issue types
+    - label: map EPIC/STORY/TASK to labels (e.g. type:epic)
+    """
+
+    create_type_map: dict[str, str] = {
         "EPIC": "Epic",
         "STORY": "Story",
         "TASK": "Task",
     }
-    """Plan item type -> provider issue type mapping."""
+    """Plan item type -> provider value mapping for create_type_strategy.
+
+    For issue-type strategy, values are issue type names.
+    For label strategy, values are label names.
+    """
 ```
 
 **Cross-provider field mapping:** These field names use GitHub Projects v2 terminology and are defaults, not guarantees. Providers interpret them in their own context and may require target-specific field names to exist:
@@ -75,8 +83,8 @@ class FieldConfig(BaseModel):
 | `priority` | Priority field | Priority field |
 | `iteration` | Iteration field | Sprint |
 | `size_field` | Custom "Size" field | Story points field |
-| `issue_type_mode` | Issue type update policy | Issue type update policy |
-| `issue_type_map` | Plan type -> issue type names | Plan type -> issue type names |
+| `create_type_strategy` | Issue type or label strategy | Issue type or label strategy |
+| `create_type_map` | EPIC/STORY/TASK -> issue type or label | EPIC/STORY/TASK -> issue type or label |
 
 If a configured field does not exist in the provider target, provider setup must fail fast with a clear `ConfigError`/`ProviderError`.
 
@@ -141,21 +149,35 @@ class PlanPilotConfig(BaseModel):
     """Static auth token. Only used when auth="token".
     Should not be committed to version control."""
 
-    board_url: str | None = None
-    """Project board URL. Optional — if omitted, items are created
-    without being added to a project board."""
+    board_url: str
+    """Project board URL.
+
+    v2 launch is GitHub-first and requires a project URL. Repo-only
+    sync without a board is out of scope for v2.
+    """
 
     plan_paths: PlanPaths
     """Paths to plan JSON files."""
 
+    validation_mode: str = "strict"
+    """Plan validation mode: "strict" or "partial".
+
+    - strict: unresolved parent/dependency references are errors
+    - partial: unresolved refs are allowed when missing items are not loaded
+    """
+
     sync_path: Path = Path("sync-map.json")
-    """Path to write the sync map after successful execution (including dry-run)."""
+    """Path to write apply-mode sync map JSON.
+
+    Dry-run writes to a sibling file with `.dry-run` suffix.
+    Example: `sync-map.json.dry-run`.
+    """
 
     label: str = "planpilot"
     """Label to apply to all created items."""
 
     field_config: FieldConfig = FieldConfig()
-    """Project field preferences (status, priority, iteration, size)."""
+    """Project field preferences (status, priority, iteration, size, create-type strategy)."""
 
     model_config = {"frozen": True}
 ```
@@ -172,21 +194,25 @@ class PlanPilotConfig(BaseModel):
 
 **Launch scope note:** v2 launch targets the GitHub provider. Other providers may define additional `auth` values and env/token semantics in their provider docs.
 
+**GitHub-specific config rules (v2 launch):**
+- `board_url` is required and must be a GitHub Projects v2 URL.
+- Owner type is resolved from URL shape:
+  - `https://github.com/orgs/<org>/projects/<number>` -> organization-owned project
+  - `https://github.com/users/<user>/projects/<number>` -> user-owned project
+- For user-owned projects, `field_config.create_type_strategy` must be `label`.
+- If configured strategy or relation features are unsupported by the target, provider setup fails with explicit errors.
+
 **Design decisions:**
 
 | Decision | Rationale |
 |----------|-----------|
 | `provider` is a string, not an enum | Open for extension — new providers added without modifying config models |
 | `auth` is a string, not an enum | Same as `provider` — open for extension per provider |
-| `board_url` is optional | Supports providers or workflows that don't use project boards |
+| `board_url` required for GitHub launch | v2 scope excludes repo-only sync; project-driven workflows are canonical |
+| `validation_mode` is persisted config | Partial plan workflows must be explicit and repeatable |
 | No `dry_run` field | Dry-run is a per-invocation execution mode, not persisted config. Passed as a parameter to `PlanPilot.sync(dry_run=...)` by the CLI or SDK caller |
 | No `verbose` field | Logging verbosity is a CLI concern, not a config concern. The SDK uses standard `logging` levels |
 | `frozen = True` | Config is immutable after creation — prevents accidental mutation during sync |
-
-**Boardless behavior (`board_url=None`):**
-- Items are still created and reconciled.
-- `field_config` remains valid config but board field updates (`status`, `priority`, `iteration`, `size`) are skipped.
-- No error is raised solely due to `board_url=None`.
 
 ## Path Resolution
 
@@ -201,6 +227,7 @@ All paths in `PlanPilotConfig` are relative to the config file's parent director
 | `plan_paths.tasks` | Relative to config file directory |
 | `plan_paths.unified` | Relative to config file directory |
 | `sync_path` | Relative to config file directory |
+| Dry-run output path | Derived from `sync_path` + `.dry-run` suffix |
 
 **Example:**
 
@@ -211,7 +238,8 @@ project/
 │   ├── epics.json
 │   ├── stories.json
 │   └── tasks.json
-└── sync-map.json
+├── sync-map.json
+└── sync-map.json.dry-run
 ```
 
 When loaded via `load_config("project/planpilot.json")`, `plan_paths.epics` resolves to `project/plans/epics.json`.
@@ -245,7 +273,8 @@ def load_config(path: str | Path) -> PlanPilotConfig:
 2. Read the JSON file
 3. Parse into `PlanPilotConfig` via Pydantic (schema validation happens here)
 4. Resolve all relative paths in `plan_paths` and `sync_path` against the config file's parent directory
-5. Return validated config
+5. Validate provider-specific invariants (`board_url`, create-type strategy compatibility)
+6. Return validated config
 
 **Error handling:** All I/O and validation errors are wrapped in `ConfigError` (a new exception subclass of `PlanPilotError`).
 
@@ -268,6 +297,7 @@ Example `planpilot.json`:
     "stories": "plans/stories.json",
     "tasks": "plans/tasks.json"
   },
+  "validation_mode": "partial",
   "sync_path": "sync-map.json",
   "label": "planpilot",
   "field_config": {
@@ -275,17 +305,24 @@ Example `planpilot.json`:
     "priority": "P1",
     "iteration": "active",
     "size_field": "Size",
-    "size_from_tshirt": true
+    "size_from_tshirt": true,
+    "create_type_strategy": "label",
+    "create_type_map": {
+      "EPIC": "type:epic",
+      "STORY": "type:story",
+      "TASK": "type:task"
+    }
   }
 }
 ```
 
-Minimal config (uses all defaults):
+Minimal config (uses defaults except required fields):
 
 ```json
 {
   "provider": "github",
   "target": "owner/repo",
+  "board_url": "https://github.com/orgs/owner/projects/1",
   "plan_paths": {
     "unified": "plan.json"
   }
@@ -317,10 +354,11 @@ The config module confirms these types are sufficient for all consumers:
 
 | Consumer | Fields Used |
 |----------|-----------|
-| **SDK** (`PlanPilot`) | All fields — wires auth, provider, renderer, plan loading, sync map persistence |
+| **SDK** (`PlanPilot`) | All fields — wires auth, provider, renderer, plan loading, validation mode, sync map persistence |
 | **Engine** (`SyncEngine`) | `.target`, `.board_url`, `.label` (dry_run passed separately) |
 | **Token resolver factory** | `.auth`, `.token` |
 | **Provider factory** | `.provider`, `.target`, `.board_url`, `.label`, `.field_config` |
+| **Plan validator** | `.validation_mode` |
 | **Plan loader** | `.plan_paths` (all sub-fields) |
 | **CLI** | Loads via `load_config()`, passes `dry_run` to `sync()` |
 
@@ -331,8 +369,9 @@ The config module confirms these types are sufficient for all consumers:
 | `SyncConfig` built from CLI args only | `PlanPilotConfig` loadable from JSON file | SDK callers don't use CLI; config file is the single source of truth |
 | Flat path fields (`epics_path`, `stories_path`, `tasks_path`) | Nested `PlanPaths` with multi-file and unified modes | Cleaner grouping, supports single-file plans |
 | `repo` field (GitHub-specific) | `target` field (provider-agnostic) | Works for any provider (GitHub: "owner/repo", Jira: "project-key") |
-| `project_url` field (GitHub-specific) | `board_url` field (provider-agnostic, optional) | Generic naming, optional for providers without boards |
+| `project_url` field (GitHub-specific) | `board_url` field (provider-agnostic name, required for GitHub launch) | Generic naming plus explicit v2 launch scope |
 | No auth config | `auth` field with resolver strategies | Separated auth from provider; configurable per-environment |
+| No validation mode | `validation_mode` with `strict`/`partial` | Enables partial-plan workflows intentionally |
 | `verbose` in config | Not in config | Logging is a CLI/runtime concern, not persisted config |
 | `dry_run` in config | Not in config | Execution mode is per-invocation, not persisted |
 | Mutable model | `frozen = True` | Prevents accidental mutation during sync pipeline |

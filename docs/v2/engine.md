@@ -43,7 +43,7 @@ flowchart LR
     Discovery --> Upsert --> Enrich --> Relations --> Result
 ```
 
-In dry-run mode, only Upsert runs (with placeholder entries, no API calls). Discovery, Enrich, and Relations are skipped.
+In dry-run mode, only Upsert runs (with placeholder entries, no API calls). Discovery, Enrich, and Relations are skipped. The SDK persists dry-run output to a `.dry-run` sync-map path.
 
 ## Phase 1: Discovery
 
@@ -147,7 +147,7 @@ sync_map.entries[plan_item.id] = entry
 - `to_sync_entry(Item) -> SyncEntry` — from sync domain
 - `SyncMap` — flat `entries: dict[str, SyncEntry]` keyed by item ID
 
-**Dry-run behavior:** In dry-run mode, the engine skips all provider calls and creates placeholder `SyncEntry` objects with `key="dry-run"`, `url="dry-run"`.
+**Dry-run behavior:** In dry-run mode, the engine skips all provider calls and creates placeholder `SyncEntry` objects with `key="dry-run"`, `url="dry-run"`. The SDK persists these entries to `<sync_path>.dry-run`.
 
 ## Phase 3: Enrich
 
@@ -160,8 +160,14 @@ sync_map.entries[plan_item.id] = entry
 context = RenderContext(
     plan_id=plan_id,
     parent_ref=parent_entry.key,
-    sub_items=[(child_entry.key, child_item.title) for child in children],
-    dependencies={dep_id: dep_entry.key for dep_id in plan_item.depends_on},
+    sub_items=sorted(
+        [(child_entry.key, child_item.title) for child in children],
+        key=lambda pair: (pair[0], pair[1]),
+    ),
+    dependencies={
+        dep_id: sync_map.entries[dep_id].key
+        for dep_id in sorted(plan_item.depends_on)
+    },
 )
 
 # 2. Re-render body with full cross-refs
@@ -244,7 +250,11 @@ return SyncResult(
 - `SyncMap` — serializable to JSON via Pydantic
 - `SyncResult` — return value with sync_map + items_created counter dict + dry_run flag
 
-**Note:** Sync map persistence (writing to `config.sync_path`) is handled by the SDK after the engine returns. This keeps the engine free of file I/O, consistent with the principle that plan loading is also external to the engine.
+**Note:** Sync map persistence is handled by the SDK after the engine returns:
+- apply mode -> write `config.sync_path`
+- dry-run mode -> write `<config.sync_path>.dry-run`
+
+This keeps the engine free of file I/O, consistent with the principle that plan loading is also external to the engine.
 
 ## Internal Utilities
 

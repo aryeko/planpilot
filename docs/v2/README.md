@@ -32,11 +32,13 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 
 - Discovery is provider-search-first using metadata marker query (`PLAN_ID:<plan_id>`).
 - All renderers emit a shared plain-text metadata block (`PLANPILOT_META_V1` ... `END_PLANPILOT_META`).
+- Discovery uses provider-native search APIs (GitHub GraphQL `search`) with fail-fast behavior on truncation/capability limits.
 - Reconciliation ownership is hybrid:
   - plan-authoritative: title/body/type/label/size/relations
   - provider-authoritative: status/priority/iteration after creation
 - Exit codes are differentiated (`0`, `2`, `3`, `4`, `5`, `1`).
 - SDK is the composition root via `PlanPilot.from_config(...)`.
+- Dry-run sync maps are persisted to `<sync_path>.dry-run`.
 
 ## Review Findings Closure Matrix
 
@@ -52,11 +54,11 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 | Retry/backoff/pagination requirements | `providers.md`, `github-provider-research.md` |
 | Plan hierarchy/source-of-truth ambiguity | `plan.md`, `architecture.md` |
 | Unified plan JSON shape clarity | `plan.md`, `config.md` |
-| Auth/token validation and boardless behavior | `config.md` |
+| Auth/token validation and required project URL behavior | `config.md` |
 | CLI/SDK composition and exit code clarity | `cli.md`, `sdk.md`, `architecture.md` |
 | Structured partial-create failure contract | `providers.md`, `engine.md`, `architecture.md`, `github-provider-research.md` |
 | Discovery capability enforcement and existing-item upsert branch | `providers.md`, `engine.md`, `architecture.md` |
-| Issue-type mapping/compatibility behavior | `config.md`, `providers.md`, `github-provider-research.md` |
+| Create-type strategy (issue-type vs label) and compatibility behavior | `config.md`, `providers.md`, `github-provider-research.md` |
 | Loader API and multi-file shape ambiguity | `sdk.md`, `plan.md`, `architecture.md` |
 | CLI output stability contract for automation | `cli.md`, `sdk.md` |
 
@@ -64,5 +66,5 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 
 - Engine execution remains sequential (epics -> stories -> tasks); concurrent provider operations are not required.
 - Workflow board fields (`status`, `priority`, `iteration`) are provider-authoritative after create and not plan-controlled in v2.
-- Relation mutations are capability-gated and may be skipped in environments where APIs are unavailable.
+- Relation mutations are capability-gated and produce explicit errors when configured features are unavailable.
 - CLI text summary is human-oriented and not a stable machine interface; automation should use SDK APIs.

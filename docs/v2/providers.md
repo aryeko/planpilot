@@ -42,7 +42,8 @@ class Provider(ABC):
 Providers must support Discovery semantics used by the engine:
 
 - `search_items()` must apply `labels` and `body_contains` as a conjunctive filter.
-- Search results must be complete up to provider pagination limits (pagination is mandatory).
+- `search_items()` must use provider-native search semantics (GitHub: GraphQL `search`) with mandatory pagination.
+- Discovery must fail fast if search limits/caps would truncate results (no silent partial discovery).
 - If a provider cannot satisfy these semantics, it must fail fast in `__aenter__` with `ProviderCapabilityError` instead of silently degrading.
 
 ### Partial Failure Error Contract
@@ -72,7 +73,7 @@ class ProviderCapabilityError(ProviderError):
     capability: str
 ```
 
-Example capability names: `discovery_body_contains`, `discovery_label_filter`, `relation_sub_issue`, `relation_blocked_by`.
+Example capability names: `discovery_body_contains`, `discovery_label_filter`, `discovery_result_cap`, `relation_sub_issue`, `relation_blocked_by`.
 
 ### Key Design: `create_item()` is Idempotent Multi-Step
 
@@ -140,7 +141,7 @@ def create_provider(
     *,
     target: str,
     token: str,
-    board_url: str | None = None,
+    board_url: str,
     label: str = "planpilot",
     field_config: FieldConfig | None = None,
     **kwargs: object,
@@ -151,7 +152,7 @@ def create_provider(
         name: Provider name (must exist in PROVIDERS).
         target: Target designation (e.g. "owner/repo").
         token: Authentication token (resolved externally via TokenResolver).
-        board_url: Board URL (optional).
+        board_url: Board URL.
         label: Label name used for create + discovery scoping.
         field_config: Field configuration (optional).
 
@@ -202,7 +203,7 @@ class GitHubProvider(Provider):
         *,
         target: str,              # "owner/repo"
         token: str,               # resolved externally via TokenResolver
-        board_url: str | None,
+        board_url: str,           # required for v2 GitHub launch
         label: str,
         field_config: FieldConfig | None,
     ) -> None: ...
@@ -243,10 +244,10 @@ All provider-specific setup happens here (was scattered across engine phases in 
 
 1. **Initialize client** — construct the generated `Client` with the token and `https://api.github.com/graphql` endpoint
 2. **Resolve repo context** — fetch repo ID, issue type IDs, resolve or create label
-3. **Resolve project context** (if board_url provided) — parse project URL, fetch project fields, resolve field IDs for status/priority/iteration/size
+3. **Resolve project context** — parse required `board_url`, resolve owner type (`org` or `user`), fetch project fields, resolve field IDs for status/priority/iteration/size
 4. **Discovery capability checks** — verify label/body search filters are supported; fail fast with `ProviderCapabilityError` if not
-5. **Capability checks** — detect whether relation mutations are available (`addSubIssue`, `addBlockedBy`)
-6. **Resolve issue-type policy** — load `issue_type_mode` and `issue_type_map` from `FieldConfig`, validate mapping completeness
+5. **Capability checks** — detect relation and create-type capabilities (`addSubIssue`, `addBlockedBy`, issue-type support)
+6. **Resolve create-type policy** — load `create_type_strategy` and `create_type_map` from `FieldConfig`, validate mapping completeness and owner compatibility
 7. **Store in `GitHubProviderContext`** — provider-specific context, opaque to the engine
 
 ### GitHubItem
@@ -261,12 +262,12 @@ class GitHubItem(Item):
     async def set_parent(self, parent: Item) -> None:
         """Add sub-issue relationship via GitHub API.
         Idempotent — checks existing relations first.
-        No-op with warning if relation capability is unavailable."""
+        Raises ProviderCapabilityError if relation capability is unavailable."""
 
     async def add_dependency(self, blocker: Item) -> None:
         """Add blocked-by relationship via GitHub API.
         Idempotent — checks existing relations first.
-        No-op with warning if relation capability is unavailable."""
+        Raises ProviderCapabilityError if relation capability is unavailable."""
 ```
 
 ### GitHubProviderContext
@@ -278,6 +279,7 @@ class GitHubProviderContext(ProviderContext):
     repo_id: str
     label_id: str
     issue_type_ids: dict[str, str]       # {"Epic": "...", "Story": "...", "Task": "..."}
+    project_owner_type: str              # "org" | "user"
     project_id: str | None
     project_item_ids: dict[str, str]     # {issue_node_id: project_item_id}
     status_field: ResolvedField | None
@@ -288,8 +290,9 @@ class GitHubProviderContext(ProviderContext):
     supports_sub_issues: bool
     supports_blocked_by: bool
     supports_discovery_filters: bool
-    issue_type_mode: str   # "required" | "best-effort" | "disabled"
-    issue_type_map: dict[str, str]   # {"EPIC":"Epic","STORY":"Story","TASK":"Task"} by default
+    supports_issue_type: bool
+    create_type_strategy: str   # "issue-type" | "label"
+    create_type_map: dict[str, str]   # EPIC/STORY/TASK -> issue type name or label
 ```
 
 ### Generated GraphQL Client
@@ -312,6 +315,18 @@ Transport is httpx with connection pooling and async. All responses are fully ty
 - Pagination required for issue types, label resolution, search, and project item scans.
 - Retry/backoff required for transient transport and rate-limit failures.
 - Provider must classify retryable vs terminal GraphQL errors (including GraphQL `errors` payloads on HTTP 200 responses).
+- Startup checks must validate required token scopes/permissions for configured operations and fail with actionable errors when missing.
+
+**GitHub permission checks (startup):**
+
+| Operation class | Required token permission |
+|-----------------|---------------------------|
+| Issue create/update/label mutations | Repository Issues write |
+| Project item and field mutations | Projects write |
+| Org project metadata reads | Organization metadata/read access |
+| Discovery + relation queries/mutations | GraphQL access with above repo/project permissions |
+
+Missing permissions must raise explicit `AuthenticationError`/`ProviderError` messages that include the failing operation and required permission.
 
 ### Mapper
 
@@ -341,7 +356,7 @@ GraphQL operations are defined as `.graphql` files in `operations/`. ariadne-cod
 | `update_issue.graphql` | Mutation | Update issue title/body (and additive labels if needed) |
 | `add_project_item.graphql` | Mutation | Add issue to project board |
 | `update_project_field.graphql` | Mutation | Set project field value |
-| `update_issue_type.graphql` | Mutation | Set issue type (mode-dependent: required/best-effort/disabled) |
+| `update_issue_type.graphql` | Mutation | Set issue type (strategy-dependent; required when `create_type_strategy=issue-type`) |
 | `add_sub_issue.graphql` | Mutation | Create parent/child relationship |
 | `add_blocked_by.graphql` | Mutation | Create blocked-by relationship |
 | `fetch_relations.graphql` | Query | Batch fetch parents + blocked-by |

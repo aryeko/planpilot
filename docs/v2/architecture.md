@@ -119,7 +119,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `SyncEntry` — Mapping entry for a single item (id, key, url, item_type)
-- `SyncMap` — Full sync map: `plan_id`, `target`, `board_url` (optional), `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
+- `SyncMap` — Full sync map: `plan_id`, `target`, `board_url`, `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
 - `SyncResult` — Return value: `sync_map`, `items_created: dict[PlanItemType, int]`, `dry_run`
 
 **Utilities:**
@@ -140,17 +140,18 @@ Organized into six domains, each with clear responsibilities. Domains may depend
   - `target` — Target designation (e.g. "owner/repo")
   - `auth` — Auth method (e.g. "gh-cli", "env", "token")
   - `token` — Static auth token (optional, for `auth="token"`)
-  - `board_url` — Board URL (optional)
+  - `board_url` — Board URL (required for GitHub v2 launch)
   - `plan_paths: PlanPaths` — Paths to plan JSON files
-  - `sync_path` — Path to write sync map
+  - `validation_mode` — Plan validation strictness (`strict` or `partial`)
+  - `sync_path` — Base path for sync map output (dry-run appends `.dry-run`)
   - `label` — Label to apply to all items
-  - `field_config` — Project field preferences (includes issue type mode/map)
+  - `field_config` — Project field preferences (includes create-type strategy/map)
 - `PlanPaths` — Paths configuration for plan input files. Supports multi-file mode (separate epics/stories/tasks files) or single-file mode (all items in one file):
   - `epics: Path | None` — Path to epics JSON file
   - `stories: Path | None` — Path to stories JSON file
   - `tasks: Path | None` — Path to tasks JSON file
   - `unified: Path | None` — Path to single combined plan file
-- `FieldConfig` — Project field preferences (status, priority, iteration, size field)
+- `FieldConfig` — Project field preferences (status, priority, iteration, size field, create-type strategy)
 
 **Contracts:** None (pure data models)
 
@@ -478,7 +479,7 @@ sequenceDiagram
     Item->>Provider: internal relation API call
 
     Engine-->>SDK: SyncResult
-    SDK->>SDK: persist sync map to disk
+    SDK->>SDK: persist sync map to disk (apply path or .dry-run)
     SDK->>Provider: __aexit__()
     SDK-->>CLI: SyncResult
     CLI-->>User: formatted output
@@ -648,7 +649,7 @@ The interfaces define **what the system needs** from external adapters. They are
 
 ### Deterministic plan hashing is canonicalized
 
-`PlanHasher` computes `plan_id` from canonically ordered plan items plus canonical JSON serialization. Item order in source files does not affect hash output.
+`PlanHasher` computes `plan_id` from canonically ordered plan items plus canonical JSON serialization, including normalization for empty-vs-missing optional containers. Item order in source files does not affect hash output.
 
 ### Engine and Providers are Core peers
 

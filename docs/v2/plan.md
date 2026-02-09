@@ -124,24 +124,41 @@ Validates relational integrity across plan entities.
 
 ```python
 class PlanValidator:
-    def validate(self, plan: Plan) -> None:
+    def validate(self, plan: Plan, *, mode: str = "strict") -> None:
         """Validate relational integrity of a plan.
+
+        Args:
+            mode: "strict" or "partial".
 
         Raises:
             PlanValidationError: Aggregated list of all validation errors found.
         """
 ```
 
-**Validation rules:**
+**Validation modes:**
+
+| Mode | Behavior |
+|------|----------|
+| `strict` | All parent/dependency references must resolve to loaded items |
+| `partial` | Missing references are allowed when the referenced item is not loaded in this run |
+
+**Validation rules (both modes):**
 
 | Rule | Description |
 |------|------------|
 | No duplicate IDs | All item IDs must be globally unique |
 | Valid type | Every item must have a valid `PlanItemType` |
-| Parent hierarchy | `parent_id` is canonical. Allowed parent transitions: task→story, story→epic. Epics cannot have a parent in v2 |
-| Sub-item consistency | `sub_item_ids` is optional/derived. If provided, it must match the inverse of `parent_id` references |
-| Dependency refs | Every entry in `depends_on` must reference an existing item |
+| Parent hierarchy type rules | If parent is loaded, transitions must be task->story and story->epic. Epics cannot have a parent in v2 |
+| Sub-item consistency | `sub_item_ids` is optional/derived. If both sides are loaded, it must match the inverse of `parent_id` references |
 | Type-specific required fields | See per-type matrix below |
+
+**Reference checks by mode:**
+
+| Rule | `strict` | `partial` |
+|------|----------|-----------|
+| `parent_id` reference exists | Required | Optional when parent is missing from loaded input |
+| `depends_on` reference exists | Required | Optional when dependency is missing from loaded input |
+| Invalid loaded reference type (e.g. task parented by task) | Error | Error |
 
 **Per-type required fields:**
 
@@ -150,7 +167,7 @@ class PlanValidator:
 | Field | Epic | Story | Task |
 |-------|------|-------|------|
 | `goal` | Required | Required | Required |
-| `parent_id` | Forbidden | Optional (must reference Epic) | Optional (must reference Story) |
+| `parent_id` | Forbidden | Optional (must reference Epic when loaded) | Optional (must reference Story when loaded) |
 | `sub_item_ids` | Optional | Optional | Optional |
 | `spec_ref` | Optional | Optional | Optional |
 | `requirements` | Required | Required | Required |
@@ -182,11 +199,14 @@ class PlanHasher:
 
 **Algorithm:**
 1. Canonicalize item order: sort `plan.items` by `(item.type.value, item.id)`
-2. Serialize canonicalized items via Pydantic `model_dump(mode="json", by_alias=True)`
-3. JSON-encode with `sort_keys=True, separators=(",", ":")` (canonical form)
-4. SHA-256 hash, truncate to first 12 hex characters
+2. Serialize each item via `model_dump(mode="json", by_alias=True, exclude_none=True)`
+3. Normalize optional containers so semantically equivalent representations hash equally:
+   - Missing and empty optional lists/maps are canonicalized to the same representation
+   - Empty optional containers are dropped from canonical JSON
+4. JSON-encode with `sort_keys=True, separators=(",", ":")` (canonical form)
+5. SHA-256 hash, truncate to first 12 hex characters
 
-**Idempotency guarantee:** Two plans with identical content produce the same `plan_id`, regardless of file paths or load order, because both ordering and serialization are canonicalized. This is how the engine detects already-synced plans via metadata markers.
+**Idempotency guarantee:** Two plans with identical semantics produce the same `plan_id`, regardless of file paths, load order, or empty-vs-missing optional container representation.
 
 ## Contracts Validation
 
@@ -208,4 +228,5 @@ All fields live on the flat `PlanItem` class. Entity type is determined by `item
 | Separate `Epic`, `Story`, `Task` subclasses | Single flat `PlanItem` with `type: PlanItemType` | Simpler model, no inheritance, type-driven validation |
 | Validator checks `task.story_id`, `story.epic_id`, `epic.story_ids`, `story.task_ids` | Validator checks `parent_id` and `sub_item_ids` uniformly using `type` for hierarchy rules | Unified hierarchy fields |
 | Schema uses typed linkage fields (`story_id`, `epic_id`, `story_ids`, `task_ids`) | Schema uses `parent_id` + optional `sub_item_ids` | One hierarchy model across all item types |
+| Strict-only reference validation | Configurable `strict`/`partial` validation mode | Supports partial plan sync workflows |
 | Functions imported directly by engine | SDK calls plan module, passes `Plan` to engine | Engine doesn't do I/O |
