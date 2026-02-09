@@ -2,6 +2,113 @@
 
 <!-- version list -->
 
+## v1.2.1 (2026-02-09)
+
+### Bug Fixes
+
+- **v2**: Address PR review feedback ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+### Documentation
+
+- Add CLI module spec for v2 architecture ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add config module spec for v2 architecture ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add engine module spec with contracts requirements
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add GitHub provider implementation research ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add plan module spec ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add providers module spec with GitHub adapter structure
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add renderers module spec ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add SDK module spec for v2 architecture ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Add v2 architecture specification ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Align v2 design specs with implementation decisions
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Apply review fixes across all v2 module specs ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Cross-spec consistency fixes across v2 design docs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Fix config spec — add auth, remove dry_run, cascade to all specs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Fix sequence diagram and sync map migration in v2 architecture
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Fix v2 architecture design issues from review ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Flatten PlanItem model — remove Epic/Story/Task subclasses
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Make auth method configurable via planpilot.json
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- Rewrite GitHub provider design with codegen + separated auth
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Add auth module spec and fix diagram consistency
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Add implementation guide and relocate design docs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Add implementation guide, relocate design docs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Add same-level concurrency and retry/pool specs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Fix review issues across reorganized docs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Refine dry-run, partial mode, and concurrency contracts
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Reorganize and deduplicate architecture docs
+  ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Resolve redesign doc inconsistencies ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+- **v2**: Resolve round-2 design review gaps ([#62](https://github.com/aryeko/planpilot/pull/62),
+  [`1ed12a0`](https://github.com/aryeko/planpilot/commit/1ed12a04c9594844f7701803441b78c694035d95))
+
+
 ## v1.2.0 (2026-02-08)
 
 ### Bug Fixes
