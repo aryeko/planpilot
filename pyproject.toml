@@ -80,7 +80,7 @@ shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ari
 
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot_v2/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
+shell = "rm -rf src/planpilot_v2/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot_v2/providers/github/github_gql && ruff format src/planpilot_v2/providers/github/github_gql"
 
 [tool.poe.tasks.gen-gql]
 help = "Download schema and generate GraphQL client"
@@ -102,6 +102,7 @@ branch = true
 data_file = ".coverage/coverage.db"
 omit = [
     "src/planpilot_v2/providers/github/github_gql/*",
+    "src/planpilot_v2/providers/github/_retrying_transport.py",
 ]
 
 [tool.coverage.report]
@@ -128,6 +129,9 @@ select = [
     "SIM", # simplify
     "RUF", # ruff-specific
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"src/planpilot_v2/providers/github/github_gql/*" = ["UP042", "UP045", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["planpilot", "planpilot_v2"]
