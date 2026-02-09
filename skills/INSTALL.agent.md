@@ -96,7 +96,7 @@ wget -qO ~/.agents/skills/roadmap-to-github-project/SKILL.md \
 head -5 ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-The output must contain `name: roadmap-to-github-project`. If not, the download failed — retry Step 4.
+The output must contain `name: roadmap-to-github-project`. If not, the download failed — retry Step 5.
 
 ## Step 7: Report to user
 
