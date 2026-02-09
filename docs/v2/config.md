@@ -55,6 +55,16 @@ class FieldConfig(BaseModel):
 
     size_from_tshirt: bool = True
     """Whether to map PlanItem.estimate.tshirt to the size field."""
+
+    issue_type_mode: str = "best-effort"
+    """Issue type behavior: "required", "best-effort", or "disabled"."""
+
+    issue_type_map: dict[str, str] = {
+        "EPIC": "Epic",
+        "STORY": "Story",
+        "TASK": "Task",
+    }
+    """Plan item type -> provider issue type mapping."""
 ```
 
 **Cross-provider field mapping:** These field names use GitHub Projects v2 terminology and are defaults, not guarantees. Providers interpret them in their own context and may require target-specific field names to exist:
@@ -65,6 +75,8 @@ class FieldConfig(BaseModel):
 | `priority` | Priority field | Priority field |
 | `iteration` | Iteration field | Sprint |
 | `size_field` | Custom "Size" field | Story points field |
+| `issue_type_mode` | Issue type update policy | Issue type update policy |
+| `issue_type_map` | Plan type -> issue type names | Plan type -> issue type names |
 
 If a configured field does not exist in the provider target, provider setup must fail fast with a clear `ConfigError`/`ProviderError`.
 
@@ -137,7 +149,7 @@ class PlanPilotConfig(BaseModel):
     """Paths to plan JSON files."""
 
     sync_path: Path = Path("sync-map.json")
-    """Path to write the sync map after a successful sync."""
+    """Path to write the sync map after successful execution (including dry-run)."""
 
     label: str = "planpilot"
     """Label to apply to all created items."""
@@ -157,6 +169,8 @@ class PlanPilotConfig(BaseModel):
 | `"token"` | non-empty string | Valid |
 | `"token"` | `None` / empty | Invalid (`ConfigError`) |
 | `"gh-cli"` or `"env"` | non-empty string | Invalid (`ConfigError`, prevents ambiguous secret source) |
+
+**Launch scope note:** v2 launch targets the GitHub provider. Other providers may define additional `auth` values and env/token semantics in their provider docs.
 
 **Design decisions:**
 

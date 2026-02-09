@@ -14,6 +14,8 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 
 - **Async-first** — All I/O operations are async. The SDK and engine are fully async-compatible.
 
+- **Launch scope** — v2 launch is GitHub-first. Adapter contracts remain provider-agnostic, but non-GitHub providers are future extension work.
+
 ## Documentation
 
 - **[Architecture](./architecture.md)** — Complete architectural specification with layer diagrams, dependency rules, UML class diagrams, and extension guides.
@@ -52,9 +54,15 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 | Unified plan JSON shape clarity | `plan.md`, `config.md` |
 | Auth/token validation and boardless behavior | `config.md` |
 | CLI/SDK composition and exit code clarity | `cli.md`, `sdk.md`, `architecture.md` |
+| Structured partial-create failure contract | `providers.md`, `engine.md`, `architecture.md`, `github-provider-research.md` |
+| Discovery capability enforcement and existing-item upsert branch | `providers.md`, `engine.md`, `architecture.md` |
+| Issue-type mapping/compatibility behavior | `config.md`, `providers.md`, `github-provider-research.md` |
+| Loader API and multi-file shape ambiguity | `sdk.md`, `plan.md`, `architecture.md` |
+| CLI output stability contract for automation | `cli.md`, `sdk.md` |
 
 ## Known v2 Limitations
 
 - Engine execution remains sequential (epics -> stories -> tasks); concurrent provider operations are not required.
 - Workflow board fields (`status`, `priority`, `iteration`) are provider-authoritative after create and not plan-controlled in v2.
 - Relation mutations are capability-gated and may be skipped in environments where APIs are unavailable.
+- CLI text summary is human-oriented and not a stable machine interface; automation should use SDK APIs.

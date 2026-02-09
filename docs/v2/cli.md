@@ -198,6 +198,8 @@ planpilot - sync complete (apply)
   [dry-run] No changes were made  (only in dry-run mode)
 ```
 
+**Stability note:** This summary is human-oriented and not a stable machine contract. Automation should use SDK return objects (`SyncResult`) rather than parsing CLI text.
+
 **Changes from v1 summary format:**
 
 | v1 | v2 | Rationale |
@@ -268,6 +270,7 @@ raise SystemExit(main())
 | `--verbose` is CLI-only | Logging level is a runtime concern. SDK uses standard `logging` module |
 | Renderer hardcoded to "markdown" | GitHub is the primary provider; renderer selection could be added to config later |
 | Error handling maps known failure classes to stable exit codes | Automation can distinguish validation/auth/sync failures without parsing stderr |
+| No `--json` output mode in v2 | Keep CLI minimal; machine consumers should use SDK APIs |
 
 ## Changes from v1
 

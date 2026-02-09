@@ -9,7 +9,8 @@ The v2 `GitHubProvider` needs:
 | Fetch repo context | GraphQL | Repo ID, issue types, labels |
 | Create label (if missing) | GraphQL | Bootstrap discovery label |
 | Create issue | GraphQL | `createIssue` mutation |
-| Update issue | GraphQL | `updateIssue` mutation (body, type) |
+| Update issue | GraphQL | `updateIssue` mutation (title/body, additive labels) |
+| Update issue type | GraphQL | `updateIssueType` mutation (mode-dependent) |
 | Search issues | GraphQL | By label + body text |
 | Add label | GraphQL | `addLabelsToLabelable` — no REST needed |
 | Add to project | GraphQL | `addProjectV2ItemById` |
@@ -247,13 +248,33 @@ class GitHubProvider(Provider):
 2. Ensure issue type
 3. Ensure label assignment
 4. Ensure project item (if board configured)
-5. Ensure project fields (`size` always; workflow fields only on create)
+5. Ensure project fields (`size` when present; workflow fields only on create)
 
-On partial failure, provider errors should include enough context for reconciliation (created issue ID and completed steps).
+On partial failure, provider errors should include enough context for reconciliation:
+- `created_item_id`
+- `created_item_key`
+- `created_item_url`
+- `completed_steps`
+- `retryable`
+
+Metadata must be present in the body at issue-creation time so discovery can recover from partial setup. If creation happens without metadata due provider/API anomaly, provider should perform a best-effort fallback discovery (`label + title + recent-created window`) and emit a warning.
+
+### Issue Type Mapping and Compatibility
+
+Issue type updates are controlled by provider mode:
+- `required` -> missing mapping/capability is a hard failure
+- `best-effort` -> missing mapping/capability logs warning and continues
+- `disabled` -> no issue type mutation is attempted
+
+Mapping defaults: `EPIC->Epic`, `STORY->Story`, `TASK->Task`; providers may override via config.
 
 ### Capability Gating for Relations
 
 Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable in some environments. Provider startup should detect capabilities and set flags in context. Relation methods should no-op with warning when unsupported, not fail the whole sync.
+
+Recommended detection mechanism:
+- startup probe query against schema/introspection or a dedicated capability query
+- cache booleans in provider context (`supports_sub_issues`, `supports_blocked_by`)
 
 ### Retry and Rate-Limit Policy
 
@@ -261,6 +282,18 @@ Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable in some en
 - Respect `Retry-After` when present.
 - Treat schema/validation/auth failures as terminal (no retry).
 - Log retry attempts with operation name and attempt count.
+- Cap concurrent in-flight GraphQL operations (provider-level semaphore) to reduce secondary rate-limit risk.
+
+Retry classification matrix:
+
+| Failure class | Retry? | Notes |
+|---------------|--------|------|
+| Network timeout / connection reset | Yes | Exponential backoff |
+| HTTP 502/503/504 | Yes | Respect `Retry-After` if present |
+| HTTP 429 / secondary rate limit | Yes | Respect `Retry-After`, reduce concurrency |
+| GraphQL `errors` with transient classification | Yes | Parse `errors[*].extensions` and message |
+| GraphQL schema/validation errors | No | Operation/spec mismatch |
+| Authentication/authorization failures | No | Requires config/token fix |
 
 ### Pagination Requirements
 
@@ -270,6 +303,12 @@ The provider must paginate through:
 - search results
 - project item listing (`FetchProjectItems`)
 - relation fetches when needed for idempotency checks
+
+Pagination operating rules:
+- keep cursor until `hasNextPage == false`
+- use bounded page size (for example 50-100 depending on endpoint cost)
+- enforce max-page safety budget; fail loudly when exceeded (no silent truncation)
+- discovery must fail if pagination truncates results, to avoid duplicate creation
 
 ### Project Field Type Handling
 

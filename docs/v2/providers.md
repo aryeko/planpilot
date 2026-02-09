@@ -13,7 +13,7 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 | **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters` |
 | **provider** | `Provider` ABC |
 | **config** | `FieldConfig` |
-| **exceptions** | `ProviderError`, `AuthenticationError`, `ProjectURLError` |
+| **exceptions** | `ProviderError`, `ProviderCapabilityError`, `CreateItemPartialFailureError`, `AuthenticationError`, `ProjectURLError` |
 
 No dependency on plan, renderer, sync, or engine.
 
@@ -37,6 +37,43 @@ class Provider(ABC):
     async def delete_item(self, item_id: str) -> None: ...
 ```
 
+### Required Discovery Capabilities
+
+Providers must support Discovery semantics used by the engine:
+
+- `search_items()` must apply `labels` and `body_contains` as a conjunctive filter.
+- Search results must be complete up to provider pagination limits (pagination is mandatory).
+- If a provider cannot satisfy these semantics, it must fail fast in `__aenter__` with `ProviderCapabilityError` instead of silently degrading.
+
+### Partial Failure Error Contract
+
+`create_item()` is multi-step and may fail after an item already exists remotely. Providers must raise a structured partial-failure exception when that happens:
+
+```python
+class CreateItemPartialFailureError(ProviderError):
+    created_item_id: str | None
+    created_item_key: str | None
+    created_item_url: str | None
+    completed_steps: tuple[str, ...]
+    retryable: bool
+```
+
+`completed_steps` uses canonical step names:
+- `issue_created`
+- `issue_type_set`
+- `labels_set`
+- `project_item_added`
+- `project_fields_set`
+
+Capability gaps must raise:
+
+```python
+class ProviderCapabilityError(ProviderError):
+    capability: str
+```
+
+Example capability names: `discovery_body_contains`, `discovery_label_filter`, `relation_sub_issue`, `relation_blocked_by`.
+
 ### Key Design: `create_item()` is Idempotent Multi-Step
 
 In v2, `create_item()` handles everything the v1 engine used to orchestrate across multiple calls, but as a re-runnable workflow (not a single atomic transaction):
@@ -52,8 +89,9 @@ The engine just says "create this item" and the provider handles all platform-sp
 
 **Required behavior:**
 - Each sub-step must be safe to retry (`ensure_*` semantics).
-- Partial failures must return enough context to reconcile on the next run (for example created issue ID and completed steps).
+- Partial failures must raise `CreateItemPartialFailureError` with created item identity + `completed_steps`.
 - Re-running sync must converge to one correctly configured item, not duplicates.
+- Step ordering must be metadata-safe: issue body metadata is included at issue creation time so crash recovery discovery can find partially configured items.
 
 ### Key Design: `Item` is an ABC with Provider-Implemented Relation Methods
 
@@ -82,6 +120,10 @@ Provider `update_item()` applies only plan-authoritative fields:
 - `title`, `body`, `item_type`, `labels`, `size`
 
 Provider-authoritative workflow fields (`status`, `priority`, `iteration`) are intentionally not overwritten during reconcile unless future plan schema explicitly models them.
+
+**Label policy:** `labels` is additive (`ensure label present`), not replace-all. Provider must preserve non-PlanPilot labels.
+
+**Project-field policy:** `status`/`priority`/`iteration` from `field_config` are creation defaults. They are not continuously enforced during reconcile in v2.
 
 ## Provider Factory
 
@@ -173,13 +215,16 @@ class GitHubProvider(Provider):
         """Cleanup."""
 
     async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
-        """Search GitHub issues by label + body text metadata markers.
+        """Search GitHub issues by label + metadata marker text.
+        Must satisfy required discovery capability semantics.
         Returns GitHubItem instances."""
 
     async def create_item(self, input: CreateItemInput) -> Item:
         """Idempotent multi-step workflow: create issue, set type/labels,
         add to project (if configured), set fields.
-        Returns GitHubItem."""
+        Size/project-field updates are conditional on data and field availability.
+        Returns GitHubItem.
+        Raises CreateItemPartialFailureError when partially complete."""
 
     async def update_item(self, item_id: str, input: UpdateItemInput) -> Item:
         """Reconcile plan-authoritative fields for an existing issue.
@@ -199,8 +244,10 @@ All provider-specific setup happens here (was scattered across engine phases in 
 1. **Initialize client** — construct the generated `Client` with the token and `https://api.github.com/graphql` endpoint
 2. **Resolve repo context** — fetch repo ID, issue type IDs, resolve or create label
 3. **Resolve project context** (if board_url provided) — parse project URL, fetch project fields, resolve field IDs for status/priority/iteration/size
-4. **Capability checks** — detect whether relation mutations are available (`addSubIssue`, `addBlockedBy`)
-5. **Store in `GitHubProviderContext`** — provider-specific context, opaque to the engine
+4. **Discovery capability checks** — verify label/body search filters are supported; fail fast with `ProviderCapabilityError` if not
+5. **Capability checks** — detect whether relation mutations are available (`addSubIssue`, `addBlockedBy`)
+6. **Resolve issue-type policy** — load `issue_type_mode` and `issue_type_map` from `FieldConfig`, validate mapping completeness
+7. **Store in `GitHubProviderContext`** — provider-specific context, opaque to the engine
 
 ### GitHubItem
 
@@ -240,6 +287,9 @@ class GitHubProviderContext(ProviderContext):
     size_options: list[dict[str, str]]
     supports_sub_issues: bool
     supports_blocked_by: bool
+    supports_discovery_filters: bool
+    issue_type_mode: str   # "required" | "best-effort" | "disabled"
+    issue_type_map: dict[str, str]   # {"EPIC":"Epic","STORY":"Story","TASK":"Task"} by default
 ```
 
 ### Generated GraphQL Client
@@ -261,7 +311,7 @@ Transport is httpx with connection pooling and async. All responses are fully ty
 **Operational requirements:**
 - Pagination required for issue types, label resolution, search, and project item scans.
 - Retry/backoff required for transient transport and rate-limit failures.
-- Provider must classify retryable vs terminal GraphQL errors.
+- Provider must classify retryable vs terminal GraphQL errors (including GraphQL `errors` payloads on HTTP 200 responses).
 
 ### Mapper
 
@@ -288,10 +338,10 @@ GraphQL operations are defined as `.graphql` files in `operations/`. ariadne-cod
 | `fetch_project_items.graphql` | Query | Fetch all project item mappings for reconciliation |
 | `search_issues.graphql` | Query | Search issues by label + body text |
 | `create_issue.graphql` | Mutation | Create issue |
-| `update_issue.graphql` | Mutation | Update issue title/body/type/labels |
+| `update_issue.graphql` | Mutation | Update issue title/body (and additive labels if needed) |
 | `add_project_item.graphql` | Mutation | Add issue to project board |
 | `update_project_field.graphql` | Mutation | Set project field value |
-| `update_issue_type.graphql` | Mutation | Set issue type |
+| `update_issue_type.graphql` | Mutation | Set issue type (mode-dependent: required/best-effort/disabled) |
 | `add_sub_issue.graphql` | Mutation | Create parent/child relationship |
 | `add_blocked_by.graphql` | Mutation | Create blocked-by relationship |
 | `fetch_relations.graphql` | Query | Batch fetch parents + blocked-by |

@@ -194,15 +194,25 @@ def load_config(path: str | Path) -> PlanPilotConfig:
         ConfigError: If loading or validation fails.
     """
 
-def load_plan(*paths: str | Path) -> Plan:
-    """Load a plan from one or more JSON files.
+def load_plan(
+    *,
+    unified: str | Path | None = None,
+    epics: str | Path | None = None,
+    stories: str | Path | None = None,
+    tasks: str | Path | None = None,
+) -> Plan:
+    """Load a plan from explicit path inputs.
 
     Convenience wrapper around PlanLoader for programmatic use.
-    Accepts individual file paths (multi-file mode) or a single
-    path (unified mode).
+    Uses the same mode rules as PlanPaths:
+    - unified mode: set `unified` only
+    - multi-file mode: set one or more of `epics`/`stories`/`tasks`
 
     Args:
-        *paths: One or more paths to plan JSON files.
+        unified: Single-file plan path.
+        epics: Multi-file epics path.
+        stories: Multi-file stories path.
+        tasks: Multi-file tasks path.
 
     Returns:
         Validated Plan instance.
@@ -232,7 +242,7 @@ print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
 from planpilot import PlanPilot, load_config, load_plan
 
 config = load_config("planpilot.json")
-plan = load_plan("epics.json", "stories.json", "tasks.json")
+plan = load_plan(epics="epics.json", stories="stories.json", tasks="tasks.json")
 
 pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync(plan=plan)

@@ -70,6 +70,54 @@ class PlanLoader:
 }
 ```
 
+**Multi-file shapes (canonical):**
+
+`epics.json`:
+
+```json
+[
+  {
+    "id": "E1",
+    "title": "Epic title",
+    "goal": "Outcome",
+    "requirements": ["R1"],
+    "acceptance_criteria": ["A1"]
+  }
+]
+```
+
+`stories.json`:
+
+```json
+[
+  {
+    "id": "S1",
+    "title": "Story title",
+    "parent_id": "E1",
+    "goal": "Outcome",
+    "requirements": ["R1"],
+    "acceptance_criteria": ["A1"]
+  }
+]
+```
+
+`tasks.json`:
+
+```json
+[
+  {
+    "id": "T1",
+    "title": "Task title",
+    "parent_id": "S1",
+    "goal": "Outcome",
+    "requirements": ["R1"],
+    "acceptance_criteria": ["A1"]
+  }
+]
+```
+
+For multi-file mode, root shape is a JSON array in each file. `type` is optional input and ignored if provided; the loader assigns type from file role.
+
 ### PlanValidator
 
 Validates relational integrity across plan entities.
@@ -102,7 +150,7 @@ class PlanValidator:
 | Field | Epic | Story | Task |
 |-------|------|-------|------|
 | `goal` | Required | Required | Required |
-| `parent_id` | Optional | Optional | Optional |
+| `parent_id` | Forbidden | Optional (must reference Epic) | Optional (must reference Story) |
 | `sub_item_ids` | Optional | Optional | Optional |
 | `spec_ref` | Optional | Optional | Optional |
 | `requirements` | Required | Required | Required |
@@ -159,4 +207,5 @@ All fields live on the flat `PlanItem` class. Entity type is determined by `item
 | Free functions: `load_plan()`, `validate_plan()`, `compute_plan_id()` | Classes: `PlanLoader`, `PlanValidator`, `PlanHasher` | OOP design, testable, mockable |
 | Separate `Epic`, `Story`, `Task` subclasses | Single flat `PlanItem` with `type: PlanItemType` | Simpler model, no inheritance, type-driven validation |
 | Validator checks `task.story_id`, `story.epic_id`, `epic.story_ids`, `story.task_ids` | Validator checks `parent_id` and `sub_item_ids` uniformly using `type` for hierarchy rules | Unified hierarchy fields |
+| Schema uses typed linkage fields (`story_id`, `epic_id`, `story_ids`, `task_ids`) | Schema uses `parent_id` + optional `sub_item_ids` | One hierarchy model across all item types |
 | Functions imported directly by engine | SDK calls plan module, passes `Plan` to engine | Engine doesn't do I/O |

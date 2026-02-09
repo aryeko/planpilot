@@ -16,7 +16,7 @@ The engine is the primary consumer of all Contracts. Every contract type used be
 | **config** | `PlanPilotConfig` |
 | **provider** | `Provider` ABC |
 | **renderer** | `BodyRenderer` ABC, `RenderContext` |
-| **exceptions** | `SyncError` |
+| **exceptions** | `SyncError`, `CreateItemPartialFailureError` |
 
 ## SyncEngine Class
 
@@ -50,6 +50,8 @@ In dry-run mode, only Upsert runs (with placeholder entries, no API calls). Disc
 **Goal:** Find items that already exist in the provider for this plan, so we can skip re-creating them.
 
 **Source of truth:** Discovery is provider-search-first. The sync map is persisted output/cache, not the canonical source for finding existing items.
+
+**Capability requirement:** providers must support Discovery filters (`labels` + `body_contains`). If unsupported, provider setup fails fast with `ProviderCapabilityError`.
 
 **Contract calls:**
 
@@ -109,15 +111,27 @@ context = RenderContext(
 # 2. Render body
 body: str = renderer.render(plan_item, context)
 
-# 3. Create item
-input = CreateItemInput(
-    title=plan_item.title,
-    body=body,
-    item_type=plan_item.type,             # PlanItemType enum
-    labels=[config.label],
-    size=plan_item.estimate.tshirt if plan_item.estimate else None,
-)
-item: Item = await provider.create_item(input)
+# 3. Upsert branch
+if plan_item.id in existing_map:
+    # Existing item discovered by provider-search-first Discovery.
+    item = existing_map[plan_item.id]
+else:
+    input = CreateItemInput(
+        title=plan_item.title,
+        body=body,
+        item_type=plan_item.type,             # PlanItemType enum
+        labels=[config.label],
+        size=plan_item.estimate.tshirt if plan_item.estimate else None,
+    )
+    try:
+        item = await provider.create_item(input)
+    except CreateItemPartialFailureError as exc:
+        # Preserve deterministic retry by surfacing structured context.
+        raise SyncError(
+            f"partial create failure for {plan_item.id}: "
+            f"created_item_id={exc.created_item_id!r} "
+            f"steps={exc.completed_steps} retryable={exc.retryable}"
+        ) from exc
 
 # 4. Record in sync map
 entry: SyncEntry = to_sync_entry(item)
@@ -129,6 +143,7 @@ sync_map.entries[plan_item.id] = entry
 - `BodyRenderer.render(PlanItem, RenderContext) -> str`
 - `CreateItemInput` — needs `title: str`, `body: str`, `item_type: PlanItemType`, `labels: list[str]`, `size: str | None`
 - `Provider.create_item(CreateItemInput) -> Item`
+- `CreateItemPartialFailureError` — structured partial failure context from provider
 - `to_sync_entry(Item) -> SyncEntry` — from sync domain
 - `SyncMap` — flat `entries: dict[str, SyncEntry]` keyed by item ID
 
@@ -173,6 +188,7 @@ await provider.update_item(
 
 **Ownership rule during reconcile:**
 - Plan-authoritative fields: `title`, `body`, `item_type`, `labels`, `size`, and relations.
+- `labels` are additive (`ensure config.label present`), not replace-all.
 - Provider-authoritative fields after create: board workflow fields (`status`, `priority`, `iteration`) are not overwritten by Enrich.
 
 ## Phase 4: Relations
@@ -194,6 +210,7 @@ await item.add_dependency(blocker_item)
 1. **Direct dependencies:** For each item with `depends_on`, call `add_dependency` for each referenced item.
 2. **Parent hierarchy:** For each item with `parent_id`, call `set_parent` with the parent item.
 3. **Parent roll-up:** If a child in parent A depends on a child in parent B (and A != B), then parent A is blocked by parent B. This rolls up recursively through the hierarchy (e.g. task deps roll up to story level, story deps roll up to epic level).
+4. **Cycle handling:** Roll-up edges are de-duplicated and cycle-checked before relation calls. Cyclic edges are skipped and surfaced as warnings in the sync result summary.
 
 Roll-up is computed by engine-internal utilities:
 
@@ -291,7 +308,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Used For |
 |------|---------|
-| `SyncError` | Missing sync map entries, parent mismatches |
+| `SyncError` | Missing sync map entries, parent mismatches, surfaced partial create failures |
 
 ## Changes from v1
 

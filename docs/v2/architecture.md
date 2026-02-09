@@ -144,7 +144,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
   - `plan_paths: PlanPaths` — Paths to plan JSON files
   - `sync_path` — Path to write sync map
   - `label` — Label to apply to all items
-  - `field_config` — Project field preferences
+  - `field_config` — Project field preferences (includes issue type mode/map)
 - `PlanPaths` — Paths configuration for plan input files. Supports multi-file mode (separate epics/stories/tasks files) or single-file mode (all items in one file):
   - `epics: Path | None` — Path to epics JSON file
   - `stories: Path | None` — Path to stories JSON file
@@ -163,8 +163,8 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 **Contracts:**
 - `Provider` ABC — Abstract base class defining the provider interface:
   - `__aenter__()` / `__aexit__()` — Async context manager lifecycle
-  - `search_items(ItemSearchFilters) -> list[Item]` — Search for items
-  - `create_item(CreateItemInput) -> Item` — Create a new item
+  - `search_items(ItemSearchFilters) -> list[Item]` — Search for items (must honor label + metadata filters conjunctively)
+  - `create_item(CreateItemInput) -> Item` — Create a new item (may raise structured partial-failure error)
   - `update_item(str, UpdateItemInput) -> Item` — Update an existing item
   - `get_item(str) -> Item` — Fetch a single item
   - `delete_item(str)` — Delete an item
@@ -181,7 +181,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 **Models:**
 - `RenderContext` — Resolved cross-references the engine computed for rendering:
   - `plan_id` — Deterministic plan hash for the metadata block
-  - `parent_ref` — Human-readable reference to parent item (e.g. "#42")
+  - `parent_ref` — Human-readable reference to parent item (e.g. "ISSUE-42")
   - `sub_items` — List of (key, title) tuples for child items
   - `dependencies` — Dict of {dep_id: issue_ref} for blocked-by links
 
@@ -500,7 +500,7 @@ pp = await PlanPilot.from_config(config, renderer_name="markdown")
 result = await pp.sync(dry_run=False)
 
 # Or pass a Plan directly for programmatic use
-plan = load_plan("epics.json", "stories.json", "tasks.json")
+plan = load_plan(epics="epics.json", stories="stories.json", tasks="tasks.json")
 result = await pp.sync(plan, dry_run=True)
 
 # Access results
@@ -680,6 +680,12 @@ END_PLANPILOT_META
 ```
 
 If a sync crashes mid-upsert, re-running performs provider-search-first discovery using the `PLAN_ID` marker and reconciles already-created items. Provider `create_item()` is required to be idempotent multi-step, so partial setup converges on retry.
+
+When a provider fails after remote item creation, it raises structured partial-failure context (`CreateItemPartialFailureError`) including created item identity and completed steps so reruns remain deterministic.
+
+Metadata must be present at issue creation time. This guarantees discovery can find partially configured items after crashes.
+
+Providers that cannot satisfy discovery filter semantics must fail fast during setup with `ProviderCapabilityError` rather than silently degrading discovery behavior.
 
 ### Concurrency
 
