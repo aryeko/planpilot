@@ -17,3 +17,11 @@ This directory contains the architecture documentation for PlanPilot v2, a compl
 ## Documentation
 
 - **[Architecture](./architecture.md)** — Complete architectural specification with layer diagrams, dependency rules, UML class diagrams, and extension guides.
+- **[Engine](./engine.md)** — Sync engine module spec with 5-phase pipeline and contracts requirements.
+- **[Plan](./plan.md)** — Plan module spec covering loading, validation, and hashing.
+- **[Providers](./providers.md)** — Provider module spec with GitHub adapter structure.
+- **[Renderers](./renderers.md)** — Renderer module spec with Markdown implementation.
+- **[Config](./config.md)** — Config module spec with JSON-loadable configuration models.
+- **[SDK](./sdk.md)** — SDK module spec defining the public API facade.
+- **[CLI](./cli.md)** — CLI module spec with config-file-driven interface.
+- **[GitHub Provider Research](./github-provider-research.md)** — Evaluation of implementation approaches for the GitHub provider (githubkit, ariadne-codegen, gh CLI, etc.).
