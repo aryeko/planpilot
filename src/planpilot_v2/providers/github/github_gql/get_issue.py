@@ -6,20 +6,19 @@ from typing import Annotated, Literal, Optional, Union
 from pydantic import Field
 
 from .base_model import BaseModel
+from .fragments import IssueCore
 
 
-class FetchRelations(BaseModel):
-    nodes: list[
-        Optional[
-            Annotated[
-                Union["FetchRelationsNodesNode", "FetchRelationsNodesIssue"],
-                Field(discriminator="typename__"),
-            ]
+class GetIssue(BaseModel):
+    node: Optional[
+        Annotated[
+            Union["GetIssueNodeNode", "GetIssueNodeIssue"],
+            Field(discriminator="typename__"),
         ]
     ]
 
 
-class FetchRelationsNodesNode(BaseModel):
+class GetIssueNodeNode(BaseModel):
     typename__: Literal[
         "AddedToMergeQueueEvent",
         "AddedToProjectEvent",
@@ -286,25 +285,8 @@ class FetchRelationsNodesNode(BaseModel):
     ] = Field(alias="__typename")
 
 
-class FetchRelationsNodesIssue(BaseModel):
+class GetIssueNodeIssue(IssueCore):
     typename__: Literal["Issue"] = Field(alias="__typename")
-    id: str
-    parent: Optional["FetchRelationsNodesIssueParent"]
-    blocked_by: "FetchRelationsNodesIssueBlockedBy" = Field(alias="blockedBy")
 
 
-class FetchRelationsNodesIssueParent(BaseModel):
-    id: str
-
-
-class FetchRelationsNodesIssueBlockedBy(BaseModel):
-    nodes: Optional[list[Optional["FetchRelationsNodesIssueBlockedByNodes"]]]
-
-
-class FetchRelationsNodesIssueBlockedByNodes(BaseModel):
-    id: str
-
-
-FetchRelations.model_rebuild()
-FetchRelationsNodesIssue.model_rebuild()
-FetchRelationsNodesIssueBlockedBy.model_rebuild()
+GetIssue.model_rebuild()

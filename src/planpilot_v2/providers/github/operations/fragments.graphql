@@ -1,0 +1,10 @@
+fragment IssueCore on Issue {
+  id
+  number
+  url
+  title
+  body
+  labels(first: 100) {
+    nodes { id name }
+  }
+}

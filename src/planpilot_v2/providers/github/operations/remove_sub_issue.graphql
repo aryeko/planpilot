@@ -1,0 +1,6 @@
+mutation RemoveSubIssue($parentId: ID!, $childId: ID!) {
+  removeSubIssue(input: { issueId: $parentId, subIssueId: $childId }) {
+    issue { id }
+    subIssue { id }
+  }
+}

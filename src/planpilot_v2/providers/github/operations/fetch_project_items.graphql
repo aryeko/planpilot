@@ -3,6 +3,12 @@ query FetchProjectItems($projectId: ID!, $cursor: String) {
     ... on ProjectV2 {
       items(first: 100, after: $cursor) {
         pageInfo { hasNextPage endCursor }
+        nodes {
+          id
+          content {
+            ... on Issue { id }
+          }
+        }
       }
     }
   }

@@ -6,6 +6,7 @@ from typing import Optional
 from pydantic import Field
 
 from .base_model import BaseModel
+from .fragments import IssueCore
 
 
 class UpdateIssue(BaseModel):
@@ -16,8 +17,8 @@ class UpdateIssueUpdateIssue(BaseModel):
     issue: Optional["UpdateIssueUpdateIssueIssue"]
 
 
-class UpdateIssueUpdateIssueIssue(BaseModel):
-    id: str
+class UpdateIssueUpdateIssueIssue(IssueCore):
+    pass
 
 
 UpdateIssue.model_rebuild()

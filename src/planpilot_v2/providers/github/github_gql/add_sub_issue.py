@@ -14,9 +14,14 @@ class AddSubIssue(BaseModel):
 
 class AddSubIssueAddSubIssue(BaseModel):
     issue: Optional["AddSubIssueAddSubIssueIssue"]
+    sub_issue: Optional["AddSubIssueAddSubIssueSubIssue"] = Field(alias="subIssue")
 
 
 class AddSubIssueAddSubIssueIssue(BaseModel):
+    id: str
+
+
+class AddSubIssueAddSubIssueSubIssue(BaseModel):
     id: str
 
 

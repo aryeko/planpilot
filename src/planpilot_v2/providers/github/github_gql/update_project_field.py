@@ -9,15 +9,15 @@ from .base_model import BaseModel
 
 
 class UpdateProjectField(BaseModel):
-    update_project_v_2_item_field_value: Optional["UpdateProjectFieldUpdateProjectV2ItemFieldValue"] = Field(
-        alias="updateProjectV2ItemFieldValue"
-    )
+    update_project_v_2_item_field_value: Optional[
+        "UpdateProjectFieldUpdateProjectV2ItemFieldValue"
+    ] = Field(alias="updateProjectV2ItemFieldValue")
 
 
 class UpdateProjectFieldUpdateProjectV2ItemFieldValue(BaseModel):
-    project_v_2_item: Optional["UpdateProjectFieldUpdateProjectV2ItemFieldValueProjectV2Item"] = Field(
-        alias="projectV2Item"
-    )
+    project_v_2_item: Optional[
+        "UpdateProjectFieldUpdateProjectV2ItemFieldValueProjectV2Item"
+    ] = Field(alias="projectV2Item")
 
 
 class UpdateProjectFieldUpdateProjectV2ItemFieldValueProjectV2Item(BaseModel):

@@ -3,14 +3,23 @@
 
 __all__ = [
     "ADD_BLOCKED_BY_GQL",
+    "ADD_LABELS_GQL",
     "ADD_PROJECT_ITEM_GQL",
     "ADD_SUB_ISSUE_GQL",
+    "CLOSE_ISSUE_GQL",
     "CREATE_ISSUE_GQL",
     "CREATE_LABEL_GQL",
-    "FETCH_PROJECT_GQL",
+    "FETCH_ORG_PROJECT_GQL",
+    "FETCH_PROJECT_FIELDS_GQL",
     "FETCH_PROJECT_ITEMS_GQL",
     "FETCH_RELATIONS_GQL",
     "FETCH_REPO_GQL",
+    "FETCH_USER_PROJECT_GQL",
+    "FIND_LABELS_GQL",
+    "GET_ISSUE_GQL",
+    "REMOVE_BLOCKED_BY_GQL",
+    "REMOVE_LABELS_GQL",
+    "REMOVE_SUB_ISSUE_GQL",
     "SEARCH_ISSUES_GQL",
     "UPDATE_ISSUE_GQL",
     "UPDATE_PROJECT_FIELD_GQL",
@@ -26,6 +35,14 @@ mutation AddBlockedBy($blockedId: ID!, $blockerId: ID!) {
 }
 """
 
+ADD_LABELS_GQL = """
+mutation AddLabels($labelableId: ID!, $labelIds: [ID!]!) {
+  addLabelsToLabelable(input: {labelableId: $labelableId, labelIds: $labelIds}) {
+    clientMutationId
+  }
+}
+"""
+
 ADD_PROJECT_ITEM_GQL = """
 mutation AddProjectItem($projectId: ID!, $contentId: ID!) {
   addProjectV2ItemById(input: {projectId: $projectId, contentId: $contentId}) {
@@ -37,8 +54,23 @@ mutation AddProjectItem($projectId: ID!, $contentId: ID!) {
 """
 
 ADD_SUB_ISSUE_GQL = """
-mutation AddSubIssue($parentId: ID!, $childId: ID!) {
-  addSubIssue(input: {issueId: $parentId, subIssueId: $childId}) {
+mutation AddSubIssue($parentId: ID!, $childId: ID!, $replaceParent: Boolean) {
+  addSubIssue(
+    input: {issueId: $parentId, subIssueId: $childId, replaceParent: $replaceParent}
+  ) {
+    issue {
+      id
+    }
+    subIssue {
+      id
+    }
+  }
+}
+"""
+
+CLOSE_ISSUE_GQL = """
+mutation CloseIssue($issueId: ID!, $stateReason: IssueClosedStateReason) {
+  closeIssue(input: {issueId: $issueId, stateReason: $stateReason}) {
     issue {
       id
     }
@@ -47,10 +79,26 @@ mutation AddSubIssue($parentId: ID!, $childId: ID!) {
 """
 
 CREATE_ISSUE_GQL = """
-mutation CreateIssue($repositoryId: ID!, $title: String!, $body: String!) {
-  createIssue(input: {repositoryId: $repositoryId, title: $title, body: $body}) {
+mutation CreateIssue($repositoryId: ID!, $title: String!, $body: String!, $labelIds: [ID!], $issueTypeId: ID, $projectV2Ids: [ID!], $parentIssueId: ID) {
+  createIssue(
+    input: {repositoryId: $repositoryId, title: $title, body: $body, labelIds: $labelIds, issueTypeId: $issueTypeId, projectV2Ids: $projectV2Ids, parentIssueId: $parentIssueId}
+  ) {
     issue {
+      ...IssueCore
+    }
+  }
+}
+
+fragment IssueCore on Issue {
+  id
+  number
+  url
+  title
+  body
+  labels(first: 100) {
+    nodes {
       id
+      name
     }
   }
 }
@@ -66,11 +114,53 @@ mutation CreateLabel($repositoryId: ID!, $name: String!) {
 }
 """
 
-FETCH_PROJECT_GQL = """
-query FetchProject($owner: String!, $number: Int!) {
+FETCH_ORG_PROJECT_GQL = """
+query FetchOrgProject($owner: String!, $number: Int!) {
   organization(login: $owner) {
     projectV2(number: $number) {
       id
+    }
+  }
+}
+"""
+
+FETCH_PROJECT_FIELDS_GQL = """
+query FetchProjectFields($projectId: ID!) {
+  node(id: $projectId) {
+    __typename
+    ... on ProjectV2 {
+      fields(first: 50) {
+        nodes {
+          __typename
+          ... on ProjectV2Field {
+            id
+            name
+            dataType
+          }
+          ... on ProjectV2SingleSelectField {
+            id
+            name
+            dataType
+            options {
+              id
+              name
+            }
+          }
+          ... on ProjectV2IterationField {
+            id
+            name
+            dataType
+            configuration {
+              iterations {
+                id
+                title
+                startDate
+                duration
+              }
+            }
+          }
+        }
+      }
     }
   }
 }
@@ -85,6 +175,15 @@ query FetchProjectItems($projectId: ID!, $cursor: String) {
         pageInfo {
           hasNextPage
           endCursor
+        }
+        nodes {
+          id
+          content {
+            __typename
+            ... on Issue {
+              id
+            }
+          }
         }
       }
     }
@@ -115,6 +214,99 @@ FETCH_REPO_GQL = """
 query FetchRepo($owner: String!, $name: String!) {
   repository(owner: $owner, name: $name) {
     id
+    labels(first: 100) {
+      nodes {
+        id
+        name
+      }
+    }
+    issueTypes(first: 100) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}
+"""
+
+FETCH_USER_PROJECT_GQL = """
+query FetchUserProject($owner: String!, $number: Int!) {
+  user(login: $owner) {
+    projectV2(number: $number) {
+      id
+    }
+  }
+}
+"""
+
+FIND_LABELS_GQL = """
+query FindLabels($owner: String!, $name: String!, $query: String!) {
+  repository(owner: $owner, name: $name) {
+    labels(first: 100, query: $query) {
+      nodes {
+        id
+        name
+      }
+    }
+  }
+}
+"""
+
+GET_ISSUE_GQL = """
+query GetIssue($id: ID!) {
+  node(id: $id) {
+    __typename
+    ... on Issue {
+      ...IssueCore
+    }
+  }
+}
+
+fragment IssueCore on Issue {
+  id
+  number
+  url
+  title
+  body
+  labels(first: 100) {
+    nodes {
+      id
+      name
+    }
+  }
+}
+"""
+
+REMOVE_BLOCKED_BY_GQL = """
+mutation RemoveBlockedBy($blockedId: ID!, $blockerId: ID!) {
+  removeBlockedBy(input: {issueId: $blockedId, blockingIssueId: $blockerId}) {
+    issue {
+      id
+    }
+  }
+}
+"""
+
+REMOVE_LABELS_GQL = """
+mutation RemoveLabels($labelableId: ID!, $labelIds: [ID!]!) {
+  removeLabelsFromLabelable(
+    input: {labelableId: $labelableId, labelIds: $labelIds}
+  ) {
+    clientMutationId
+  }
+}
+"""
+
+REMOVE_SUB_ISSUE_GQL = """
+mutation RemoveSubIssue($parentId: ID!, $childId: ID!) {
+  removeSubIssue(input: {issueId: $parentId, subIssueId: $childId}) {
+    issue {
+      id
+    }
+    subIssue {
+      id
+    }
   }
 }
 """
@@ -126,15 +318,51 @@ query SearchIssues($query: String!, $cursor: String) {
       hasNextPage
       endCursor
     }
+    nodes {
+      __typename
+      ... on Issue {
+        ...IssueCore
+      }
+    }
+  }
+}
+
+fragment IssueCore on Issue {
+  id
+  number
+  url
+  title
+  body
+  labels(first: 100) {
+    nodes {
+      id
+      name
+    }
   }
 }
 """
 
 UPDATE_ISSUE_GQL = """
-mutation UpdateIssue($id: ID!, $title: String, $body: String) {
-  updateIssue(input: {id: $id, title: $title, body: $body}) {
+mutation UpdateIssue($id: ID!, $title: String, $body: String, $issueTypeId: ID, $labelIds: [ID!]) {
+  updateIssue(
+    input: {id: $id, title: $title, body: $body, issueTypeId: $issueTypeId, labelIds: $labelIds}
+  ) {
     issue {
+      ...IssueCore
+    }
+  }
+}
+
+fragment IssueCore on Issue {
+  id
+  number
+  url
+  title
+  body
+  labels(first: 100) {
+    nodes {
       id
+      name
     }
   }
 }

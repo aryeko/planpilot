@@ -4,8 +4,25 @@ from planpilot_v2.contracts.config import FieldConfig
 from planpilot_v2.contracts.exceptions import CreateItemPartialFailureError
 from planpilot_v2.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot_v2.contracts.plan import PlanItemType
+from planpilot_v2.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
 from planpilot_v2.providers.github.models import GitHubProviderContext
 from planpilot_v2.providers.github.provider import GitHubProvider
+
+
+def _make_issue_core(
+    *,
+    id: str = "I1",
+    number: int = 42,
+    url: str = "https://github.com/acme/repo/issues/42",
+    title: str = "T",
+    body: str = "B",
+    label_names: list[str] | None = None,
+) -> IssueCore:
+    """Build a typed IssueCore instance for tests."""
+    labels = IssueCoreLabels(
+        nodes=[IssueCoreLabelsNodes(id=f"lbl-{n}", name=n) for n in (label_names or [])]
+    )
+    return IssueCore(id=id, number=number, url=url, title=title, body=body, labels=labels)
 
 
 @pytest.mark.asyncio
@@ -62,15 +79,9 @@ async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.Mo
 
     calls: list[str] = []
 
-    async def fake_create_issue(input: CreateItemInput) -> dict[str, object]:
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
         calls.append("issue_created")
-        return {
-            "id": "I1",
-            "number": 42,
-            "url": "https://github.com/acme/repo/issues/42",
-            "title": input.title,
-            "body": input.body,
-        }
+        return _make_issue_core(title=input.title, body=input.body)
 
     async def fake_issue_type(issue_id: str, item_type: PlanItemType) -> None:
         calls.append("issue_type_set")
@@ -117,14 +128,8 @@ async def test_create_item_raises_partial_failure_after_issue_created(monkeypatc
         create_type_map={"TASK": "type:task"},
     )
 
-    async def fake_create_issue(input: CreateItemInput) -> dict[str, object]:
-        return {
-            "id": "I1",
-            "number": 42,
-            "url": "https://github.com/acme/repo/issues/42",
-            "title": input.title,
-            "body": input.body,
-        }
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
+        return _make_issue_core(title=input.title, body=input.body)
 
     async def fake_type_label(issue_id: str, item_type: PlanItemType) -> None:
         raise RuntimeError("boom")
@@ -153,19 +158,14 @@ async def test_update_item_uses_update_issue(monkeypatch: pytest.MonkeyPatch) ->
     )
 
     async def fake_get_item(item_id: str):
-        return await provider._item_from_node(
-            {"id": item_id, "number": 2, "url": "u", "title": "old", "body": "old", "labels": {"nodes": []}}
+        return provider._item_from_issue_core(
+            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
         )
 
-    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> dict[str, object]:
-        return {
-            "id": item_id,
-            "number": 2,
-            "url": "u",
-            "title": update_input.title or "old",
-            "body": update_input.body or "old",
-            "labels": {"nodes": []},
-        }
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(
+            id=item_id, number=2, url="u", title=update_input.title or "old", body=update_input.body or "old"
+        )
 
     monkeypatch.setattr(provider, "get_item", fake_get_item)
     monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
@@ -189,9 +189,9 @@ async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.
 
     captured: dict[str, str] = {}
 
-    async def fake_search(query: str) -> list[dict[str, object]]:
+    async def fake_search(query: str) -> list[IssueCore]:
         captured["query"] = query
-        return [{"id": "I1", "number": 1, "url": "u", "title": "t", "body": "PLAN_ID:abc", "labels": {"nodes": []}}]
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="PLAN_ID:abc")]
 
     monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
 
@@ -218,9 +218,9 @@ async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatc
 
     captured: dict[str, str] = {}
 
-    async def fake_search(query: str) -> list[dict[str, object]]:
+    async def fake_search(query: str) -> list[IssueCore]:
         captured["query"] = query
-        return [{"id": "I1", "number": 1, "url": "u", "title": "t", "body": "", "labels": {"nodes": []}}]
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="")]
 
     monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
 
@@ -242,7 +242,7 @@ async def test_create_item_raises_original_error_when_issue_not_created(monkeypa
         repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
     )
 
-    async def fake_create_issue(input: CreateItemInput) -> dict[str, object]:
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
         raise RuntimeError("create boom")
 
     monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
@@ -270,22 +270,17 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
     )
 
     async def fake_get_item(item_id: str):
-        return await provider._item_from_node(
-            {"id": item_id, "number": 2, "url": "u", "title": "old", "body": "old", "labels": {"nodes": []}}
+        return provider._item_from_issue_core(
+            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
         )
 
     async def fake_get_labels(item_id: str) -> list[str]:
         return ["existing"]
 
-    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> dict[str, object]:
-        return {
-            "id": item_id,
-            "number": 2,
-            "url": "u",
-            "title": update_input.title or "old",
-            "body": update_input.body or "old",
-            "labels": {"nodes": []},
-        }
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(
+            id=item_id, number=2, url="u", title=update_input.title or "old", body=update_input.body or "old"
+        )
 
     called: list[str] = []
 
@@ -342,12 +337,12 @@ async def test_update_item_issue_type_strategy_uses_issue_type_hook(monkeypatch:
     )
 
     async def fake_get_item(item_id: str):
-        return await provider._item_from_node(
-            {"id": item_id, "number": 2, "url": "u", "title": "old", "body": "old", "labels": {"nodes": []}}
+        return provider._item_from_issue_core(
+            _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
         )
 
-    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> dict[str, object]:
-        return {"id": item_id, "number": 2, "url": "u", "title": "new", "body": "old", "labels": {"nodes": []}}
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(id=item_id, number=2, url="u", title="new", body="old")
 
     called: list[str] = []
 

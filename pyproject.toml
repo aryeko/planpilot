@@ -52,7 +52,8 @@ pytest-asyncio = "^1.3.0"
 commitlint = ">=1.3"
 poethepoet = "^0.40.0"
 python-semantic-release = {version = "10.5.3", python = ">=3.11,<4.0"}
-ariadne-codegen = {version = ">=0.16,<0.17", python = "<4"}
+# ariadne-codegen is run via pipx (click conflict with python-semantic-release)
+# pipx run --spec "ariadne-codegen>=0.17,<0.18" ariadne-codegen
 
 [build-system]
 requires = ["poetry-core"]
@@ -72,6 +73,18 @@ format-check-v2 = "ruff format --check src/planpilot_v2 tests/v2"
 test-v2 = "pytest -o addopts='' -v tests/v2 --cov=planpilot_v2 --cov-fail-under=95 --cov-report=term-missing --cov-report=xml:.coverage/coverage-v2.xml"
 typecheck-v2 = "mypy src/planpilot_v2"
 check-v2 = ["lint-v2", "format-check-v2", "test-v2", "typecheck-v2"]
+
+[tool.poe.tasks.gen-schema]
+help = "Introspect GitHub GraphQL API and download schema"
+shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen graphqlschema --config tools/ariadne-schema.toml"
+
+[tool.poe.tasks.gen-client]
+help = "Generate typed GraphQL client from schema and operations"
+shell = "rm -rf src/planpilot_v2/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
+
+[tool.poe.tasks.gen-gql]
+help = "Download schema and generate GraphQL client"
+sequence = ["gen-schema", "gen-client"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -166,6 +179,7 @@ opentelemetry_client = false
 plugins = [
     "ariadne_codegen.contrib.extract_operations.ExtractOperationsPlugin",
     "ariadne_codegen.contrib.client_forward_refs.ClientForwardRefsPlugin",
+    "ariadne_codegen.contrib.shorter_results.ShorterResultsPlugin",
 ]
 
 [tool.ariadne-codegen.extract_operations]
