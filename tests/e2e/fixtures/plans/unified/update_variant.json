@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "id": "E1",
+      "type": "EPIC",
+      "title": "Offline unified epic",
+      "goal": "Ship unified-input dry-run/apply flow",
+      "requirements": ["Keep unified CLI sync offline"],
+      "acceptance_criteria": ["Unified dry-run summary is rendered"],
+      "sub_item_ids": ["S1"]
+    },
+    {
+      "id": "S1",
+      "type": "STORY",
+      "title": "Offline unified story UPDATED",
+      "goal": "Validate unified story lifecycle",
+      "parent_id": "E1",
+      "requirements": ["Story links to epic"],
+      "acceptance_criteria": ["Story appears in unified summary output"],
+      "sub_item_ids": ["T1"]
+    },
+    {
+      "id": "T1",
+      "type": "TASK",
+      "title": "Offline unified task",
+      "goal": "Validate unified task lifecycle",
+      "parent_id": "S1",
+      "requirements": ["Task links to story"],
+      "acceptance_criteria": ["Task appears in unified summary output"]
+    }
+  ]
+}

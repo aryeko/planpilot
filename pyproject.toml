@@ -62,8 +62,10 @@ build-backend = "poetry.core.masonry.api"
 lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
-test = "pytest -v"
+test = "pytest -v --ignore=tests/e2e"
+test-e2e = "pytest -v tests/e2e/test_cli_e2e.py"
 coverage = "pytest -v --cov-report=html:.coverage/html"
+coverage-e2e = "pytest -v tests/e2e/test_cli_e2e.py --cov-report=term-missing --cov-report=xml:.coverage/coverage-e2e.xml"
 typecheck = "mypy src/planpilot"
 check = ["lint", "format-check", "test"]
 

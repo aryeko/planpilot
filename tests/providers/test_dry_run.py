@@ -29,7 +29,7 @@ async def test_dry_run_provider_create_update_get_are_deterministic() -> None:
 
 
 @pytest.mark.asyncio
-async def test_dry_run_item_relations_are_noop() -> None:
+async def test_dry_run_item_relations_are_logged_with_monotonic_sequence() -> None:
     provider = DryRunProvider()
     parent = DryRunItem(id="p", title="Parent", body="", item_type=PlanItemType.EPIC)
     child = await provider.create_item(CreateItemInput(title="Child", body="", item_type=PlanItemType.STORY))
@@ -38,6 +38,16 @@ async def test_dry_run_item_relations_are_noop() -> None:
     await child.add_dependency(parent)
 
     assert child.id == "dry-run-1"
+    assert [operation.sequence for operation in provider.operations] == [1, 2, 3]
+    assert [operation.name for operation in provider.operations] == [
+        "create_item",
+        "set_parent",
+        "add_dependency",
+    ]
+    assert [operation.item_id for operation in provider.operations] == ["dry-run-1", "dry-run-1", "dry-run-1"]
+    assert provider.operations[0].payload == {"title": "Child", "item_type": "STORY"}
+    assert provider.operations[1].payload == {"parent_id": "p"}
+    assert provider.operations[2].payload == {"blocker_id": "p"}
 
 
 @pytest.mark.asyncio
@@ -59,6 +69,12 @@ async def test_dry_run_provider_missing_item_operations_raise() -> None:
 
     with pytest.raises(ProviderError):
         await provider.update_item("missing", UpdateItemInput(title="x"))
+
+    assert [operation.sequence for operation in provider.operations] == [1, 2]
+    assert [operation.name for operation in provider.operations] == ["get_item", "update_item"]
+    assert [operation.item_id for operation in provider.operations] == ["missing", "missing"]
+    assert provider.operations[0].payload == {}
+    assert provider.operations[1].payload == {"title": "x"}
 
 
 @pytest.mark.asyncio

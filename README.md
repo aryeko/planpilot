@@ -132,6 +132,7 @@ A complete working example is in the [examples/](examples/) directory, including
 
 - [Docs Index](docs/README.md) -- v2 documentation hub
 - [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
+- [E2E Testing](docs/e2e-testing.md) -- offline end-to-end test design, coverage, and usage
 - [Plan Schemas](docs/schemas.md) -- plan JSON shapes and examples
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
@@ -158,7 +159,9 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 poe lint           # ruff check
 poe format         # ruff format
 poe test           # pytest -v
+poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
+poe coverage-e2e   # E2E-only coverage XML
 poe typecheck      # mypy
 poe check          # lint + format-check + tests (all-in-one)
 ```
