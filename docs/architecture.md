@@ -12,31 +12,33 @@
 
 ```text
 src/planpilot/
-├── models/              # Pydantic domain models
-│   ├── plan.py          # Epic, Story, Task, Plan
-│   ├── project.py       # ProjectContext, RepoContext, IssueRef, ...
-│   ├── sync.py          # SyncEntry, SyncMap, SyncResult
-│   └── enums.py         # EntityType enum
+├── contracts/           # Core models, ABCs, exceptions
+│   ├── plan.py          # Plan, PlanItem, PlanItemType
+│   ├── item.py          # Item ABC + create/update/search inputs
+│   ├── provider.py      # Provider ABC
+│   ├── renderer.py      # BodyRenderer + RenderContext
+│   └── sync.py          # SyncEntry, SyncMap, SyncResult
 ├── plan/                # Plan file operations
 │   ├── loader.py        # JSON → Plan (with PlanLoadError)
 │   ├── validator.py     # Relational integrity checks
 │   └── hasher.py        # Deterministic SHA-256 plan ID
+├── auth/                # Token resolution strategies
+│   ├── factory.py       # Auth resolver factory
+│   └── resolvers/       # gh-cli/env/static resolvers
 ├── providers/           # Provider adapter layer
 │   ├── base.py          # Provider ABC (abstract interface)
 │   └── github/          # GitHub implementation
-│       ├── client.py    # GhClient (async gh CLI wrapper)
 │       ├── provider.py  # GitHubProvider (Provider impl)
-│       ├── mapper.py    # API response → domain model mappers
-│       └── queries.py   # GraphQL query/mutation constants
-├── rendering/           # Issue body generation
-│   ├── base.py          # BodyRenderer Protocol
+│       ├── mapper.py    # URL parsing + field resolution
+│       ├── item.py      # Provider item wrapper
+│       └── github_gql/  # Generated GraphQL client
+├── renderers/           # Issue body generation
 │   ├── markdown.py      # MarkdownRenderer (GitHub-flavored)
-│   └── components.py    # Shared rendering helpers
-├── sync/                # Sync orchestration
+│   └── factory.py       # Renderer factory
+├── engine/              # Sync orchestration
 │   ├── engine.py        # SyncEngine (5-phase pipeline)
-│   └── relations.py     # Blocked-by roll-up logic
-├── config.py            # SyncConfig (Pydantic BaseModel)
-├── exceptions.py        # Exception hierarchy
+│   └── utils.py         # Metadata parsing + relation helpers
+├── sdk.py               # Composition root + config/plan loaders
 └── cli.py               # CLI entry point
 ```
 
@@ -142,13 +144,14 @@ Tests mirror the source structure:
 
 ```text
 tests/
-├── models/          → src/planpilot/models/
+├── contracts/       → src/planpilot/contracts/
+├── auth/            → src/planpilot/auth/
 ├── plan/            → src/planpilot/plan/
 ├── providers/github/→ src/planpilot/providers/github/
-├── rendering/       → src/planpilot/rendering/
-├── sync/            → src/planpilot/sync/
-├── test_cli.py      → src/planpilot/cli.py
-└── test_exceptions.py→ src/planpilot/exceptions.py
+├── renderers/       → src/planpilot/renderers/
+├── engine/          → src/planpilot/engine/
+├── test_sdk.py      → src/planpilot/sdk.py
+└── test_cli.py      → src/planpilot/cli.py
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions.

@@ -38,18 +38,18 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 
 ```text
 src/planpilot/
-├── models/          # Pydantic domain models (Plan, Epic, Story, Task, …)
+├── contracts/       # Core types, ABCs, and exception hierarchy
 ├── plan/            # Plan loading, validation, and hashing
-├── providers/       # Provider adapter pattern (ABC + implementations)
-│   └── github/      # GitHub adapter (gh CLI)
-├── rendering/       # Issue body rendering (Protocol + Markdown impl)
-├── sync/            # Sync engine orchestrator + relation logic
-├── config.py        # SyncConfig (pydantic)
-├── exceptions.py    # Custom exception hierarchy
+├── auth/            # Token resolver strategy + factory
+├── renderers/       # Body rendering implementations
+├── engine/          # 5-phase sync orchestration
+├── providers/       # Provider adapter layer
+│   └── github/      # GitHub GraphQL adapter + generated client
+├── sdk.py           # Composition root and config loading
 └── cli.py           # CLI entry point
 ```
 
-The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
+Core modules depend on contracts, and the SDK composes the runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
 
 See [docs/architecture.md](docs/architecture.md) for the full architecture guide.
 

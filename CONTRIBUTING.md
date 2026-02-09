@@ -41,15 +41,15 @@ poetry run planpilot --help
 
 planpilot follows SOLID principles with a modular, provider-agnostic design:
 
-- **`models/`** -- Pydantic domain models (`Plan`, `Epic`, `Story`, `Task`, `SyncMap`, …)
+- **`contracts/`** -- Core data models, ABCs, and exception hierarchy
 - **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
+- **`auth/`** -- Token resolvers and auth strategy factory
 - **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses the `gh` CLI
-- **`rendering/`** -- `BodyRenderer` Protocol for issue body generation; `MarkdownRenderer` is the default
-- **`sync/`** -- `SyncEngine` orchestrates the 5-phase sync pipeline, depends only on `Provider` and `BodyRenderer` abstractions
-- **`config.py`** -- Pydantic `SyncConfig` built from CLI arguments
-- **`exceptions.py`** -- Custom exception hierarchy (`PlanPilotError` → specific errors)
+- **`renderers/`** -- `BodyRenderer` implementations; `MarkdownRenderer` is the default
+- **`engine/`** -- `SyncEngine` 5-phase pipeline over Provider and Renderer abstractions
+- **`sdk.py`** -- Composition root (`PlanPilot.from_config`) and config/plan loading helpers
 
-To add a new provider (e.g. Jira), implement the `Provider` ABC in `providers/jira/` -- no changes to the sync engine needed.
+To add a new provider (e.g. Jira), implement the `Provider` ABC in `providers/jira/` and wire it in `providers/factory.py` -- no engine changes needed.
 
 ## Commit messages
 
@@ -110,13 +110,14 @@ Tests mirror the source layout under `tests/`:
 
 ```text
 tests/
-├── models/           → src/planpilot/models/
+├── contracts/        → src/planpilot/contracts/
 ├── plan/             → src/planpilot/plan/
+├── auth/             → src/planpilot/auth/
 ├── providers/github/ → src/planpilot/providers/github/
-├── rendering/        → src/planpilot/rendering/
-├── sync/             → src/planpilot/sync/
-├── test_cli.py       → src/planpilot/cli.py
-└── test_exceptions.py→ src/planpilot/exceptions.py
+├── renderers/        → src/planpilot/renderers/
+├── engine/           → src/planpilot/engine/
+├── test_sdk.py       → src/planpilot/sdk.py
+└── test_cli.py       → src/planpilot/cli.py
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.

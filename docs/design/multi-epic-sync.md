@@ -87,12 +87,12 @@ for task in epic_tasks:
     task["depends_on"] = kept
 ```
 
-### Phase 2: Add `planpilot sync-all` (multi-epic orchestration)
+### Phase 2: Add dedicated multi-epic orchestration command (historical proposal)
 
-Add a new CLI command that orchestrates the full multi-epic workflow:
+This section reflects an early proposal. Current canonical CLI behavior is single-track: use `planpilot` directly for multi-epic plans.
 
 ```shell
-planpilot sync-all \
+planpilot \
   --repo owner/repo \
   --project-url https://github.com/orgs/org/projects/1 \
   --epics-path .plans/epics.json \
@@ -164,7 +164,7 @@ The combined sync map includes all epics, stories, and tasks across slices:
 
 | File | Change |
 |------|--------|
-| `src/planpilot/cli.py` | Add `sync-all` subcommand (or flag `--multi-epic`) |
+| `src/planpilot/cli.py` | (Historical) Considered adding a dedicated `sync-all` subcommand |
 | `src/planpilot/sync/orchestrator.py` | New module: `MultiEpicOrchestrator` that slices, syncs per-epic, merges results |
 | `src/planpilot/models/sync.py` | Add `merge_sync_maps()` utility |
 | `tests/sync/test_orchestrator.py` | New test module |
@@ -187,7 +187,7 @@ The combined sync map includes all epics, stories, and tasks across slices:
 ## Migration Path
 
 1. Ship Phase 1. Update SKILL.md to use `planpilot-slice` exclusively.
-2. Ship Phase 2. Update SKILL.md to use `planpilot sync-all`.
+2. Ship Phase 2. Update SKILL.md to use canonical `planpilot` invocation for multi-epic plans.
 3. (Optional) Ship Phase 3. Simplify SKILL.md to a single `planpilot` call.
 
 ## Success Criteria
@@ -195,6 +195,6 @@ The combined sync map includes all epics, stories, and tasks across slices:
 - `planpilot-slice` produces safe filenames for any epic ID (unicode, special
   chars, empty string).
 - `planpilot-slice` warns about dropped cross-epic dependencies.
-- `planpilot sync-all` syncs a 3-epic plan end-to-end with one command.
+- `planpilot` syncs a 3-epic plan end-to-end with one command.
 - Combined sync map merges all per-epic entries correctly.
 - `skills/.../slice_epics_for_sync.py` is removed or marked deprecated.
