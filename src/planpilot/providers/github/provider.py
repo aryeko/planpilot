@@ -108,8 +108,8 @@ class GitHubProvider(Provider):
             raise ProviderError(f"Repository {self.target} not found")
 
         repo_id = repo_data.get("id")
-        issue_types = repo_data.get("issueTypes", {}).get("nodes", [])
-        labels = repo_data.get("labels", {}).get("nodes", [])
+        issue_types = (repo_data.get("issueTypes") or {}).get("nodes", [])
+        labels = (repo_data.get("labels") or {}).get("nodes", [])
 
         # Build issue type map
         issue_type_ids: dict[str, str] = {}
@@ -255,7 +255,9 @@ class GitHubProvider(Provider):
 
     async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
         """Exit async context manager. Clean up resources."""
-        await self.client.close()
+        # GhClient doesn't hold persistent connections (shells out to gh CLI)
+        # so there's nothing to clean up
+        pass
 
     # ---- Search ----
 
@@ -335,9 +337,13 @@ class GitHubProvider(Provider):
         if not self._ctx:
             raise ProviderError("Provider not initialized (not in async context)")
 
-        # Create the issue
+        # Create the issue with the correct type
         owner, repo = self._ctx.repo.split("/", 1)
         label_ids = [self._ctx.repo_label_id] if self._ctx.repo_label_id else []
+        
+        # Determine issue type ID
+        type_name = input.item_type.value.capitalize() if input.item_type else "Task"
+        type_id = self._ctx.issue_type_ids.get(type_name)
 
         response = await self.client.graphql(
             CREATE_ISSUE,
@@ -345,7 +351,7 @@ class GitHubProvider(Provider):
                 "repositoryId": self._ctx.repo_id,
                 "title": input.title,
                 "body": input.body or "",
-                "issueTypeId": self._ctx.issue_type_ids.get("Task"),
+                "issueTypeId": type_id,
                 "labelIds": label_ids,
             },
         )
@@ -357,14 +363,6 @@ class GitHubProvider(Provider):
         issue_id = issue_data.get("id")
         issue_number = issue_data.get("number")
         issue_url = issue_data.get("url", f"https://github.com/{self._ctx.repo}/issues/{issue_number}")
-
-        # Set issue type based on item_type
-        if input.item_type and input.item_type.value.capitalize() in self._ctx.issue_type_ids:
-            type_id = self._ctx.issue_type_ids[input.item_type.value.capitalize()]
-            await self.client.graphql(
-                UPDATE_ISSUE_TYPE,
-                variables={"issueId": issue_id, "issueTypeId": type_id},
-            )
 
         # Add to project if configured
         project_item_id: str | None = None
@@ -442,17 +440,101 @@ class GitHubProvider(Provider):
         """Update an existing work item.
 
         Args:
-            item_id: Opaque provider ID
+            item_id: Opaque provider ID (GitHub node ID)
             input: Fields to update
 
         Returns:
             Updated GitHubItem
+
+        Raises:
+            ProviderError: If update fails
         """
         if not self._ctx:
             raise ProviderError("Provider not initialized (not in async context)")
 
-        # Stub: In a full implementation, would fetch and update the item
-        raise NotImplementedError("update_item not yet implemented")
+        # For now, we only support updating body/title
+        # GitHub's updateIssue mutation updates both
+        if input.title or input.body:
+            # Get current issue details first
+            response = await self.client.graphql(
+                """
+                query($id: ID!) {
+                  node(id: $id) {
+                    ... on Issue {
+                      id
+                      number
+                      title
+                      body
+                      url
+                      repository {
+                        nameWithOwner
+                      }
+                    }
+                  }
+                }
+                """,
+                variables={"id": item_id},
+            )
+
+            issue = response.get("data", {}).get("node", {})
+            if not issue:
+                raise ProviderError(f"Issue not found: {item_id}")
+
+            title = input.title or issue.get("title", "")
+            body = input.body or issue.get("body", "")
+
+            # Update the issue
+            await self.client.graphql(
+                """
+                mutation($id: ID!, $title: String!, $body: String) {
+                  updateIssue(input: {id: $id, title: $title, body: $body}) {
+                    issue {
+                      id
+                      number
+                      title
+                      body
+                      url
+                    }
+                  }
+                }
+                """,
+                variables={"id": item_id, "title": title, "body": body},
+            )
+
+        # Fetch updated item
+        response = await self.client.graphql(
+            """
+            query($id: ID!) {
+              node(id: $id) {
+                ... on Issue {
+                  id
+                  number
+                  title
+                  body
+                  url
+                }
+              }
+            }
+            """,
+            variables={"id": item_id},
+        )
+
+        issue = response.get("data", {}).get("node", {})
+        if not issue:
+            raise ProviderError(f"Updated issue not found: {item_id}")
+
+        return GitHubItem(
+            id=issue.get("id", ""),
+            key=f"#{issue.get('number')}",
+            url=issue.get("url", ""),
+            title=issue.get("title", ""),
+            body=issue.get("body", ""),
+            item_type=None,
+            parent_id=None,
+            labels=[],
+            provider=self,
+            ctx=self._ctx,
+        )
 
     async def get_item(self, item_id: str) -> Item:
         """Fetch a single work item by provider ID.
@@ -491,35 +573,99 @@ class GitHubProvider(Provider):
 
     async def _set_item_parent(self, child: GitHubItem, parent: GitHubItem) -> None:
         """Internal: Set parent via sub-issue API."""
-        # Stub implementation
-        pass
+        try:
+            await self.client.graphql(
+                ADD_SUB_ISSUE,
+                variables={"parentId": parent.id, "childId": child.id},
+            )
+        except ProviderError as e:
+            logger.warning("Failed to set parent %s for item %s: %s", parent.id, child.id, e)
 
     async def _add_item_child(self, parent: GitHubItem, child: GitHubItem) -> None:
         """Internal: Add child via sub-issue API."""
-        # Stub implementation
-        pass
+        # Same as set_parent from child's perspective
+        await self._set_item_parent(child, parent)
 
     async def _remove_item_child(self, parent: GitHubItem, child: GitHubItem) -> None:
         """Internal: Remove child via sub-issue API."""
-        # Stub implementation
-        pass
+        # GitHub doesn't have a direct "remove sub-issue" mutation
+        # For now, log and skip (idempotent)
+        logger.warning("Remove child not yet implemented for GitHub (idempotent skip)")
 
     async def _get_item_children(self, parent: GitHubItem) -> list[GitHubItem]:
         """Internal: Get children from GitHub."""
-        # Stub implementation
-        return []
+        if not self._ctx:
+            logger.warning("Provider not initialized for get_children")
+            return []
+        
+        try:
+            response = await self.client.graphql(
+                """
+                query($id: ID!) {
+                  node(id: $id) {
+                    ... on Issue {
+                      children(first: 50) {
+                        nodes {
+                          id
+                          number
+                          title
+                          body
+                          url
+                        }
+                      }
+                    }
+                  }
+                }
+                """,
+                variables={"id": parent.id},
+            )
+            children_data = response.get("data", {}).get("node", {}).get("children", {}).get("nodes", [])
+            return [
+                GitHubItem(
+                    id=child.get("id", ""),
+                    key=f"#{child.get('number')}",
+                    url=child.get("url", ""),
+                    title=child.get("title", ""),
+                    body=child.get("body", ""),
+                    item_type=None,
+                    parent_id=parent.id,
+                    labels=[],
+                    provider=self,
+                    ctx=self._ctx,
+                )
+                for child in children_data
+            ]
+        except (ProviderError, KeyError, TypeError) as e:
+            logger.warning("Failed to get children for %s: %s", parent.id, e)
+            return []
 
     async def _add_item_dependency(self, item: GitHubItem, blocker: GitHubItem) -> None:
         """Internal: Add blocking dependency via GitHub API."""
-        # Stub implementation
-        pass
+        try:
+            await self.client.graphql(
+                ADD_BLOCKED_BY,
+                variables={"subjectId": item.id, "blockerId": blocker.id},
+            )
+        except ProviderError as e:
+            logger.warning("Failed to add dependency %s -> %s: %s", blocker.id, item.id, e)
 
     async def _remove_item_dependency(self, item: GitHubItem, blocker: GitHubItem) -> None:
         """Internal: Remove blocking dependency via GitHub API."""
-        # Stub implementation
-        pass
+        # GitHub doesn't have a direct "remove blocked by" mutation
+        # For now, log and skip (idempotent)
+        logger.warning("Remove dependency not yet implemented for GitHub (idempotent skip)")
 
     async def _get_item_dependencies(self, item: GitHubItem) -> list[GitHubItem]:
         """Internal: Get dependencies from GitHub."""
-        # Stub implementation
-        return []
+        try:
+            response = await self.client.graphql(
+                FETCH_ISSUE_RELATIONS,
+                variables={"ids": [item.id]},
+            )
+            # Parse response for blockers (blocked_by relations)
+            # This is complex; for now return empty to indicate feature not yet implemented
+            logger.debug("Get dependencies not yet fully implemented for GitHub")
+            return []
+        except (ProviderError, KeyError, TypeError) as e:
+            logger.warning("Failed to get dependencies for %s: %s", item.id, e)
+            return []

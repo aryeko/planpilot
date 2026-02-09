@@ -174,6 +174,7 @@ async def _run_sync(config: SyncConfig) -> None:
     Args:
         config: Sync configuration.
     """
+    # Provider lifecycle is managed here in the CLI layer
     provider = create_provider(
         config.provider,
         target=config.target,
@@ -181,10 +182,12 @@ async def _run_sync(config: SyncConfig) -> None:
         label=config.label,
         field_config=config.field_config,
     )
-    renderer = MarkdownRenderer()
-    engine = SyncEngine(provider=provider, renderer=renderer, config=config)
-    result = await engine.sync()
-    print(_format_summary(result, config))
+    
+    async with provider:
+        renderer = MarkdownRenderer()
+        engine = SyncEngine(provider=provider, renderer=renderer, config=config)
+        result = await engine.sync()
+        print(_format_summary(result, config))
 
 
 def main() -> int:

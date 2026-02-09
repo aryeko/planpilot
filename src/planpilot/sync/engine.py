@@ -12,8 +12,8 @@ from planpilot.models.item import CreateItemInput, ItemFields, ItemType, UpdateI
 from planpilot.models.plan import Epic, Plan, Story, Task
 from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan, validate_plan
-from planpilot.providers.github.mapper import parse_markers
 from planpilot.rendering.base import BodyRenderer
+from planpilot.sync.discovery import parse_markers
 from planpilot.sync.relations import compute_epic_blocked_by, compute_story_blocked_by
 
 if TYPE_CHECKING:
@@ -157,61 +157,60 @@ class SyncEngine:
         Returns:
             SyncResult with the sync map and creation counts.
         """
-        # Phase 0: Enter provider context manager (handles setup internally)
-        async with self._provider:
-            # Phase 1: Discovery
-            existing_items = await self._provider.search_items(
-                ItemFields(labels=[cfg.label])
-            )
-            existing_map = self._build_existing_map(existing_items, plan_id)
+        # Phase 0: Provider is assumed to be in connected state (managed by caller)
+        # Phase 1: Discovery
+        existing_items = await self._provider.search_items(
+            ItemFields(labels=[cfg.label])
+        )
+        existing_map = self._build_existing_map(existing_items, plan_id)
 
-            sync_map = SyncMap(
-                plan_id=plan_id,
-                target=cfg.target,
-                board_url=cfg.board_url,
-            )
+        sync_map = SyncMap(
+            plan_id=plan_id,
+            target=cfg.target,
+            board_url=cfg.board_url,
+        )
 
-            counters = {"epics": 0, "stories": 0, "tasks": 0}
-            story_by_id = {s.id: s for s in plan.stories}
-            task_by_id = {t.id: t for t in plan.tasks}
-            
-            # Keep Item objects for relation setup
-            items_by_id: dict[str, Item | None] = {}
+        counters = {"epics": 0, "stories": 0, "tasks": 0}
+        story_by_id = {s.id: s for s in plan.stories}
+        task_by_id = {t.id: t for t in plan.tasks}
+        
+        # Keep Item objects for relation setup
+        items_by_id: dict[str, Item | None] = {}
 
-            # Phase 2: Upsert epics
-            for epic in plan.epics:
-                entry, item = await self._upsert_epic(epic, plan_id, existing_map, counters)
-                sync_map.epics[epic.id] = entry
-                items_by_id[epic.id] = item
+        # Phase 2: Upsert epics
+        for epic in plan.epics:
+            entry, item = await self._upsert_epic(epic, plan_id, existing_map, counters)
+            sync_map.epics[epic.id] = entry
+            items_by_id[epic.id] = item
 
-            # Upsert stories
-            for story in plan.stories:
-                entry, item = await self._upsert_story(story, plan_id, existing_map, sync_map, counters)
-                sync_map.stories[story.id] = entry
-                items_by_id[story.id] = item
+        # Upsert stories
+        for story in plan.stories:
+            entry, item = await self._upsert_story(story, plan_id, existing_map, sync_map, counters)
+            sync_map.stories[story.id] = entry
+            items_by_id[story.id] = item
 
-            # Upsert tasks
-            for task in plan.tasks:
-                entry, item = await self._upsert_task(task, plan_id, existing_map, sync_map, counters)
-                sync_map.tasks[task.id] = entry
-                items_by_id[task.id] = item
+        # Upsert tasks
+        for task in plan.tasks:
+            entry, item = await self._upsert_task(task, plan_id, existing_map, sync_map, counters)
+            sync_map.tasks[task.id] = entry
+            items_by_id[task.id] = item
 
-            # Phase 3: Enrich bodies
-            await self._enrich_bodies(plan, plan_id, sync_map, task_by_id, story_by_id)
+        # Phase 3: Enrich bodies
+        await self._enrich_bodies(plan, plan_id, sync_map, task_by_id, story_by_id)
 
-            # Phase 4: Relations
-            await self._set_relations(plan, sync_map, items_by_id)
+        # Phase 4: Relations
+        await self._set_relations(plan, sync_map, items_by_id)
 
-            # Write sync map
-            Path(cfg.sync_path).write_text(sync_map.model_dump_json(indent=2), encoding="utf-8")
+        # Write sync map
+        Path(cfg.sync_path).write_text(sync_map.model_dump_json(indent=2), encoding="utf-8")
 
-            return SyncResult(
-                sync_map=sync_map,
-                epics_created=counters["epics"],
-                stories_created=counters["stories"],
-                tasks_created=counters["tasks"],
-                dry_run=False,
-            )
+        return SyncResult(
+            sync_map=sync_map,
+            epics_created=counters["epics"],
+            stories_created=counters["stories"],
+            tasks_created=counters["tasks"],
+            dry_run=False,
+        )
 
     def _build_existing_map(
         self,

@@ -10,10 +10,6 @@ from typing import TYPE_CHECKING
 
 from planpilot.providers.base import Provider
 
-if TYPE_CHECKING:
-    from planpilot.models.item import TargetContext
-    from planpilot.models.project import FieldConfig
-
 
 # Registry mapping provider names to their classes
 _REGISTRY: dict[str, type[Provider]] = {}
