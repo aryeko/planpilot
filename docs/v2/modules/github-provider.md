@@ -151,18 +151,53 @@ Any other URL shape is a `ProjectURLError`.
 
 Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable. Provider startup detects capabilities via probe queries and caches booleans in context. Relation calls raise `ProviderCapabilityError` when unsupported.
 
+### Connection Pool
+
+httpx `AsyncClient` with connection pooling. Established in `__aenter__`, closed in `__aexit__`.
+
+```python
+self._client = AsyncClient(
+    base_url="https://api.github.com/graphql",
+    headers={"Authorization": f"Bearer {token}"},
+    limits=Limits(max_connections=20, max_keepalive_connections=10),
+    timeout=Timeout(30.0),
+)
+```
+
 ### Retry and Rate-Limit Policy
 
 | Failure class | Retry? | Notes |
 |---------------|--------|-------|
 | Network timeout / connection reset | Yes | Exponential backoff |
 | HTTP 502/503/504 | Yes | Respect `Retry-After` |
-| HTTP 429 / secondary rate limit | Yes | Respect `Retry-After`, reduce concurrency |
+| HTTP 429 / secondary rate limit | Yes | Respect `Retry-After` + shared pause |
 | GraphQL transient errors | Yes | Parse `errors[*].extensions` |
 | GraphQL schema/validation errors | No | Operation/spec mismatch |
 | Authentication/authorization failures | No | Requires config/token fix |
 
-Additional rules: bounded exponential backoff, log retry attempts with operation name, cap concurrent in-flight operations via semaphore.
+**Per-call retry parameters:**
+- Max retries: 3
+- Backoff: bounded exponential (1s, 2s, 4s) with jitter
+- Log each retry with operation name and attempt number
+
+### Shared Rate-Limit Pause
+
+When any concurrent call receives a 429 or secondary rate limit, the provider sets a shared `asyncio.Event` that pauses all in-flight and queued operations until the `Retry-After` period expires. This prevents thundering-herd retries.
+
+```python
+class GitHubProvider:
+    _rate_limit_clear: asyncio.Event  # set = ok to proceed, clear = paused
+
+    async def _wait_for_rate_limit(self) -> None:
+        await self._rate_limit_clear.wait()
+
+    async def _apply_rate_limit_pause(self, retry_after: float) -> None:
+        self._rate_limit_clear.clear()
+        await asyncio.sleep(retry_after)
+        self._rate_limit_clear.set()
+```
+
+All provider operations call `_wait_for_rate_limit()` before executing. The first call to hit a rate limit triggers the pause; all others block until it clears.
 
 ### Pagination Requirements
 

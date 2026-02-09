@@ -66,6 +66,41 @@ flowchart TB
 - **Labels:** Additive (`ensure label present`), not replace-all. Provider must preserve non-PlanPilot labels.
 - **Provider-authoritative after create:** `status`, `priority`, `iteration` from `field_config` are creation defaults, not continuously enforced.
 
+## Concurrency and Retry Contract
+
+The engine dispatches concurrent provider calls gated by `config.max_concurrent`. The provider must satisfy these concurrency and reliability requirements:
+
+### Concurrency Safety
+
+- All `Provider` methods must be safe for concurrent invocation from the engine
+- Multiple `create_item()`, `update_item()`, and relation calls may be in-flight simultaneously
+- Provider-internal state (e.g. `ProviderContext`) must be read-only after `__aenter__` completes
+
+### Retry Responsibility
+
+The provider owns per-call reliability. The engine does not retry — it calls once and expects the provider to handle transient failures transparently.
+
+| Responsibility | Owner |
+|---------------|-------|
+| Dispatch concurrency (`max_concurrent`) | Engine |
+| Per-call retries and backoff | Provider |
+| Rate-limit coordination across calls | Provider |
+| Connection pooling | Provider |
+| Timeout per operation | Provider |
+
+### Required Retry Behavior
+
+- Retry transient failures (network errors, 5xx, rate limits) with bounded exponential backoff
+- Respect `Retry-After` headers when present
+- Do **not** retry permanent failures (auth errors, schema/validation errors)
+- Log retry attempts with operation name and attempt count
+- Cap total retries per call (e.g. 3-5 attempts)
+- On rate-limit (429), coordinate pause across all concurrent in-flight calls via shared signal
+
+### Connection Pooling
+
+Provider transport clients must use connection pooling (e.g. httpx `AsyncClient`) with configurable limits. Connections are established in `__aenter__` and released in `__aexit__`.
+
 ## Provider Factory
 
 ```python

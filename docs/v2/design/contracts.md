@@ -151,7 +151,7 @@ class Item(ABC):
 
 | Type | Key Fields | Purpose |
 |------|------------|---------|
-| `PlanPilotConfig` | `provider`, `target`, `auth`, `token`, `board_url`, `plan_paths`, `validation_mode`, `sync_path`, `label`, `field_config` | Top-level config, loadable from `planpilot.json` |
+| `PlanPilotConfig` | `provider`, `target`, `auth`, `token`, `board_url`, `plan_paths`, `validation_mode`, `sync_path`, `label`, `max_concurrent`, `field_config` | Top-level config, loadable from `planpilot.json` |
 | `PlanPaths` | `epics`, `stories`, `tasks`, `unified` | Plan file paths (multi-file or unified mode) |
 | `FieldConfig` | `status`, `priority`, `iteration`, `size_field`, `size_from_tshirt`, `create_type_strategy`, `create_type_map` | Project field preferences |
 

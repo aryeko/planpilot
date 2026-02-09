@@ -40,10 +40,11 @@ A complete redesign focused on SDK-first development with clean layered architec
 - Exit codes are differentiated (`0`, `2`, `3`, `4`, `5`, `1`)
 - SDK is the composition root via `PlanPilot.from_config(...)`
 - Dry-run sync maps are persisted to `<sync_path>.dry-run`
+- Engine owns dispatch concurrency (`max_concurrent`); provider owns per-call retries and rate-limit coordination
 
 ## Known v2 Limitations
 
-- Engine execution is sequential (epics -> stories -> tasks); concurrent provider operations are not required
+- Engine processes type levels sequentially (epics -> stories -> tasks); within each level, operations are concurrent up to `max_concurrent`
 - Workflow board fields (`status`, `priority`, `iteration`) are provider-authoritative after create
 - Relation mutations are capability-gated and produce explicit errors when unsupported
 - CLI text summary is human-oriented, not a stable machine interface

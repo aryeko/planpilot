@@ -22,6 +22,23 @@ class SyncEngine:
 
 The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, config, and a `dry_run` flag. The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation.
 
+### Concurrency Model
+
+The engine processes item types sequentially (epics -> stories -> tasks) — parents must exist before children. Within each type level, operations are dispatched concurrently, gated by `asyncio.Semaphore(config.max_concurrent)`.
+
+```python
+self._semaphore = asyncio.Semaphore(config.max_concurrent)  # default 1 = sequential
+
+async def _guarded(self, coro: Coroutine) -> T:
+    async with self._semaphore:
+        return await coro
+```
+
+The engine owns dispatch concurrency. The provider owns per-call reliability (retries, backoff). See [providers.md](../modules/providers.md) for the provider-side contract.
+
+**`max_concurrent = 1` (default):** Fully sequential — safe, predictable, no concurrency edge cases.
+**`max_concurrent > 1`:** Same-level operations run concurrently. Errors from any task fail the entire level (fail-fast via `asyncio.TaskGroup`).
+
 ## Sync Pipeline
 
 ```mermaid
@@ -34,8 +51,8 @@ flowchart TB
     end
 
     subgraph Upsert["Phase 2: Upsert"]
-        U1["for each PlanItem (epics -> stories -> tasks):"]
-        U2["renderer.render(item, partial RenderContext)"]
+        U1["for each type level (epics -> stories -> tasks):"]
+        U2["concurrent within level (semaphore-gated)"]
         U3{"item in existing_map?"}
         U4["skip create"]
         U5["provider.create_item(CreateItemInput)"]
@@ -46,16 +63,16 @@ flowchart TB
     end
 
     subgraph Enrich["Phase 3: Enrich"]
-        E1["for each item (with resolved cross-refs):"]
+        E1["all items concurrent (semaphore-gated)"]
         E2["renderer.render(item, full RenderContext)"]
         E3["provider.update_item(id, UpdateItemInput)"]
         E1 --> E2 --> E3
     end
 
     subgraph Relations["Phase 4: Relations"]
-        R1["item.set_parent(parent_item)"]
-        R2["item.add_dependency(blocker_item)"]
-        R3["compute + apply parent roll-ups"]
+        R1["all relations concurrent (semaphore-gated)"]
+        R2["item.set_parent / item.add_dependency"]
+        R3["includes parent roll-ups"]
         R1 --> R2 --> R3
     end
 
@@ -101,35 +118,38 @@ This block must appear verbatim at the top of rendered item bodies for all rende
 
 **Goal:** For each PlanItem, create it if it doesn't exist.
 
-**Processing order:** Topologically sorted — epics first, then stories, then tasks — with parents before children within each level.
+**Processing order:** By type level — epics first, then stories, then tasks. Within each level, items are dispatched concurrently (gated by `max_concurrent`).
 
 ```python
-# Build partial render context (no cross-refs yet)
-context = RenderContext(
-    plan_id=plan_id,
-    parent_ref=parent_entry.key,
-    sub_items=[],
-    dependencies={},
-)
-body = renderer.render(plan_item, context)
+for item_type in [PlanItemType.EPIC, PlanItemType.STORY, PlanItemType.TASK]:
+    level_items = [i for i in plan.items if i.type == item_type]
 
-if plan_item.id in existing_map:
-    item = existing_map[plan_item.id]
-else:
-    input = CreateItemInput(
-        title=plan_item.title,
-        body=body,
-        item_type=plan_item.type,
-        labels=[config.label],
-        size=plan_item.estimate.tshirt if plan_item.estimate else None,
+    async with asyncio.TaskGroup() as tg:
+        for plan_item in level_items:
+            tg.create_task(self._upsert_item(plan_item, plan_id))
+
+async def _upsert_item(self, plan_item: PlanItem, plan_id: str) -> None:
+    context = RenderContext(
+        plan_id=plan_id,
+        parent_ref=parent_entry.key,
+        sub_items=[],
+        dependencies={},
     )
-    try:
-        item = await provider.create_item(input)
-    except CreateItemPartialFailureError as exc:
-        raise SyncError(...) from exc
+    body = renderer.render(plan_item, context)
 
-sync_map.entries[plan_item.id] = to_sync_entry(item)
+    if plan_item.id in existing_map:
+        item = existing_map[plan_item.id]
+    else:
+        async with self._semaphore:
+            try:
+                item = await provider.create_item(input)
+            except CreateItemPartialFailureError as exc:
+                raise SyncError(...) from exc
+
+    sync_map.entries[plan_item.id] = to_sync_entry(item)
 ```
+
+**Failure semantics:** `asyncio.TaskGroup` propagates the first exception and cancels remaining tasks in the level (fail-fast). Partially created items are recoverable on next sync via Discovery.
 
 **Dry-run behavior:** Skips all provider calls and creates placeholder `SyncEntry` objects with `key="dry-run"`, `url="dry-run"`.
 
@@ -137,21 +157,28 @@ sync_map.entries[plan_item.id] = to_sync_entry(item)
 
 **Goal:** Reconcile existing items with plan-authoritative fields (now that all items exist and have keys).
 
-```python
-# Build full render context with resolved cross-refs
-context = RenderContext(
-    plan_id=plan_id,
-    parent_ref=parent_entry.key,
-    sub_items=sorted([(child_entry.key, child_item.title) for child in children], key=lambda p: (p[0], p[1])),
-    dependencies={dep_id: sync_map.entries[dep_id].key for dep_id in sorted(plan_item.depends_on)},
-)
-body = renderer.render(plan_item, context)
+All items are enriched concurrently (gated by `max_concurrent`), regardless of type level — all keys are resolved by this point.
 
-await provider.update_item(entry.id, UpdateItemInput(
-    title=plan_item.title, body=body, item_type=plan_item.type,
-    labels=[config.label],
-    size=plan_item.estimate.tshirt if plan_item.estimate else None,
-))
+```python
+async with asyncio.TaskGroup() as tg:
+    for plan_item in plan.items:
+        tg.create_task(self._enrich_item(plan_item, plan_id))
+
+async def _enrich_item(self, plan_item: PlanItem, plan_id: str) -> None:
+    context = RenderContext(
+        plan_id=plan_id,
+        parent_ref=parent_entry.key,
+        sub_items=sorted([(child_entry.key, child_item.title) for child in children], key=lambda p: (p[0], p[1])),
+        dependencies={dep_id: sync_map.entries[dep_id].key for dep_id in sorted(plan_item.depends_on)},
+    )
+    body = renderer.render(plan_item, context)
+
+    async with self._semaphore:
+        await provider.update_item(entry.id, UpdateItemInput(
+            title=plan_item.title, body=body, item_type=plan_item.type,
+            labels=[config.label],
+            size=plan_item.estimate.tshirt if plan_item.estimate else None,
+        ))
 ```
 
 **Reconciliation ownership:**
@@ -163,9 +190,14 @@ await provider.update_item(entry.id, UpdateItemInput(
 
 **Goal:** Set up parent/child hierarchy and blocked-by dependency links.
 
+Relation calls are dispatched concurrently (gated by `max_concurrent`). Parent and dependency relations are independent and can be set in any order.
+
 ```python
-await item.set_parent(parent_item)       # for items with parent_id
-await item.add_dependency(blocker_item)   # for direct deps + roll-ups
+async with asyncio.TaskGroup() as tg:
+    for item, parent_item in parent_pairs:
+        tg.create_task(self._guarded(item.set_parent(parent_item)))
+    for item, blocker_item in dependency_pairs:
+        tg.create_task(self._guarded(item.add_dependency(blocker_item)))
 ```
 
 **Roll-up logic:** If a child in parent A depends on a child in parent B (A != B), then parent A is blocked by parent B. This rolls up recursively (task deps -> story level, story deps -> epic level). Cyclic edges are de-duplicated and skipped with warnings.

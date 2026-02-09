@@ -102,6 +102,9 @@ class PlanPilotConfig(BaseModel):
     label: str = "planpilot"
     """Label to apply to all created items."""
 
+    max_concurrent: int = Field(default=1, ge=1)
+    """Max concurrent provider operations per engine phase. Default 1 = sequential."""
+
     field_config: FieldConfig = FieldConfig()
     """Project field preferences."""
 
@@ -117,6 +120,14 @@ class PlanPilotConfig(BaseModel):
 | `"token"` | non-empty string | Valid |
 | `"token"` | `None` / empty | Invalid (`ConfigError`) |
 | `"gh-cli"` or `"env"` | non-empty string | Invalid (`ConfigError`, prevents ambiguous secret source) |
+
+### max_concurrent Validation
+
+| `max_concurrent` value | Result |
+|------------------------|--------|
+| `1` (default) | Valid — fully sequential |
+| `2`–`100` | Valid — concurrent within engine phases |
+| `0` or negative | Invalid (`ConfigError`) |
 
 ### GitHub-Specific Config Rules (v2 launch)
 
@@ -136,6 +147,7 @@ class PlanPilotConfig(BaseModel):
 | `validation_mode` is persisted config | Partial plan workflows must be explicit and repeatable |
 | No `dry_run` field | Per-invocation execution mode, passed as `sync(dry_run=...)` |
 | No `verbose` field | Logging is a CLI concern |
+| `max_concurrent` defaults to 1 | Sequential by default — opt-in concurrency, no surprises |
 | `frozen = True` | Prevents accidental mutation during sync |
 
 ## Path Resolution
@@ -166,6 +178,7 @@ All paths are resolved relative to the config file's parent directory by `load_c
   "validation_mode": "partial",
   "sync_path": "sync-map.json",
   "label": "planpilot",
+  "max_concurrent": 5,
   "field_config": {
     "status": "Backlog",
     "priority": "P1",
