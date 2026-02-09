@@ -27,12 +27,14 @@ class SyncEngine:
         provider: Provider,
         renderer: BodyRenderer,
         config: PlanPilotConfig,
+        *,
+        dry_run: bool = False,
     ) -> None: ...
 
     async def sync(self, plan: Plan, plan_id: str) -> SyncResult: ...
 ```
 
-The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, and config. The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation (via `PlanHasher`). This avoids cross-Core module imports.
+The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, config, and a `dry_run` flag. The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation (via `PlanHasher`). `dry_run` is a runtime execution mode passed by the SDK, not part of the persisted config.
 
 ### Sync Pipeline
 
@@ -247,7 +249,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Fields/Methods Used |
 |------|-------------------|
-| `PlanPilotConfig` | `.target`, `.board_url`, `.label`, `.dry_run` |
+| `PlanPilotConfig` | `.target`, `.board_url`, `.label` |
 
 ### provider domain
 

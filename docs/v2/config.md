@@ -57,6 +57,15 @@ class FieldConfig(BaseModel):
     """Whether to map PlanItem.estimate.tshirt to the size field."""
 ```
 
+**Cross-provider field mapping:** These field names use GitHub Projects v2 terminology but map naturally to other providers. Each provider interprets them in its own context:
+
+| FieldConfig field | GitHub | Jira |
+|-------------------|--------|------|
+| `status` | Status column | Workflow status |
+| `priority` | Priority field | Priority field |
+| `iteration` | Iteration field | Sprint |
+| `size_field` | Custom "Size" field | Story points field |
+
 ### `PlanPaths`
 
 Paths configuration for plan input files. Supports two mutually exclusive modes:
@@ -81,8 +90,6 @@ class PlanPaths(BaseModel):
 
     unified: Path | None = None
     """Path to single combined plan file (unified mode)."""
-
-    model_config = {"frozen": True}
 ```
 
 **Validation rules (model validator):**
@@ -112,6 +119,14 @@ class PlanPilotConfig(BaseModel):
     target: str
     """Target designation (e.g. "owner/repo" for GitHub)."""
 
+    auth: str = "gh-cli"
+    """Auth method. Provider-specific. For GitHub: "gh-cli" (default),
+    "env" (reads GITHUB_TOKEN), or "token" (uses the token field)."""
+
+    token: str | None = None
+    """Static auth token. Only used when auth="token".
+    Should not be committed to version control."""
+
     board_url: str | None = None
     """Project board URL. Optional — if omitted, items are created
     without being added to a project board."""
@@ -128,10 +143,6 @@ class PlanPilotConfig(BaseModel):
     field_config: FieldConfig = FieldConfig()
     """Project field preferences (status, priority, iteration, size)."""
 
-    dry_run: bool = False
-    """When True, no provider mutations are performed. The sync engine
-    runs in preview mode, producing a SyncResult with placeholder entries."""
-
     model_config = {"frozen": True}
 ```
 
@@ -140,10 +151,11 @@ class PlanPilotConfig(BaseModel):
 | Decision | Rationale |
 |----------|-----------|
 | `provider` is a string, not an enum | Open for extension — new providers added without modifying config models |
+| `auth` is a string, not an enum | Same as `provider` — open for extension per provider |
 | `board_url` is optional | Supports providers or workflows that don't use project boards |
-| `dry_run` in config, not just CLI | SDK callers need dry-run too; config is the single source of truth |
-| `frozen = True` | Config is immutable after creation — prevents accidental mutation during sync |
+| No `dry_run` field | Dry-run is a per-invocation execution mode, not persisted config. Passed as a parameter to `PlanPilot.sync(dry_run=...)` by the CLI or SDK caller |
 | No `verbose` field | Logging verbosity is a CLI concern, not a config concern. The SDK uses standard `logging` levels |
+| `frozen = True` | Config is immutable after creation — prevents accidental mutation during sync |
 
 ## Path Resolution
 
@@ -204,16 +216,9 @@ def load_config(path: str | Path) -> PlanPilotConfig:
 
 **Error handling:** All I/O and validation errors are wrapped in `ConfigError` (a new exception subclass of `PlanPilotError`).
 
-### Config Override Pattern
+### Runtime Parameters
 
-The SDK and CLI may need to override specific config values (e.g. `--dry-run` from CLI). Since `PlanPilotConfig` is frozen, overrides use Pydantic's `model_copy(update=...)`:
-
-```python
-config = load_config("planpilot.json")
-config = config.model_copy(update={"dry_run": True})
-```
-
-This keeps immutability intact while supporting CLI overrides cleanly.
+Execution mode (`dry_run`) is **not** part of the persisted config. It is passed as a parameter to `PlanPilot.sync(dry_run=True)`. This keeps the config file as a stable, committable artifact that describes *what* to sync, while the caller decides *how* (preview vs apply) per invocation.
 
 ## JSON Schema
 
@@ -223,6 +228,7 @@ Example `planpilot.json`:
 {
   "provider": "github",
   "target": "owner/repo",
+  "auth": "gh-cli",
   "board_url": "https://github.com/orgs/owner/projects/1",
   "plan_paths": {
     "epics": "plans/epics.json",
@@ -237,8 +243,7 @@ Example `planpilot.json`:
     "iteration": "active",
     "size_field": "Size",
     "size_from_tshirt": true
-  },
-  "dry_run": false
+  }
 }
 ```
 
@@ -279,11 +284,12 @@ The config module confirms these types are sufficient for all consumers:
 
 | Consumer | Fields Used |
 |----------|-----------|
-| **SDK** (`PlanPilot`) | All fields — wires provider, renderer, plan loading, sync map persistence |
-| **Engine** (`SyncEngine`) | `.target`, `.board_url`, `.label`, `.dry_run` |
+| **SDK** (`PlanPilot`) | All fields — wires auth, provider, renderer, plan loading, sync map persistence |
+| **Engine** (`SyncEngine`) | `.target`, `.board_url`, `.label` (dry_run passed separately) |
+| **Token resolver factory** | `.auth`, `.token` |
 | **Provider factory** | `.provider`, `.target`, `.board_url`, `.label`, `.field_config` |
 | **Plan loader** | `.plan_paths` (all sub-fields) |
-| **CLI** | Loads via `load_config()`, overrides `dry_run` |
+| **CLI** | Loads via `load_config()`, passes `dry_run` to `sync()` |
 
 ## Changes from v1
 
@@ -293,7 +299,9 @@ The config module confirms these types are sufficient for all consumers:
 | Flat path fields (`epics_path`, `stories_path`, `tasks_path`) | Nested `PlanPaths` with multi-file and unified modes | Cleaner grouping, supports single-file plans |
 | `repo` field (GitHub-specific) | `target` field (provider-agnostic) | Works for any provider (GitHub: "owner/repo", Jira: "project-key") |
 | `project_url` field (GitHub-specific) | `board_url` field (provider-agnostic, optional) | Generic naming, optional for providers without boards |
+| No auth config | `auth` field with resolver strategies | Separated auth from provider; configurable per-environment |
 | `verbose` in config | Not in config | Logging is a CLI/runtime concern, not persisted config |
+| `dry_run` in config | Not in config | Execution mode is per-invocation, not persisted |
 | Mutable model | `frozen = True` | Prevents accidental mutation during sync pipeline |
 | No path resolution | Paths resolved relative to config file | Config files work from any working directory |
 | No `load_config()` | `load_config()` in SDK | File I/O in SDK, not in Contracts |

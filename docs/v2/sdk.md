@@ -61,12 +61,19 @@ class PlanPilot:
             config: Validated configuration.
         """
 
-    async def sync(self, plan: Plan | None = None) -> SyncResult:
+    async def sync(
+        self,
+        plan: Plan | None = None,
+        *,
+        dry_run: bool = False,
+    ) -> SyncResult:
         """Execute the full sync pipeline.
 
         Args:
             plan: Optional pre-loaded Plan. If None, loads from
                 config.plan_paths using PlanLoader.
+            dry_run: If True, no provider mutations are performed.
+                The engine runs in preview mode with placeholder entries.
 
         Returns:
             SyncResult with sync map, creation counts, and dry-run flag.
@@ -83,13 +90,13 @@ class PlanPilot:
 
 ```mermaid
 flowchart TB
-    Start["sync(plan=None)"] --> LoadPlan{"plan provided?"}
+    Start["sync(plan=None, dry_run=False)"] --> LoadPlan{"plan provided?"}
     LoadPlan -- No --> Load["PlanLoader.load(config.plan_paths)"]
     LoadPlan -- Yes --> Validate
     Load --> Validate["PlanValidator.validate(plan)"]
     Validate --> Hash["PlanHasher.compute_plan_id(plan)"]
     Hash --> Enter["provider.__aenter__()"]
-    Enter --> Engine["SyncEngine(provider, renderer, config)"]
+    Enter --> Engine["SyncEngine(provider, renderer, config, dry_run)"]
     Engine --> Run["engine.sync(plan, plan_id)"]
     Run --> Exit["provider.__aexit__()"]
     Exit --> Persist["persist sync map to config.sync_path"]
@@ -102,7 +109,7 @@ flowchart TB
 2. **Validate plan** — `PlanValidator().validate(plan)` checks relational integrity
 3. **Compute plan ID** — `PlanHasher().compute_plan_id(plan)` produces deterministic 12-char hex hash
 4. **Enter provider** — `async with provider` manages authentication and context resolution
-5. **Construct engine** — `SyncEngine(provider, renderer, config)`
+5. **Construct engine** — `SyncEngine(provider, renderer, config, dry_run)`
 6. **Run sync** — `engine.sync(plan, plan_id)` executes the multi-phase pipeline
 7. **Exit provider** — `__aexit__` ensures cleanup even on error
 8. **Persist sync map** — Write `result.sync_map` to `config.sync_path` as JSON
@@ -222,14 +229,15 @@ pp = PlanPilot(provider=provider, renderer=renderer, config=config)
 result = await pp.sync(plan=plan)
 ```
 
-### Dry-run override
+### Dry-run mode
 
 ```python
 config = load_config("planpilot.json")
-config = config.model_copy(update={"dry_run": True})
+provider = create_provider(config.provider, target=config.target)
+renderer = create_renderer("markdown")
 
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)
-result = await pp.sync()
+result = await pp.sync(dry_run=True)
 assert result.dry_run is True
 ```
 

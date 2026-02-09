@@ -138,12 +138,13 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 - `PlanPilotConfig` — Top-level configuration, loadable from `planpilot.json`:
   - `provider` — Provider name (e.g. "github")
   - `target` — Target designation (e.g. "owner/repo")
+  - `auth` — Auth method (e.g. "gh-cli", "env", "token")
+  - `token` — Static auth token (optional, for `auth="token"`)
   - `board_url` — Board URL (optional)
   - `plan_paths: PlanPaths` — Paths to plan JSON files
   - `sync_path` — Path to write sync map
   - `label` — Label to apply to all items
   - `field_config` — Project field preferences
-  - `dry_run` — Preview mode flag
 - `PlanPaths` — Paths configuration for plan input files. Supports multi-file mode (separate epics/stories/tasks files) or single-file mode (all items in one file):
   - `epics: Path | None` — Path to epics JSON file
   - `stories: Path | None` — Path to stories JSON file
@@ -493,11 +494,11 @@ renderer = create_renderer("markdown")
 # Create SDK instance and sync (loads plan from config.plan_paths)
 # Provider lifecycle (__aenter__/__aexit__) is managed internally by sync()
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)
-result = await pp.sync()
+result = await pp.sync(dry_run=False)
 
 # Or pass a Plan directly for programmatic use
 plan = load_plan("epics.json", "stories.json", "tasks.json")
-result = await pp.sync(plan)
+result = await pp.sync(plan, dry_run=True)
 
 # Access results
 print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
@@ -522,6 +523,7 @@ Example `planpilot.json`:
 {
   "provider": "github",
   "target": "owner/repo",
+  "auth": "gh-cli",
   "board_url": "https://github.com/orgs/owner/projects/1",
   "plan_paths": {
     "epics": "epics.json",

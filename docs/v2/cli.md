@@ -95,8 +95,7 @@ flowchart TB
     Logging -- Yes --> SetDebug["logging.basicConfig(DEBUG)"]
     Logging -- No --> LoadConfig
     SetDebug --> LoadConfig["config = load_config(args.config)"]
-    LoadConfig --> Override["config = config.model_copy(update={'dry_run': args.dry_run})"]
-    Override --> Provider["provider = create_provider(...)"]
+    LoadConfig --> Provider["provider = create_provider(...)"]
     Provider --> Renderer["renderer = create_renderer('markdown')"]
     Renderer --> SDK["pp = PlanPilot(provider, renderer, config)"]
     SDK --> Sync["result = await pp.sync()"]
@@ -114,7 +113,6 @@ async def _run_sync(args: argparse.Namespace) -> None:
         args: Parsed CLI namespace.
     """
     config = load_config(args.config)
-    config = config.model_copy(update={"dry_run": args.dry_run})
 
     provider = create_provider(
         config.provider,
@@ -126,7 +124,7 @@ async def _run_sync(args: argparse.Namespace) -> None:
     renderer = create_renderer("markdown")
 
     pp = PlanPilot(provider=provider, renderer=renderer, config=config)
-    result = await pp.sync()
+    result = await pp.sync(dry_run=args.dry_run)
 
     print(_format_summary(result, config))
 ```
@@ -251,7 +249,7 @@ raise SystemExit(main())
 | Decision | Rationale |
 |----------|-----------|
 | Config-file driven (not arg-driven) | Config file is shareable, versionable, and used by both CLI and SDK. Reduces CLI arg sprawl |
-| `--dry-run` / `--apply` still on CLI | Mode is a per-invocation choice, not a persisted preference. CLI overrides config |
+| `--dry-run` / `--apply` still on CLI | Mode is a per-invocation choice, not persisted config. Passed to `sync(dry_run=...)` |
 | Subcommand pattern | Future expansion (`planpilot validate`, `planpilot status`) without breaking existing usage |
 | No `--provider`, `--target`, etc. | All in config file. CLI stays minimal |
 | `--verbose` is CLI-only | Logging level is a runtime concern. SDK uses standard `logging` module |
