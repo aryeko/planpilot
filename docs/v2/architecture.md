@@ -441,6 +441,7 @@ sequenceDiagram
     participant CLI
     participant SDK as PlanPilot
     participant Engine as SyncEngine
+    participant Item as Item
     participant Provider as Provider ABC
     participant Renderer as BodyRenderer
 
@@ -461,15 +462,17 @@ sequenceDiagram
         Engine->>Renderer: render(item, RenderContext)
         Renderer-->>Engine: body string
         Engine->>Provider: create_item(CreateItemInput)
-        Provider-->>Engine: Item
+        Provider-->>Engine: Item (with provider injected)
     end
 
     Engine->>Renderer: render(item, RenderContext with cross-refs)
     Renderer-->>Engine: updated body strings
     Engine->>Provider: update_item(id, UpdateItemInput)
 
-    Engine->>Provider: item.add_dependency(other)
-    Engine->>Provider: item.set_parent(parent)
+    Engine->>Item: set_parent(parent)
+    Item->>Provider: internal relation API call
+    Engine->>Item: add_dependency(blocker)
+    Item->>Provider: internal relation API call
 
     Engine-->>SDK: SyncResult
     SDK->>SDK: persist sync map to disk
@@ -659,7 +662,7 @@ The CLI is pure I/O — argument parsing and output formatting. It never reaches
 
 ### Sync map compatibility
 
-v2 sync maps use a flat `entries` dict with `id`/`key`/`url` fields per entry (vs v1's per-type dicts `epics`/`stories`/`tasks` with `issue_number`/`node_id`/`project_item_id`). Existing v1 sync maps are not compatible with v2. A migration utility or fresh sync is required when upgrading.
+v2 is a major version — sync maps are not backward-compatible with v1. v1 sync maps should be discarded. On first v2 run, the Discovery phase re-detects previously created issues via body markers and rebuilds the sync map in v2 format. No issues are duplicated.
 
 ### Partial failure recovery
 
