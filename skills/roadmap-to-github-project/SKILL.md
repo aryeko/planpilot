@@ -1,154 +1,182 @@
 ---
-name: roadmap-to-github-project
-description: Use when a user has a roadmap markdown file and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow.
+name: spec-to-planpilot-sync
+description: Use when a user has one or more PRD/spec files and needs standalone guidance to convert them into planpilot JSON plans and sync or update GitHub Issues plus Projects v2.
 ---
 
-# Roadmap to GitHub Project
+# Spec to PlanPilot Sync
 
 ## Overview
 
-Use this skill for end-to-end planning operations: convert roadmap markdown into schema-aligned `.plans` files, validate integrity, then sync epics/stories/tasks to GitHub Issues and Projects v2 with idempotent reruns.
+This skill is standalone for environments where `planpilot` is installed from pip (no source tree required).
 
-This skill merges plan generation and sync. It supports `plan`, `sync`, and `full` modes.
+Goal: convert PRD/spec inputs into valid plan JSON, then sync/update GitHub with dry-run-first safety.
 
-## Skill Invocation Gate (MANDATORY)
+## Prerequisites
 
-Before any action, list available skills and invoke all that apply. If installed and applicable, you MUST use them. Process skills take priority over implementation skills.
+- Python 3.11+
+- `planpilot` installed: `pip install planpilot`
+- `gh` CLI installed and authenticated
+- GitHub token/scopes: `repo`, `project`
 
 ## When to Use
 
-- User asks to turn roadmap/spec docs into `.plans` JSON artifacts
-- User asks to push epics/stories/tasks into GitHub Project from `.plans`
-- User asks for one-command planning + project sync workflow
+- User asks to break PRD/spec into epics, stories, tasks.
+- User asks to sync/update GitHub Issues and Projects v2 from that plan.
+- User has multiple overlapping specs and needs one merged executable plan.
 
-Do **not** use when the user is asking to implement roadmap tasks.
+Do not use for implementing features.
 
-## Inputs
+## Required Outputs
 
-Required for `plan` mode:
-- `roadmap_path`
-
-Required for `sync` mode:
-- `repo` (`OWNER/REPO`)
-- `project_url` (Projects v2 URL)
-- `epics_path`, `stories_path`, `tasks_path`
-
-Recommended defaults:
-- `plans_dir=.plans`
-- `sync_path=.plans/github-sync-map.json`
-- `label=planpilot`
-- `status=Backlog`
-- `priority=P1`
-- `iteration=active`
-- `size_field=Size`
-- T-shirt size mapping is enabled by default (disable with `--no-size-from-tshirt`)
-
-## Outputs
-
-Planning artifacts:
 - `.plans/epics.json`
 - `.plans/stories.json`
 - `.plans/tasks.json`
-- `.plans/dependency-graph.md`
+- `planpilot.json`
+- Sync map artifacts:
+  - dry-run: `<sync_path>.dry-run`
+  - apply: `<sync_path>`
 
-Sync artifacts:
-- `.plans/github-sync-map.json`
+## Canonical Config (`planpilot.json`)
 
-## Workflow
-
-### 1) Mode select
-
-If mode is not explicit, ask once:
-1. Plan only
-2. Sync only
-3. Full (plan + sync)
-
-Default recommendation: Full.
-
-### 2) Plan generation (plan/full)
-
-1. Parse roadmap markdown
-2. Build normalized hierarchy: Epic -> Story -> Task
-3. Enforce story = PR-sized deliverable
-4. Write `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json`, `.plans/dependency-graph.md`
-5. Validate:
-   - JSON syntax
-   - Cross-file references (epic/story/task/dependencies)
-   - Required fields exist per schema
-
-Required schema style:
-- Match `spec-to-plan` / `planpilot` expectations:
-  - `epics.json`: `id,title,goal,spec_ref,story_ids` (+ optional fields)
-  - `stories.json`: `id,epic_id,title,goal,spec_ref,task_ids` (+ optional fields)
-  - `tasks.json`: `id,story_id,title,motivation,spec_ref,requirements,acceptance_criteria,verification,artifacts,depends_on`
-
-### 3) Sync preflight (sync/full)
-
-1. `gh auth status`
-2. Confirm target repo and project URL
-3. Confirm tool availability:
-   - preferred: `planpilot` (installed via pip/poetry)
-   - fallback: `python3 -m planpilot`
-
-If auth fails, STOP and request login.
-
-### 4) Multi-epic handling (sync/full)
-
-- run `planpilot` directly with full `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json`
-- native multi-epic validation + sync is supported
-
-### 5) Sync execution (sync/full)
-
-Preferred command template:
-
-```bash
-planpilot \
-  --repo <owner/repo> \
-  --project-url <project-url> \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --label planpilot \
-  --status Backlog \
-  --priority P1 \
-  --iteration active \
-  --size-field Size \
-  --dry-run --verbose
+```json
+{
+  "provider": "github",
+  "target": "OWNER/REPO",
+  "board_url": "https://github.com/orgs/OWNER/projects/NUMBER",
+  "plan_paths": {
+    "epics": ".plans/epics.json",
+    "stories": ".plans/stories.json",
+    "tasks": ".plans/tasks.json"
+  },
+  "sync_path": ".plans/github-sync-map.json"
+}
 ```
 
-Then rerun replacing `--dry-run` with `--apply`.
+## Plan JSON Contract (Split Format)
 
-### 6) Post-sync verification
+All three files are JSON arrays.
 
-Must report:
-- Epic issue URLs
-- Count of synced stories/tasks per epic
-- Any warnings/fallbacks
-- Sync map artifact paths
+Required fields for every item:
+- `id` (string)
+- `title` (string)
+- `goal` (string)
+- `requirements` (string array)
+- `acceptance_criteria` (string array)
 
-Sync writes one canonical map: `.plans/github-sync-map.json`.
+Hierarchy rules:
+- Story item must set `parent_id` to an Epic `id`.
+- Task item must set `parent_id` to a Story `id`.
+- Epic items must not use `parent_id`.
+
+Optional fields:
+- `depends_on` (string array of existing IDs)
+- `sub_item_ids` (string array)
+- `estimate` (object): `{"tshirt":"S"}` or `{"hours":6}`
+- `verification` (object): `{"commands":[],"ci_checks":[],"evidence":[],"manual_steps":[]}`
+- `spec_ref` (object): `{"url":"...","section":"...","quote":"..."}`
+- `scope` (object): `{"in_scope":[],"out_scope":[]}`
+
+JSON must be strict:
+- no comments
+- no trailing commas
+
+## CLI Reference
+
+Only supported sync command pattern:
+
+```bash
+planpilot sync --config ./planpilot.json --dry-run
+planpilot sync --config ./planpilot.json --apply
+```
+
+Flags:
+- `--config <path>` required
+- exactly one of `--dry-run` or `--apply` required
+- optional `--verbose`
+
+## Execution Flow
+
+1. Choose mode:
+- `plan` (generate/validate JSON only)
+- `sync` (sync existing JSON)
+- `full` (generate + sync)
+
+2. Analyze PRD/spec files:
+- extract outcomes, requirements, constraints, dependencies
+- resolve conflicts and record assumptions
+
+Default conflict policy if user gives none:
+- stricter acceptance criteria wins
+- if equally strict, newer spec wording wins
+
+3. Generate `.plans/*.json`:
+- Epic = strategic outcome
+- Story = PR-sized deliverable
+- Task = concrete executable unit
+
+4. Validate syntax:
+
+```bash
+python3 -m json.tool .plans/epics.json >/dev/null
+python3 -m json.tool .plans/stories.json >/dev/null
+python3 -m json.tool .plans/tasks.json >/dev/null
+```
+
+5. Validate integrity:
+- IDs globally unique across epics/stories/tasks
+- all `parent_id` links exist and type-match
+- all `depends_on` links exist
+
+6. Preflight:
+
+```bash
+gh auth status
+planpilot --version
+```
+
+7. Run sync:
+
+```bash
+planpilot sync --config ./planpilot.json --dry-run
+planpilot sync --config ./planpilot.json --apply
+```
+
+8. Verify update behavior:
+- sync command succeeded
+- expected created/existing counts shown
+- sync map files written at expected paths
+- rerun dry-run shows no unexpected churn
+
+## Programmatic API Reference
+
+Use when user asks for API usage instead of shell:
+
+```python
+import asyncio
+from planpilot import PlanPilot, load_config
+
+async def run() -> None:
+    config = load_config("planpilot.json")
+    pp = await PlanPilot.from_config(config)
+    await pp.sync(dry_run=True)
+    await pp.sync(dry_run=False)
+
+asyncio.run(run())
+```
 
 ## Common Mistakes
 
-- Generating `.plans` with fields missing required by sync tool
-- Skipping dry-run
-- Treating this as implementation workflow (it is planning/sync only)
-
-## Verification Checklist
-
-- `python3 -m json.tool .plans/epics.json`
-- `python3 -m json.tool .plans/stories.json`
-- `python3 -m json.tool .plans/tasks.json`
-- `gh auth status`
-- Dry-run succeeds
-- Real sync succeeds
-- `.plans/github-sync-map.json` exists and parses
+- Stopping at analysis notes without generating `.plans/*.json`.
+- Using invalid nested-field shorthand (for example `estimate: "M"`).
+- Producing invalid hierarchy (task under epic, story without epic).
+- Skipping dry-run before apply.
+- Using old/nonexistent CLI flags.
+- Returning pseudo-JSON with comments.
 
 ## Completion Criteria
 
-This skill run is complete when:
-1. `.plans` artifacts are valid and internally consistent
-2. Epic/story/task issues are created or updated in target repo
-3. Project items are added when project access is available
-4. Canonical sync map is written for idempotent reruns
+1. `.plans/epics.json`, `.plans/stories.json`, `.plans/tasks.json` are valid and linked correctly.
+2. `planpilot.json` is present and correct.
+3. Dry-run succeeds.
+4. Apply succeeds when requested.
+5. Sync map output exists and rerun behavior is idempotent.
