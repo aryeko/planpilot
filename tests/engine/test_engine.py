@@ -6,13 +6,13 @@ from pathlib import Path
 import pytest
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError, SyncError
+from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.sync import SyncMap
 from planpilot.engine.engine import SyncEngine
 from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
-from tests.fakes.provider import FakeProvider
+from tests.fakes.provider import FakeItem, FakeProvider
 from tests.fakes.renderer import FakeRenderer
 
 
@@ -537,3 +537,68 @@ async def test_build_context_ignores_unresolved_internal_parent(tmp_path: Path) 
     )
 
     assert context.parent_ref is None
+
+
+class FailingRelationItem(FakeItem):
+    """FakeItem whose set_parent / add_dependency raise ProviderError."""
+
+    async def set_parent(self, parent: Item) -> None:
+        raise ProviderError("sub-issues not supported")
+
+    async def add_dependency(self, blocker: Item) -> None:
+        raise ProviderError("blocked-by not supported")
+
+
+class FailingRelationProvider(FakeProvider):
+    """Provider that returns items whose relation methods always fail."""
+
+    async def create_item(self, input: CreateItemInput) -> Item:
+        self.create_calls.append(input)
+        n = self._next_number
+        self._next_number += 1
+        item = FailingRelationItem(
+            _id=f"fake-id-{n}",
+            _key=f"#{n}",
+            _url=f"https://fake/issues/{n}",
+            _title=input.title,
+            _body=input.body,
+            _item_type=input.item_type,
+            _provider=self,
+            _labels=list(input.labels),
+        )
+        self.items[item.id] = item
+        return item
+
+
+@pytest.mark.asyncio
+async def test_sync_surfaces_provider_error_from_relation_failure(tmp_path: Path) -> None:
+    """ProviderError raised inside _set_relations is unwrapped from the ExceptionGroup."""
+    provider = FailingRelationProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1"),
+        ]
+    )
+
+    with pytest.raises(ProviderError, match="sub-issues not supported"):
+        await SyncEngine(provider, renderer, config).sync(plan, "plan-rel-1")
+
+
+@pytest.mark.asyncio
+async def test_sync_surfaces_provider_error_from_dependency_failure(tmp_path: Path) -> None:
+    """ProviderError from add_dependency is unwrapped properly."""
+    provider = FailingRelationProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task A", depends_on=["T2"]),
+            PlanItem(id="T2", type=PlanItemType.TASK, title="Task B"),
+        ]
+    )
+
+    with pytest.raises(ProviderError, match="blocked-by not supported"):
+        await SyncEngine(provider, renderer, config).sync(plan, "plan-rel-2")
