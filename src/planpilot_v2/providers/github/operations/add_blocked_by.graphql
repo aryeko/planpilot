@@ -1,5 +1,5 @@
 mutation AddBlockedBy($blockedId: ID!, $blockerId: ID!) {
-  addBlockedBy(input: { issueId: $blockedId, blockedById: $blockerId }) {
+  addBlockedBy(input: { issueId: $blockedId, blockingIssueId: $blockerId }) {
     issue { id }
   }
 }

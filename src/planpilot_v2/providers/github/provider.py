@@ -209,7 +209,7 @@ class GitHubProvider(Provider):
             "add_blocked_by",
             lambda: self._graphql(
                 "mutation($blockedId:ID!, $blockerId:ID!) { "
-                "addBlockedBy(input:{issueId:$blockedId, blockedById:$blockerId}) "
+                "addBlockedBy(input:{issueId:$blockedId, blockingIssueId:$blockerId}) "
                 "{ issue { id } } }",
                 {"blockedId": blocked_issue_id, "blockerId": blocker_issue_id},
             ),

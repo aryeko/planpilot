@@ -87,6 +87,9 @@ filterwarnings = [
 source = ["planpilot"]
 branch = true
 data_file = ".coverage/coverage.db"
+omit = [
+    "src/planpilot_v2/providers/github/github_gql/*",
+]
 
 [tool.coverage.report]
 show_missing = true
@@ -122,6 +125,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+exclude = "(^src/planpilot_v2/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
@@ -147,10 +151,58 @@ type = "github"
 
 [tool.ariadne-codegen]
 schema_path = "src/planpilot_v2/providers/github/schema.graphql"
-queries_path = "src/planpilot_v2/providers/github/operations/"
+queries_path = "src/planpilot_v2/providers/github/operations"
 target_package_name = "github_gql"
-target_package_path = "src/planpilot_v2/providers/github/"
+target_package_path = "src/planpilot_v2/providers/github"
+client_name = "GitHubGraphQLClient"
+client_file_name = "client"
 async_client = true
+convert_to_snake_case = true
 include_all_inputs = false
 include_all_enums = false
 include_comments = "stable"
+enable_custom_operations = false
+opentelemetry_client = false
+plugins = [
+    "ariadne_codegen.contrib.extract_operations.ExtractOperationsPlugin",
+    "ariadne_codegen.contrib.client_forward_refs.ClientForwardRefsPlugin",
+]
+
+[tool.ariadne-codegen.extract_operations]
+operations_module_name = "operations"
+
+[tool.ariadne-codegen.scalars.Date]
+type = "datetime.date"
+
+[tool.ariadne-codegen.scalars.DateTime]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.PreciseDateTime]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.GitTimestamp]
+type = "datetime.datetime"
+
+[tool.ariadne-codegen.scalars.BigInt]
+type = "int"
+
+[tool.ariadne-codegen.scalars.URI]
+type = "str"
+
+[tool.ariadne-codegen.scalars.Base64String]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitObjectID]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitRefname]
+type = "str"
+
+[tool.ariadne-codegen.scalars.GitSSHRemote]
+type = "str"
+
+[tool.ariadne-codegen.scalars.HTML]
+type = "str"
+
+[tool.ariadne-codegen.scalars.X509Certificate]
+type = "str"

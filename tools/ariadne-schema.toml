@@ -1,0 +1,7 @@
+[tool.ariadne-codegen]
+remote_schema_url = "https://api.github.com/graphql"
+remote_schema_headers = { Authorization = "bearer $GITHUB_TOKEN" }
+remote_schema_timeout = 30
+remote_schema_verify_ssl = true
+target_file_path = "src/planpilot_v2/providers/github/schema.graphql"
+plugins = []
