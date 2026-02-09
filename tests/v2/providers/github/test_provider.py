@@ -61,6 +61,44 @@ async def test_aenter_builds_context(monkeypatch: pytest.MonkeyPatch) -> None:
     assert provider.context.project_id == "project-id"
     assert provider.context.size_field_id == "size-f"
     assert provider.context.size_options == [{"id": "opt-1", "name": "S"}]
+    # issue_type_ids populated -> supports_issue_type is True
+    assert provider.context.supports_issue_type is True
+
+
+@pytest.mark.asyncio
+async def test_aenter_falls_back_to_label_when_no_issue_types(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
+
+    async def fake_enter_transport() -> None:
+        return None
+
+    async def fake_resolve_repo() -> tuple[str, str, dict[str, str]]:
+        return "repo-id", "label-id", {}  # no issue types
+
+    async def fake_resolve_project() -> tuple[str, str, int, str | None]:
+        return "org", "acme", 1, "project-id"
+
+    async def fake_resolve_project_fields(
+        project_id: str,
+    ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
+        return None, [], None, None, None
+
+    monkeypatch.setattr(provider, "_open_transport", fake_enter_transport)
+    monkeypatch.setattr(provider, "_resolve_repo_context", fake_resolve_repo)
+    monkeypatch.setattr(provider, "_resolve_project_context", fake_resolve_project)
+    monkeypatch.setattr(provider, "_resolve_project_fields", fake_resolve_project_fields)
+
+    await provider.__aenter__()
+
+    # No issue types found -> supports_issue_type is False, strategy falls back to label
+    assert provider.context.supports_issue_type is False
+    assert provider.context.create_type_strategy == "label"
 
 
 @pytest.mark.asyncio
@@ -204,7 +242,7 @@ async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.
     assert len(items) == 1
     assert "label:planpilot" in captured["query"]
     assert "label:foo" in captured["query"]
-    assert "PLAN_ID:abc" in captured["query"]
+    assert "PLAN_ID:abc in:body" in captured["query"]
 
 
 @pytest.mark.asyncio
@@ -231,6 +269,7 @@ async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatc
     await provider.search_items(ItemSearchFilters(labels=["planpilot"]))
     assert "label:planpilot" in captured["query"]
     assert "PLAN_ID:" not in captured["query"]
+    assert "in:body" not in captured["query"]
 
 
 @pytest.mark.asyncio

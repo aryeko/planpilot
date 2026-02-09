@@ -80,6 +80,15 @@ class GitHubProvider(Provider):
 
         create_type_strategy, create_type_map = self._resolve_create_type_policy(owner_type)
 
+        # Detect issue-type capability from repo metadata
+        has_issue_types = bool(issue_type_ids)
+        if create_type_strategy == "issue-type" and not has_issue_types:
+            _LOG.warning(
+                "create_type_strategy is 'issue-type' but repository has no issue types configured; "
+                "falling back to 'label' strategy"
+            )
+            create_type_strategy = "label"
+
         self.context = GitHubProviderContext(
             repo_id=repo_id,
             label_id=label_id,
@@ -94,7 +103,7 @@ class GitHubProvider(Provider):
             supports_sub_issues=True,
             supports_blocked_by=True,
             supports_discovery_filters=True,
-            supports_issue_type=True,
+            supports_issue_type=has_issue_types,
             create_type_strategy=create_type_strategy,
             create_type_map=create_type_map,
         )
@@ -120,7 +129,7 @@ class GitHubProvider(Provider):
         for label in filters.labels:
             query_parts.append(f"label:{label}")
         if filters.body_contains:
-            query_parts.append(filters.body_contains)
+            query_parts.append(f"{filters.body_contains} in:body")
         query = " ".join(query_parts)
 
         nodes = await self._search_issue_nodes(query)
@@ -379,6 +388,10 @@ class GitHubProvider(Provider):
             issue_type_id = self.context.issue_type_ids.get(mapped_name.upper()) or self.context.issue_type_ids.get(
                 input.item_type.value
             )
+            if issue_type_id is None:
+                _LOG.warning(
+                    "Could not resolve issue type ID for %r; issue created without a type", mapped_name
+                )
 
         # Resolve project IDs
         project_ids = [self.context.project_id] if self.context.project_id else None
@@ -406,6 +419,8 @@ class GitHubProvider(Provider):
             issue_type_id = self.context.issue_type_ids.get(mapped_name.upper()) or self.context.issue_type_ids.get(
                 input.item_type.value
             )
+            if issue_type_id is None:
+                _LOG.warning("Could not resolve issue type ID for %r; issue type will not be updated", mapped_name)
 
         data = await client.update_issue(
             id=item_id,
@@ -461,13 +476,10 @@ class GitHubProvider(Provider):
     # ------------------------------------------------------------------
 
     async def _ensure_discovery_labels(self, issue_id: str, labels: list[str]) -> None:  # pragma: no cover
-        client = self._require_client()
-        for label_name in labels:
-            if label_name == self._label and self.context.label_id:
-                label_id = self.context.label_id
-            else:
-                label_id = await self._find_or_create_label(label_name)
-            await client.add_labels(labelable_id=issue_id, label_ids=[label_id])
+        label_ids = await self._resolve_label_ids(labels)
+        if label_ids:
+            client = self._require_client()
+            await client.add_labels(labelable_id=issue_id, label_ids=label_ids)
 
     async def _resolve_label_ids(self, label_names: list[str]) -> list[str]:  # pragma: no cover
         """Resolve a list of label names to their IDs, creating if needed."""
