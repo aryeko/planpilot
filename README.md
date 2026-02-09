@@ -80,42 +80,37 @@ python3 -m pip --version
 
 Note: `python3 -m pip install -g planpilot` is invalid (`pip` has no `-g` flag). Use `pip install` with `--user`, a virtualenv, or your system package policy.
 
-## Install Agent Skill (Open Standard)
+## Install Agent Skill
 
-Install the single skill to the open skill path used by agent platforms that support filesystem skills:
+### Agent Self-Install
 
-- `~/.agents/skills/spec-to-planpilot-sync/SKILL.md`
+Tell your agent:
 
-Create destination directory:
-
-```bash
-mkdir -p ~/.agents/skills/spec-to-planpilot-sync
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/refs/heads/main/skills/INSTALL.agent.md
 ```
 
-Install from local checkout:
+The agent will install both `planpilot` and the skill automatically.
+
+### Manual Install
+
+Install the skill to the open discovery path used by agent platforms that support filesystem skills:
+
+```bash
+mkdir -p ~/.agents/skills/roadmap-to-github-project
+
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+  -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
+```
+
+Or from a local checkout:
 
 ```bash
 cp skills/roadmap-to-github-project/SKILL.md \
-  ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
+  ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-Or install from GitHub raw:
-
-```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
-  -o ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
-```
-
-Verify:
-
-```bash
-ls -la ~/.agents/skills/spec-to-planpilot-sync
-sed -n '1,40p' ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
-```
-
-Full standalone instructions:
-
-- [`skills/roadmap-to-github-project/INSTALL.md`](skills/roadmap-to-github-project/INSTALL.md)
+Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)
 
 ## Quickstart
 
