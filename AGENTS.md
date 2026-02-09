@@ -1,7 +1,7 @@
 # PROJECT KNOWLEDGE BASE
 
-**Generated:** 2026-02-09 20:23 (Asia/Jerusalem)
-**Commit:** 8d229f5
+**Generated:** 2026-02-09 20:56 (Asia/Jerusalem)
+**Commit:** 96c0f26
 **Branch:** v2
 
 ## OVERVIEW
@@ -20,6 +20,8 @@ planpilot/
 |  `- plan/                    # Plan loading, validation, hashing
 |- tests/                      # Mirrors runtime domains; includes offline E2E
 |- docs/                       # Architecture, module specs, decisions
+|- docs/AGENTS.md              # Documentation map and doc-specific guardrails
+|- src/planpilot/providers/AGENTS.md  # Provider factory + dry-run + extension rules
 `- .github/workflows/          # CI, release, TestPyPI/PyPI pipeline
 ```
 
@@ -31,6 +33,7 @@ planpilot/
 | Sync pipeline | `src/planpilot/engine/engine.py` | 5-phase flow and relation wiring |
 | Provider contract boundary | `src/planpilot/contracts/provider.py` | Provider ABC expected by engine |
 | GitHub behavior | `src/planpilot/providers/github/provider.py` | Context resolution + CRUD + relations |
+| Provider extension points | `src/planpilot/providers/factory.py`, `src/planpilot/providers/dry_run.py` | Provider mapping and offline apply path |
 | Plan semantics | `src/planpilot/plan/validator.py` | Strict/partial validation behavior |
 | Renderer output markers | `src/planpilot/renderers/markdown.py` | Metadata block drives idempotent discovery |
 | Release behavior | `.github/workflows/release.yml`, `RELEASE.md` | Semantic release -> TestPyPI smoke -> PyPI |
