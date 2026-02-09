@@ -18,6 +18,7 @@ from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, U
 from planpilot.contracts.plan import PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.providers.github.github_gql.client import GitHubGraphQLClient
+from planpilot.providers.github.github_gql.exceptions import GraphQLClientError
 from planpilot.providers.github.github_gql.fragments import IssueCore
 from planpilot.providers.github.github_gql.search_issues import SearchIssuesSearchNodesIssue
 from planpilot.providers.github.item import GitHubItem
@@ -218,13 +219,19 @@ class GitHubProvider(Provider):
         if not self.context.supports_sub_issues:
             raise ProviderCapabilityError("GitHub provider does not support sub-issues.", capability="sub-issues")
         client = self._require_client()
-        await client.add_sub_issue(parent_id=parent_issue_id, child_id=child_issue_id)
+        try:
+            await client.add_sub_issue(parent_id=parent_issue_id, child_id=child_issue_id)
+        except GraphQLClientError as exc:
+            raise ProviderError(f"Failed to add sub-issue: {exc}") from exc
 
     async def add_blocked_by(self, *, blocked_issue_id: str, blocker_issue_id: str) -> None:  # pragma: no cover
         if not self.context.supports_blocked_by:
             raise ProviderCapabilityError("GitHub provider does not support blocked-by.", capability="blocked-by")
         client = self._require_client()
-        await client.add_blocked_by(blocked_id=blocked_issue_id, blocker_id=blocker_issue_id)
+        try:
+            await client.add_blocked_by(blocked_id=blocked_issue_id, blocker_id=blocker_issue_id)
+        except GraphQLClientError as exc:
+            raise ProviderError(f"Failed to add blocked-by relation: {exc}") from exc
 
     # ------------------------------------------------------------------
     # Transport

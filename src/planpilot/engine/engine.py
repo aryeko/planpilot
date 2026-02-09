@@ -8,7 +8,7 @@ from collections.abc import Awaitable
 from typing import TypeVar
 
 from planpilot.contracts.config import PlanPilotConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError, SyncError
+from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
@@ -49,9 +49,9 @@ class SyncEngine:
             await self._upsert(plan, plan_id, existing_map, sync_map, item_objects, items_created)
             await self._enrich(plan, plan_id, sync_map, item_objects)
             await self._set_relations(plan, item_objects)
-        except* SyncError as sync_error_group:
-            first_sync_error = sync_error_group.exceptions[0]
-            raise first_sync_error from None
+        except* (SyncError, ProviderError) as error_group:
+            first_error = error_group.exceptions[0]
+            raise first_error from error_group
 
         return SyncResult(sync_map=sync_map, items_created=items_created, dry_run=self._dry_run)
 
@@ -228,12 +228,12 @@ class SyncEngine:
             for child_id, parent_id in parent_pairs:
                 child = item_objects[child_id]
                 parent = item_objects[parent_id]
-                tg.create_task(self._guarded(child.set_parent(parent)))
+                tg.create_task(self._set_parent_guarded(child, parent))
 
             for blocked_id, blocker_id in dependency_pairs:
                 blocked = item_objects[blocked_id]
                 blocker = item_objects[blocker_id]
-                tg.create_task(self._guarded(blocked.add_dependency(blocker)))
+                tg.create_task(self._add_dependency_guarded(blocked, blocker))
 
     def _build_context(
         self,
@@ -292,6 +292,14 @@ class SyncEngine:
     async def _guarded(self, op: Awaitable[T]) -> T:
         async with self._semaphore:
             return await op
+
+    async def _set_parent_guarded(self, child: Item, parent: Item) -> None:
+        async with self._semaphore:
+            await child.set_parent(parent)
+
+    async def _add_dependency_guarded(self, blocked: Item, blocker: Item) -> None:
+        async with self._semaphore:
+            await blocked.add_dependency(blocker)
 
     def _handle_unresolved_reference(self, *, source_item_id: str, reference_type: str, reference_id: str) -> None:
         message = f"Unresolved {reference_type} reference '{reference_id}' on item '{source_item_id}' during sync."
