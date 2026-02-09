@@ -44,7 +44,7 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 - **`contracts/`** -- Core data models, ABCs, and exception hierarchy
 - **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
 - **`auth/`** -- Token resolvers and auth strategy factory
-- **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses the `gh` CLI
+- **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses a generated GraphQL client (ariadne-codegen + httpx)
 - **`renderers/`** -- `BodyRenderer` implementations; `MarkdownRenderer` is the default
 - **`engine/`** -- `SyncEngine` 5-phase pipeline over Provider and Renderer abstractions
 - **`sdk.py`** -- Composition root (`PlanPilot.from_config`) and config/plan loading helpers
