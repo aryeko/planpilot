@@ -22,7 +22,7 @@ from planpilot_v2.providers.github.github_gql.fragments import IssueCore
 from planpilot_v2.providers.github.github_gql.search_issues import SearchIssuesSearchNodesIssue
 from planpilot_v2.providers.github.item import GitHubItem
 from planpilot_v2.providers.github.mapper import parse_project_url, resolve_option_id
-from planpilot_v2.providers.github.models import GitHubProviderContext
+from planpilot_v2.providers.github.models import GitHubProviderContext, ResolvedField
 
 _LOG = logging.getLogger(__name__)
 
@@ -67,6 +67,17 @@ class GitHubProvider(Provider):
         repo_id, label_id, issue_type_ids = await self._resolve_repo_context()
         owner_type, _, _, project_id = await self._resolve_project_context()
 
+        # Resolve project field metadata (Size, Status, Priority, Iteration)
+        size_field_id: str | None = None
+        size_options: list[dict[str, str]] = []
+        status_field: ResolvedField | None = None
+        priority_field: ResolvedField | None = None
+        iteration_field: ResolvedField | None = None
+        if project_id:
+            size_field_id, size_options, status_field, priority_field, iteration_field = (
+                await self._resolve_project_fields(project_id)
+            )
+
         create_type_strategy, create_type_map = self._resolve_create_type_policy(owner_type)
 
         self.context = GitHubProviderContext(
@@ -75,6 +86,11 @@ class GitHubProvider(Provider):
             issue_type_ids=issue_type_ids,
             project_owner_type=owner_type,
             project_id=project_id,
+            size_field_id=size_field_id,
+            size_options=size_options,
+            status_field=status_field,
+            priority_field=priority_field,
+            iteration_field=iteration_field,
             supports_sub_issues=True,
             supports_blocked_by=True,
             supports_discovery_filters=True,
@@ -115,26 +131,17 @@ class GitHubProvider(Provider):
         issue: IssueCore | None = None
 
         try:
+            # _create_issue atomically sets labels, issue type, and project
             issue = await self._create_issue(input)
-            completed_steps.append("issue_created")
+            completed_steps.extend(["issue_created", "issue_type_set", "labels_set"])
 
-            issue_id = issue.id
+            # Only project field assignment (e.g. Size) requires follow-up calls
+            if self.context.project_id:
+                project_item_id = await self._ensure_project_item(issue.id)
+                completed_steps.append("project_item_added")
 
-            if self.context.create_type_strategy == "issue-type":
-                await self._ensure_issue_type(issue_id, input.item_type)
-                completed_steps.append("issue_type_set")
-            else:
-                await self._ensure_type_label(issue_id, input.item_type)
-
-            labels = list(dict.fromkeys([self._label, *input.labels]))
-            await self._ensure_discovery_labels(issue_id, labels)
-            completed_steps.append("labels_set")
-
-            project_item_id = await self._ensure_project_item(issue_id)
-            completed_steps.append("project_item_added")
-
-            await self._ensure_project_fields(project_item_id, input)
-            completed_steps.append("project_fields_set")
+                await self._ensure_project_fields(project_item_id, input)
+                completed_steps.append("project_fields_set")
 
             return self._item_from_issue_core(issue)
         except Exception as exc:
@@ -166,8 +173,7 @@ class GitHubProvider(Provider):
         )
         issue = await self._update_issue(item_id, update_input)
 
-        if input.item_type is not None and self.context.create_type_strategy == "issue-type":
-            await self._ensure_issue_type(item_id, input.item_type)
+        # issue_type_id is already set atomically in _update_issue for "issue-type" strategy
         if input.item_type is not None and self.context.create_type_strategy == "label":
             await self._ensure_type_label(item_id, input.item_type)
         if merged_labels:
@@ -286,6 +292,51 @@ class GitHubProvider(Provider):
             strategy = "label"
         return strategy, dict(self._field_config.create_type_map)
 
+    async def _resolve_project_fields(  # pragma: no cover
+        self, project_id: str
+    ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
+        """Fetch project fields and resolve Size, Status, Priority, Iteration metadata."""
+        from planpilot_v2.providers.github.github_gql.fetch_project_fields import (
+            FetchProjectFieldsNodeProjectV2,
+            FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationField,
+            FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectField,
+        )
+
+        client = self._require_client()
+        data = await client.fetch_project_fields(project_id=project_id)
+
+        if not isinstance(data.node, FetchProjectFieldsNodeProjectV2):
+            _LOG.warning("Could not resolve project fields for %s", project_id)
+            return None, [], None, None, None
+
+        size_field_id: str | None = None
+        size_options: list[dict[str, str]] = []
+        status_field: ResolvedField | None = None
+        priority_field: ResolvedField | None = None
+        iteration_field: ResolvedField | None = None
+        size_field_name = self._field_config.size_field
+
+        for node in data.node.fields.nodes or []:
+            if node is None:
+                continue
+            name = node.name
+
+            if isinstance(node, FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2SingleSelectField):
+                options = [{"id": o.id, "name": o.name} for o in node.options]
+                if name == size_field_name:
+                    size_field_id = node.id
+                    size_options = options
+                elif name == "Status":
+                    status_field = ResolvedField(id=node.id, name=name, kind="single_select", options=options)
+                elif name == "Priority":
+                    priority_field = ResolvedField(id=node.id, name=name, kind="single_select", options=options)
+            elif isinstance(node, FetchProjectFieldsNodeProjectV2FieldsNodesProjectV2IterationField):
+                if name == "Iteration":
+                    iters = [{"id": i.id, "name": i.title} for i in node.configuration.iterations]
+                    iteration_field = ResolvedField(id=node.id, name=name, kind="iteration", options=iters)
+
+        return size_field_id, size_options, status_field, priority_field, iteration_field
+
     # ------------------------------------------------------------------
     # Issue CRUD (via generated client)
     # ------------------------------------------------------------------
@@ -313,8 +364,13 @@ class GitHubProvider(Provider):
     async def _create_issue(self, input: CreateItemInput) -> IssueCore:  # pragma: no cover
         client = self._require_client()
 
-        # Resolve label IDs for atomic creation
-        label_ids = await self._resolve_label_ids(list(dict.fromkeys([self._label, *input.labels])))
+        # Resolve label IDs for atomic creation (include type label for "label" strategy)
+        all_labels = list(dict.fromkeys([self._label, *input.labels]))
+        if self.context.create_type_strategy == "label":
+            type_label = self.context.create_type_map.get(input.item_type.value)
+            if type_label:
+                all_labels = list(dict.fromkeys([*all_labels, type_label]))
+        label_ids = await self._resolve_label_ids(all_labels)
 
         # Resolve issue type ID
         issue_type_id: str | None = None
@@ -453,14 +509,13 @@ class GitHubProvider(Provider):
             if existing:
                 return existing
 
-        client = self._require_client()
-        data = await client.add_project_item(project_id=self.context.project_id, content_id=issue_id)
-        if data.add_project_v_2_item_by_id is None or data.add_project_v_2_item_by_id.item is None:
-            raise ProviderError("addProjectV2ItemById returned no item")
-        item_id = data.add_project_v_2_item_by_id.item.id
-        async with self._project_item_lock:
+            client = self._require_client()
+            data = await client.add_project_item(project_id=self.context.project_id, content_id=issue_id)
+            if data.add_project_v_2_item_by_id is None or data.add_project_v_2_item_by_id.item is None:
+                raise ProviderError("addProjectV2ItemById returned no item")
+            item_id = data.add_project_v_2_item_by_id.item.id
             self.context.project_item_ids[issue_id] = item_id
-        return item_id
+            return item_id
 
     async def _ensure_project_fields(self, project_item_id: str, input: CreateItemInput) -> None:  # pragma: no cover
         if not project_item_id or self.context.project_id is None or not input.size or not self.context.size_field_id:

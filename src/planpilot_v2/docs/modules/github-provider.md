@@ -65,23 +65,25 @@ All operations are GraphQL. Discovery uses the GraphQL `search` query (full-text
 
 ### Atomic Issue Creation
 
-`CreateIssueInput` supports `labelIds`, `projectV2Ids`, `issueTypeId`, and `parentIssueId` directly. The previous implementation required 5 sequential API calls per new issue:
+`CreateIssueInput` supports `labelIds`, `projectV2Ids`, `issueTypeId`, and `parentIssueId` directly. The previous implementation required 5+ sequential API calls per new issue:
 
 ```
-create_issue -> set_issue_type -> add_labels -> add_project_item -> set_project_fields
+create_issue -> set_issue_type -> add_labels (x N) -> add_project_item -> set_project_fields
 ```
 
-The optimized flow:
+The optimized flow sets labels, issue type, and project in a single `createIssue` mutation. Only project field assignment (e.g. Size) requires follow-up calls:
 
 ```
-create_issue(labelIds, issueTypeId, projectV2Ids) -> set_project_fields
+create_issue(labelIds, issueTypeId, projectV2Ids) -> get_project_item_id -> set_project_fields
 ```
 
-**5 API calls reduced to 2** for each new issue.
+**5+ API calls reduced to 1-3** per new issue (1 if no project fields, 3 with Size).
+
+For the `label` strategy, the type label (e.g. `type:epic`) is included in `labelIds` so it is also set atomically - no separate `addLabels` call is needed.
 
 ### Atomic Issue Update
 
-`UpdateIssueInput` supports `issueTypeId` and `labelIds`. Type and label changes can be folded into the update call instead of requiring separate mutations.
+`UpdateIssueInput` supports `issueTypeId`. For the `issue-type` strategy, the type is set atomically in the `updateIssue` mutation - no separate call. Labels still require `addLabelsToLabelable` calls since `updateIssue` does not accept `labelIds` for existing issues.
 
 ### Shared IssueCore Fragment
 
@@ -142,8 +144,9 @@ class GitHubProvider(Provider):
 2. Construct `GitHubGraphQLClient` with the httpx client
 3. Resolve repo context (repo ID, issue type IDs, resolve/create label)
 4. Resolve project context (parse `board_url`, resolve owner type, fetch project ID)
-5. Resolve create-type policy from `FieldConfig`
-6. Store in `GitHubProviderContext`
+5. Resolve project fields via `FetchProjectFields` (Size field ID + options, Status, Priority, Iteration)
+6. Resolve create-type policy from `FieldConfig`
+7. Store in `GitHubProviderContext`
 
 ### GitHubItem
 
@@ -182,7 +185,7 @@ class GitHubProviderContext(ProviderContext):
 Concurrency note:
 - Immutable-after-enter fields: resolved IDs, capability booleans, create-type strategy/map
 - Mutable cache fields: `project_item_ids`, relation cache snapshots
-- Mutable caches must be guarded by provider-local locks before read/modify/write
+- Mutable caches must be guarded by provider-local locks through the full check-then-mutate sequence (lock must be held from cache read through API call and cache write to prevent duplicate requests)
 
 ## Authentication
 

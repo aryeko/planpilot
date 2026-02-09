@@ -5,7 +5,7 @@ from planpilot_v2.contracts.exceptions import CreateItemPartialFailureError
 from planpilot_v2.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot_v2.contracts.plan import PlanItemType
 from planpilot_v2.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
-from planpilot_v2.providers.github.models import GitHubProviderContext
+from planpilot_v2.providers.github.models import GitHubProviderContext, ResolvedField
 from planpilot_v2.providers.github.provider import GitHubProvider
 
 
@@ -44,15 +44,23 @@ async def test_aenter_builds_context(monkeypatch: pytest.MonkeyPatch) -> None:
     async def fake_resolve_project() -> tuple[str, str, int, str | None]:
         return "org", "acme", 1, "project-id"
 
+    async def fake_resolve_project_fields(
+        project_id: str,
+    ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
+        return "size-f", [{"id": "opt-1", "name": "S"}], None, None, None
+
     monkeypatch.setattr(provider, "_open_transport", fake_enter_transport)
     monkeypatch.setattr(provider, "_resolve_repo_context", fake_resolve_repo)
     monkeypatch.setattr(provider, "_resolve_project_context", fake_resolve_project)
+    monkeypatch.setattr(provider, "_resolve_project_fields", fake_resolve_project_fields)
 
     entered = await provider.__aenter__()
 
     assert entered is provider
     assert provider.context.repo_id == "repo-id"
     assert provider.context.project_id == "project-id"
+    assert provider.context.size_field_id == "size-f"
+    assert provider.context.size_options == [{"id": "opt-1", "name": "S"}]
 
 
 @pytest.mark.asyncio
@@ -83,12 +91,6 @@ async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.Mo
         calls.append("issue_created")
         return _make_issue_core(title=input.title, body=input.body)
 
-    async def fake_issue_type(issue_id: str, item_type: PlanItemType) -> None:
-        calls.append("issue_type_set")
-
-    async def fake_discovery(issue_id: str, labels: list[str]) -> None:
-        calls.append("labels_set")
-
     async def fake_project(issue_id: str) -> str:
         calls.append("project_item_added")
         return "PVTI_1"
@@ -97,8 +99,6 @@ async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.Mo
         calls.append("project_fields_set")
 
     monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
-    monkeypatch.setattr(provider, "_ensure_issue_type", fake_issue_type)
-    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_discovery)
     monkeypatch.setattr(provider, "_ensure_project_item", fake_project)
     monkeypatch.setattr(provider, "_ensure_project_fields", fake_fields)
 
@@ -107,7 +107,9 @@ async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.Mo
     )
 
     assert created.id == "I1"
-    assert calls == ["issue_created", "issue_type_set", "labels_set", "project_item_added", "project_fields_set"]
+    # Labels, issue type, and project are set atomically in _create_issue;
+    # only project item retrieval and field assignment are separate calls
+    assert calls == ["issue_created", "project_item_added", "project_fields_set"]
 
 
 @pytest.mark.asyncio
@@ -117,31 +119,33 @@ async def test_create_item_raises_partial_failure_after_issue_created(monkeypatc
         token="token",
         board_url="https://github.com/orgs/acme/projects/1",
         label="planpilot",
-        field_config=FieldConfig(create_type_strategy="label"),
+        field_config=FieldConfig(create_type_strategy="issue-type"),
     )
     provider.context = GitHubProviderContext(
         repo_id="repo-id",
         label_id="label-id",
-        issue_type_ids={},
+        issue_type_ids={"TASK": "task-type"},
         project_owner_type="org",
-        create_type_strategy="label",
-        create_type_map={"TASK": "type:task"},
+        project_id="project-id",
+        create_type_strategy="issue-type",
+        create_type_map={"TASK": "Task"},
     )
 
     async def fake_create_issue(input: CreateItemInput) -> IssueCore:
         return _make_issue_core(title=input.title, body=input.body)
 
-    async def fake_type_label(issue_id: str, item_type: PlanItemType) -> None:
+    async def fake_project_item(issue_id: str) -> str:
         raise RuntimeError("boom")
 
     monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
-    monkeypatch.setattr(provider, "_ensure_type_label", fake_type_label)
+    monkeypatch.setattr(provider, "_ensure_project_item", fake_project_item)
 
     with pytest.raises(CreateItemPartialFailureError) as excinfo:
         await provider.create_item(CreateItemInput(title="T", body="B", item_type=PlanItemType.TASK))
 
     assert excinfo.value.created_item_id == "I1"
-    assert excinfo.value.completed_steps == ("issue_created",)
+    # Atomic create succeeded (labels + type set), but project item failed
+    assert excinfo.value.completed_steps == ("issue_created", "issue_type_set", "labels_set")
 
 
 @pytest.mark.asyncio
@@ -320,7 +324,8 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
 
 
 @pytest.mark.asyncio
-async def test_update_item_issue_type_strategy_uses_issue_type_hook(monkeypatch: pytest.MonkeyPatch) -> None:
+async def test_update_item_issue_type_strategy_sets_type_atomically(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Issue type is set atomically inside _update_issue; no separate _ensure_issue_type call."""
     provider = GitHubProvider(
         target="acme/repo",
         token="token",
@@ -341,21 +346,21 @@ async def test_update_item_issue_type_strategy_uses_issue_type_hook(monkeypatch:
             _make_issue_core(id=item_id, number=2, url="u", title="old", body="old")
         )
 
+    update_calls: list[tuple[str, UpdateItemInput]] = []
+
     async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        update_calls.append((item_id, update_input))
         return _make_issue_core(id=item_id, number=2, url="u", title="new", body="old")
-
-    called: list[str] = []
-
-    async def fake_issue_type(item_id: str, item_type: PlanItemType) -> None:
-        called.append(f"{item_id}:{item_type.value}")
 
     monkeypatch.setattr(provider, "get_item", fake_get_item)
     monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
-    monkeypatch.setattr(provider, "_ensure_issue_type", fake_issue_type)
 
     await provider.update_item("I1", UpdateItemInput(title="new", item_type=PlanItemType.TASK))
 
-    assert called == ["I1:TASK"]
+    # _update_issue was called; it handles issue_type_id atomically
+    assert len(update_calls) == 1
+    assert update_calls[0][0] == "I1"
+    assert update_calls[0][1].item_type == PlanItemType.TASK
 
 
 def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
