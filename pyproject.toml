@@ -24,7 +24,10 @@ classifiers = [
     "Typing :: Typed",
     "Environment :: Console",
 ]
-packages = [{include = "planpilot", from = "src"}]
+packages = [
+    {include = "planpilot", from = "src"},
+    {include = "planpilot_v2", from = "src"},
+]
 exclude = ["skills"]
 
 [tool.poetry.urls]
@@ -61,6 +64,12 @@ test = "pytest -v"
 coverage = "pytest -v --cov-report=html:.coverage/html"
 typecheck = "mypy src/planpilot"
 check = ["lint", "format-check", "test"]
+lint-v2 = "ruff check src/planpilot_v2 tests/v2"
+format-v2 = "ruff format src/planpilot_v2 tests/v2"
+format-check-v2 = "ruff format --check src/planpilot_v2 tests/v2"
+test-v2 = "pytest -o addopts='' -v tests/v2 --cov=planpilot_v2 --cov-report=term-missing --cov-report=xml:.coverage/coverage-v2.xml"
+typecheck-v2 = "mypy src/planpilot_v2"
+check-v2 = ["lint-v2", "format-check-v2", "test-v2", "typecheck-v2"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -103,7 +112,7 @@ select = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["planpilot"]
+known-first-party = ["planpilot", "planpilot_v2"]
 
 [tool.mypy]
 python_version = "3.11"
