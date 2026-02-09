@@ -71,6 +71,52 @@ Or with Poetry:
 poetry add planpilot
 ```
 
+Verify Python and pip:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+Note: `python3 -m pip install -g planpilot` is invalid (`pip` has no `-g` flag). Use `pip install` with `--user`, a virtualenv, or your system package policy.
+
+## Install Agent Skill (Open Standard)
+
+Install the single skill to the open skill path used by agent platforms that support filesystem skills:
+
+- `~/.agents/skills/spec-to-planpilot-sync/SKILL.md`
+
+Create destination directory:
+
+```bash
+mkdir -p ~/.agents/skills/spec-to-planpilot-sync
+```
+
+Install from local checkout:
+
+```bash
+cp skills/roadmap-to-github-project/SKILL.md \
+  ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
+```
+
+Or install from GitHub raw:
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+  -o ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
+```
+
+Verify:
+
+```bash
+ls -la ~/.agents/skills/spec-to-planpilot-sync
+sed -n '1,40p' ~/.agents/skills/spec-to-planpilot-sync/SKILL.md
+```
+
+Full standalone instructions:
+
+- [`skills/roadmap-to-github-project/INSTALL.md`](skills/roadmap-to-github-project/INSTALL.md)
+
 ## Quickstart
 
 ### 1. Create `planpilot.json`
