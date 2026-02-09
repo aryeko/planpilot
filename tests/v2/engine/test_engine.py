@@ -424,3 +424,84 @@ async def test_sync_wraps_partial_create_failures(tmp_path: Path) -> None:
 
     with pytest.raises(SyncError, match="partial"):
         await SyncEngine(provider, renderer, config).sync(plan, "plan-6")
+
+
+@pytest.mark.asyncio
+async def test_set_relations_skips_items_missing_from_item_objects(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+
+    await engine._set_relations(plan, item_objects={})
+
+    assert provider.parents == {}
+    assert provider.dependencies == {}
+
+
+@pytest.mark.asyncio
+async def test_set_relations_strict_raises_for_external_parent_reference(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, validation_mode="strict")
+    engine = SyncEngine(provider, renderer, config)
+    existing = await provider.create_item(
+        CreateItemInput(title="Task", body="body", item_type=PlanItemType.TASK, labels=[config.label])
+    )
+    plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="EXT-1")])
+
+    with pytest.raises(SyncError, match="Unresolved parent_id"):
+        await engine._set_relations(plan, item_objects={"T1": existing})
+
+
+@pytest.mark.asyncio
+async def test_set_relations_skips_story_rollup_without_story_parents(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+    plan = Plan(
+        items=[
+            PlanItem(id="E2", type=PlanItemType.EPIC, title="Epic two"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story one"),
+            PlanItem(id="S2", type=PlanItemType.STORY, title="Story two", parent_id="E2"),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task one", parent_id="S1", depends_on=["T2"]),
+            PlanItem(id="T2", type=PlanItemType.TASK, title="Task two", parent_id="S2"),
+        ]
+    )
+
+    item_objects: dict[str, Item] = {}
+    for plan_item in plan.items:
+        item_objects[plan_item.id] = await provider.create_item(
+            CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
+        )
+
+    await engine._set_relations(plan, item_objects)
+
+    epic_ids = {item.id for item in provider.items.values() if item.item_type == PlanItemType.EPIC}
+    for item_id in epic_ids:
+        assert provider.dependencies.get(item_id) is None
+
+
+@pytest.mark.asyncio
+async def test_build_context_ignores_unresolved_internal_parent(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, validation_mode="partial")
+    engine = SyncEngine(provider, renderer, config)
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1"),
+        ]
+    )
+
+    context = engine._build_context(
+        plan,
+        plan.items[1],
+        "plan-ctx",
+        SyncMap(plan_id="plan-ctx", target="t", board_url="b"),
+    )
+
+    assert context.parent_ref is None

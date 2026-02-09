@@ -45,6 +45,32 @@ async def test_gh_cli_token_resolver_raises_on_subprocess_error(monkeypatch: pyt
 
 
 @pytest.mark.asyncio
+async def test_gh_cli_token_resolver_raises_on_subprocess_error_without_stderr(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _mock_create_subprocess_exec(*args: Any, **kwargs: Any) -> _MockProcess:
+        return _MockProcess(returncode=1, stderr=b"")
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", _mock_create_subprocess_exec)
+
+    resolver = GhCliTokenResolver(hostname="github.enterprise.local")
+
+    with pytest.raises(AuthenticationError, match=r"gh auth token failed for host github\.enterprise\.local"):
+        await resolver.resolve()
+
+
+@pytest.mark.asyncio
+async def test_gh_cli_token_resolver_raises_when_subprocess_cannot_start(monkeypatch: pytest.MonkeyPatch) -> None:
+    async def _mock_create_subprocess_exec(*args: Any, **kwargs: Any) -> _MockProcess:
+        raise OSError("gh missing")
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", _mock_create_subprocess_exec)
+
+    resolver = GhCliTokenResolver()
+
+    with pytest.raises(AuthenticationError, match="Failed to execute gh CLI"):
+        await resolver.resolve()
+
+
+@pytest.mark.asyncio
 async def test_gh_cli_token_resolver_raises_on_empty_stdout(monkeypatch: pytest.MonkeyPatch) -> None:
     async def _mock_create_subprocess_exec(*args: Any, **kwargs: Any) -> _MockProcess:
         return _MockProcess(returncode=0, stdout=b"  \n")

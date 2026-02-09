@@ -102,3 +102,34 @@ def test_render_omits_scope_when_empty() -> None:
     body = renderer.render(item, context)
 
     assert "## Scope" not in body
+
+
+def test_render_formats_string_spec_reference() -> None:
+    renderer = MarkdownRenderer()
+    item = PlanItem.model_construct(id="T3", type=PlanItemType.TASK, title="Task", goal="Goal", spec_ref="SPEC-9")
+    context = RenderContext(plan_id="plan-100")
+
+    body = renderer.render(item, context)
+
+    assert "## Spec Reference\n\n* SPEC-9" in body
+
+
+def test_render_handles_partial_estimate_and_verification_sections() -> None:
+    renderer = MarkdownRenderer()
+    item = PlanItem(
+        id="T4",
+        type=PlanItemType.TASK,
+        title="Task four",
+        estimate=Estimate(hours=2),
+        verification=Verification(evidence=["trace-id"]),
+    )
+    context = RenderContext(plan_id="plan-101")
+
+    body = renderer.render(item, context)
+
+    assert "## Estimate\n\n(2h)" in body
+    assert "## Verification" in body
+    assert "Evidence:\n\n* trace-id" in body
+    assert "Commands:" not in body
+    assert "CI checks:" not in body
+    assert "Manual steps:" not in body

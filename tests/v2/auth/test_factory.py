@@ -64,6 +64,13 @@ def test_factory_uses_hostname_from_target_for_gh_cli() -> None:
     assert resolver.hostname == "github.example.com"
 
 
+def test_factory_defaults_to_github_for_blank_target() -> None:
+    resolver = create_token_resolver(_make_config(auth="gh-cli", target="   "))
+
+    assert isinstance(resolver, GhCliTokenResolver)
+    assert resolver.hostname == "github.com"
+
+
 @pytest.mark.parametrize(
     ("target", "expected_hostname"),
     [
@@ -79,3 +86,10 @@ def test_factory_hostname_parsing_edge_cases(target: str, expected_hostname: str
 
     assert isinstance(resolver, GhCliTokenResolver)
     assert resolver.hostname == expected_hostname
+
+
+def test_factory_handles_malformed_scp_target() -> None:
+    resolver = create_token_resolver(_make_config(auth="gh-cli", target="git@:owner/repo"))
+
+    assert isinstance(resolver, GhCliTokenResolver)
+    assert resolver.hostname == "github.com"
