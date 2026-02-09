@@ -1,17 +1,12 @@
-"""Models for provider-side project and repository context.
+"""Models for provider-agnostic field configuration.
 
-These models carry resolved IDs and metadata fetched from the provider
-(GitHub, Jira, Linear, etc.) so the sync engine can work with them in a
-provider-agnostic way.
+These models are used across providers to configure how fields
+should be set on work items.
 """
 
 from __future__ import annotations
 
-from pydantic import BaseModel, Field, model_validator
-
-# ------------------------------------------------------------------
-# Field configuration (what the user *wants* to set)
-# ------------------------------------------------------------------
+from pydantic import BaseModel, model_validator
 
 
 class FieldConfig(BaseModel):
@@ -51,87 +46,8 @@ class FieldValue(BaseModel):
         return self
 
 
-# ------------------------------------------------------------------
-# Resolved project context (what the provider *found*)
-# ------------------------------------------------------------------
-
-
 class ResolvedField(BaseModel):
     """A project field whose ID and target option have been resolved."""
 
     field_id: str
     value: FieldValue
-
-
-class ProjectContext(BaseModel):
-    """Resolved project board context returned by a provider."""
-
-    project_id: str
-    status_field: ResolvedField | None = None
-    priority_field: ResolvedField | None = None
-    iteration_field: ResolvedField | None = None
-    size_field_id: str | None = None
-    size_options: list[dict[str, str]] = Field(default_factory=list)
-    item_map: dict[str, str] = Field(default_factory=dict)
-    """Mapping of content (issue) node-ID → project-item ID."""
-
-
-# ------------------------------------------------------------------
-# Repository context
-# ------------------------------------------------------------------
-
-IssueTypeMap = dict[str, str]
-"""Mapping of issue-type name (e.g. ``"Epic"``) to its node ID."""
-
-
-class RepoContext(BaseModel):
-    """Resolved repository context returned by a provider."""
-
-    repo_id: str | None = None
-    label_id: str | None = None
-    issue_type_ids: IssueTypeMap = Field(default_factory=dict)
-
-
-# ------------------------------------------------------------------
-# Issue-level models shared across providers
-# ------------------------------------------------------------------
-
-
-class IssueRef(BaseModel):
-    """Lightweight reference to a created/existing issue."""
-
-    id: str
-    number: int
-    url: str
-
-
-class ExistingIssue(BaseModel):
-    """An issue returned by the provider's search/query endpoint."""
-
-    id: str
-    number: int
-    body: str = ""
-
-
-class CreateIssueInput(BaseModel):
-    """Data needed to create a new issue via a provider."""
-
-    repo_id: str
-    title: str
-    body: str
-    label_ids: list[str] = Field(default_factory=list)
-
-
-# ------------------------------------------------------------------
-# Relation maps
-# ------------------------------------------------------------------
-
-
-class RelationMap(BaseModel):
-    """Parent and blocked-by relationships for a set of issues."""
-
-    parents: dict[str, str | None] = Field(default_factory=dict)
-    """issue-node-ID → parent-node-ID (or None)."""
-
-    blocked_by: dict[str, set[str]] = Field(default_factory=dict)
-    """issue-node-ID → set of blocking issue-node-IDs."""

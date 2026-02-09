@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from planpilot.models.item import ItemType
-from planpilot.providers.item import Item
+from planpilot.models.item import Item
 
 if TYPE_CHECKING:
     from planpilot.models.item import TargetContext

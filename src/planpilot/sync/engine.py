@@ -18,7 +18,7 @@ from planpilot.sync.relations import compute_epic_blocked_by, compute_story_bloc
 
 if TYPE_CHECKING:
     from planpilot.providers.base import Provider
-    from planpilot.providers.item import Item
+    from planpilot.models.item import Item
 
 logger = logging.getLogger(__name__)
 

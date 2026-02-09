@@ -21,6 +21,7 @@ from planpilot.providers.github.mapper import (
     parse_project_url,
     resolve_option_id,
 )
+from planpilot.providers.github.models import ProjectContext, RepoContext
 from planpilot.providers.github.queries import (
     ADD_BLOCKED_BY,
     ADD_PROJECT_ITEM,
@@ -36,7 +37,7 @@ from planpilot.providers.github.queries import (
 )
 
 if TYPE_CHECKING:
-    from planpilot.providers.item import Item
+    from planpilot.models.item import Item
 
 logger = logging.getLogger(__name__)
 

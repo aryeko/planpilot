@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING
 from planpilot.models.item import CreateItemInput, ItemFields, UpdateItemInput
 
 if TYPE_CHECKING:
-    from planpilot.providers.item import Item
+    from planpilot.models.item import Item
 
 
 class Provider(ABC):
