@@ -22,7 +22,7 @@
 ```mermaid
 flowchart TB
     subgraph Contracts["Contracts Layer"]
-        PlanDomain["plan domain<br/>PlanItem, Epic, Story<br/>Task, Plan"]
+        PlanDomain["plan domain<br/>PlanItem, PlanItemType<br/>Plan"]
         ItemDomain["item domain<br/>Item, CreateItemInput<br/>UpdateItemInput, ItemType"]
         SyncDomain["sync domain<br/>SyncEntry, SyncMap<br/>SyncResult"]
         ConfigDomain["config domain<br/>PlanPilotConfig, FieldConfig"]
@@ -76,18 +76,17 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 #### 1. **plan** Domain
 
-**Responsibility:** Represents the input structure — the plan entities (Epic, Story, Task) that users define in JSON files.
+**Responsibility:** Represents the input structure — the plan entities that users define in JSON files.
 
 **Models:**
-- `PlanItem` — Base class for all plan entities (Epic, Story, Task)
-  - Common properties: `id`, `title`, `goal`, `motivation`, `spec_ref`, `scope`, `parent_id`, `sub_item_ids`, `depends_on`, `assumptions`, `risks`, `estimate`, `requirements`, `acceptance_criteria`
-- `Epic` — Top-level roadmap epic (extends `PlanItem`)
-  - Additional: (none — uses base properties only)
-- `Story` — User story belonging to an epic (extends `PlanItem`)
-  - Additional: `success_metrics`
-- `Task` — Actionable task belonging to a story (extends `PlanItem`)
-  - Additional: `verification`
-- `Plan` — Container for epics, stories, and tasks
+- `PlanItemType` — Enum: `EPIC`, `STORY`, `TASK`
+- `PlanItem` — Single flat model for all plan entities. The `type` field discriminates between epics, stories, and tasks. All properties live on one class; fields that don't apply to a given type are empty/None:
+  - `id`, `type: PlanItemType`, `title`, `goal`, `motivation`, `spec_ref`, `scope`
+  - `parent_id`, `sub_item_ids`, `depends_on`
+  - `assumptions`, `risks`, `estimate`
+  - `requirements`, `acceptance_criteria`, `success_metrics` — typically stories
+  - `verification` — typically tasks
+- `Plan` — Container: `items: list[PlanItem]`
 
 **Contracts:** None (pure data models)
 
@@ -102,12 +101,12 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 - `CreateItemInput` — Fields required to create a new item
 - `UpdateItemInput` — Fields for updating an existing item
 - `ItemSearchFilters` — Filters for searching items
-- `ItemType` — Enum: EPIC, STORY, TASK
 - `ItemFields` — Base fields shared by inputs/filters
 
 **Contracts:** None (Item is a concrete class, not an ABC)
 
-**Dependencies:** None
+**Dependencies:**
+- Uses `plan` domain: `CreateItemInput.item_type` and `Item.item_type` reference `PlanItemType`
 
 #### 3. **sync** Domain
 
@@ -115,8 +114,8 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `SyncEntry` — Mapping entry for a single item (id, key, url)
-- `SyncMap` — Full sync map (plan_id, target, epics/stories/tasks dicts)
-- `SyncResult` — Return value from sync operations (sync_map + creation counts)
+- `SyncMap` — Full sync map: `plan_id`, `target`, `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
+- `SyncResult` — Return value: `sync_map`, `items_created: dict[PlanItemType, int]`, `dry_run`
 
 **Utilities:**
 - `to_sync_entry(item: Item) -> SyncEntry` — Converts an Item to a SyncEntry for persistence
@@ -180,7 +179,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 - `BodyRenderer` ABC — Single-method contract for body rendering:
   - `render(item: PlanItem, context: RenderContext) -> str` — Render body for any plan item
 
-**Design:** The renderer does not need to know if it's rendering an Epic, Story, or Task. It renders a `PlanItem` and its `RenderContext`. Fields that are empty/None are skipped. This fully decouples the renderer from specific plan entity types.
+**Design:** The renderer does not need to know the item's type. It renders a `PlanItem` and its `RenderContext`. Fields that are empty/None are skipped. This fully decouples the renderer from specific plan entity types.
 
 **Dependencies:**
 - Depends on `plan` domain: Uses `PlanItem` in method signature
@@ -190,19 +189,20 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 ```
 plan domain          (no dependencies)
     ↑
+item domain          (depends on plan — uses PlanItemType)
+    ↑
 renderer domain      (depends on plan — uses PlanItem)
 
-item domain          (no dependencies)
-    ↑
 provider domain      (depends on item — uses Item, inputs)
-    ↑
+
 sync domain          (depends on item — to_sync_entry conversion)
 
 config domain        (no dependencies)
 ```
 
 **Key points:**
-- `plan`, `item`, and `config` are independent foundations with no dependencies
+- `plan` and `config` are independent foundations with no dependencies
+- `item` domain depends on `plan` (uses `PlanItemType` enum for `Item.item_type` and `CreateItemInput.item_type`)
 - `renderer` domain depends on `plan` (uses `PlanItem` in method signature)
 - `provider` domain depends on `item` (uses input/output types in method signatures)
 - `sync` domain depends on `item` (for `to_sync_entry()` conversion)
@@ -279,8 +279,8 @@ Strict one-level-down. No exceptions, no bypassing.
 
 | Module | Responsibility | Layer |
 |--------|---------------|-------|
-| `plan` domain | Plan entity types: PlanItem, Epic, Story, Task, Plan | Contracts |
-| `item` domain | Provider-agnostic work items: Item, CreateItemInput, UpdateItemInput, ItemType | Contracts |
+| `plan` domain | Plan entity types: PlanItem, PlanItemType, Plan | Contracts |
+| `item` domain | Provider-agnostic work items: Item, CreateItemInput, UpdateItemInput | Contracts |
 | `sync` domain | Sync state: SyncEntry, SyncMap, SyncResult, to_sync_entry() | Contracts |
 | `config` domain | Configuration: PlanPilotConfig, FieldConfig | Contracts |
 | `provider` domain | Provider ABC (adapter contract for external systems) | Contracts |
@@ -297,9 +297,16 @@ Strict one-level-down. No exceptions, no bypassing.
 
 ```mermaid
 classDiagram
+    class PlanItemType {
+        <<enum>>
+        EPIC
+        STORY
+        TASK
+    }
+
     class PlanItem {
-        <<base>>
         +str id
+        +PlanItemType type
         +str title
         +str goal
         +str motivation
@@ -308,28 +315,17 @@ classDiagram
         +list~str~ depends_on
         +list~str~ requirements
         +list~str~ acceptance_criteria
+        +list~str~ success_metrics
         +list~str~ assumptions
         +list~str~ risks
         +Estimate estimate
+        +Verification verification
         +SpecRef spec_ref
         +Scope scope
     }
 
-    class Epic {
-    }
-
-    class Story {
-        +list~str~ success_metrics
-    }
-
-    class Task {
-        +Verification verification
-    }
-
     class Plan {
-        +list~Epic~ epics
-        +list~Story~ stories
-        +list~Task~ tasks
+        +list~PlanItem~ items
     }
 
     class Item {
@@ -338,16 +334,14 @@ classDiagram
         +str url
         +str title
         +str body
-        +ItemType item_type
+        +PlanItemType item_type
         +add_dependency(Item)
         +set_parent(Item)
     }
 
     class SyncResult {
         +SyncMap sync_map
-        +int epics_created
-        +int stories_created
-        +int tasks_created
+        +dict items_created
         +bool dry_run
     }
 
@@ -382,8 +376,14 @@ classDiagram
     }
 
     class PlanLoader {
-        +load_plan(str, str, str) Plan
-        +validate_plan(Plan)
+        +load(paths) Plan
+    }
+
+    class PlanValidator {
+        +validate(Plan)
+    }
+
+    class PlanHasher {
         +compute_plan_id(Plan) str
     }
 
@@ -405,16 +405,17 @@ classDiagram
         +sync(Plan) SyncResult
     }
 
-    PlanItem <|-- Epic
-    PlanItem <|-- Story
-    PlanItem <|-- Task
+    PlanItem --> PlanItemType : has type
     Plan --> PlanItem : contains
+    Item --> PlanItemType : has item_type
     SyncEngine --> Provider : uses
     SyncEngine --> BodyRenderer : uses
     SyncEngine --> Plan : processes
     SyncEngine --> Item : works with
     SyncEngine --> SyncResult : returns
     PlanLoader --> Plan : creates
+    PlanValidator --> Plan : validates
+    PlanHasher --> Plan : hashes
     PlanPilot --> SyncEngine : constructs
     PlanPilot --> Provider : injects
     PlanPilot --> BodyRenderer : injects

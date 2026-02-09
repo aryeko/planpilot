@@ -10,7 +10,7 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 
 | Contract Domain | Types Used |
 |----------------|-----------|
-| **plan** | `Plan`, `PlanItem`, `Epic`, `Story`, `Task` |
+| **plan** | `Plan`, `PlanItem`, `PlanItemType` |
 | **exceptions** | `PlanLoadError`, `PlanValidationError` |
 
 No dependency on provider, renderer, item, sync, or config domains.
@@ -19,20 +19,19 @@ No dependency on provider, renderer, item, sync, or config domains.
 
 ### PlanLoader
 
-Loads plan entities from JSON files and constructs a `Plan` object.
+Loads plan entities from JSON files and constructs a `Plan` object. Supports both multi-file input (separate epics/stories/tasks files) and single-file input (all items in one file with `type` field).
 
 ```python
 class PlanLoader:
-    def load(self, epics_path: Path, stories_path: Path, tasks_path: Path) -> Plan:
+    def load(self, plan_paths: PlanPaths) -> Plan:
         """Load and parse plan JSON files into a validated Plan model.
 
         Args:
-            epics_path: Path to epics JSON file.
-            stories_path: Path to stories JSON file.
-            tasks_path: Path to tasks JSON file.
+            plan_paths: Paths configuration — either a single plan file
+                or separate epics/stories/tasks files.
 
         Returns:
-            A validated Plan instance.
+            A validated Plan instance with flat items list.
 
         Raises:
             PlanLoadError: If any file is missing, unreadable, contains
@@ -43,8 +42,9 @@ class PlanLoader:
 **Behavior:**
 1. Verify all files exist
 2. Read and parse JSON
-3. Construct `Plan` via Pydantic (schema validation happens here)
-4. Return validated `Plan`
+3. For multi-file input: tag each item with the appropriate `PlanItemType` based on which file it came from
+4. Construct `Plan(items=[...])` via Pydantic (schema validation happens here)
+5. Return validated `Plan`
 
 **Error handling:** All file I/O and JSON parse errors are wrapped in `PlanLoadError` with descriptive messages. Pydantic `ValidationError` is also wrapped.
 
@@ -66,19 +66,15 @@ class PlanValidator:
 
 | Rule | Description |
 |------|------------|
-| No duplicate IDs | Epic, story, and task IDs must be unique within their type |
-| At least one epic | Plan must contain at least one epic |
-| Task -> story ref | Every `task.parent_id` must reference an existing story |
-| Story -> epic ref | Every `story.parent_id` must reference an existing epic |
+| No duplicate IDs | All item IDs must be globally unique |
+| At least one epic | Plan must contain at least one item of type EPIC |
+| Valid type | Every item must have a valid `PlanItemType` |
+| Parent ref | Every item's `parent_id` must reference an existing item of the correct parent type (task→story, story→epic) |
 | Sub-item consistency | `parent.sub_item_ids` must match children whose `parent_id` points back |
+| Hierarchy depth | Tasks must have a story parent; stories must have an epic parent; epics have no parent |
 | Dependency refs | Every entry in `depends_on` must reference an existing item |
-| No orphan stories | Every story must have at least one task |
-
-**Note on v2 model changes:** With `PlanItem` base class using `parent_id` and `sub_item_ids` instead of `epic_id`/`story_id`/`story_ids`/`task_ids`, the validator uses the unified fields:
-- `task.parent_id` replaces `task.story_id`
-- `story.parent_id` replaces `story.epic_id`
-- `epic.sub_item_ids` replaces `epic.story_ids`
-- `story.sub_item_ids` replaces `story.task_ids`
+| No childless stories | Every story must have at least one task |
+| Type-specific fields | If `type=TASK`, `verification` should be present |
 
 **Error aggregation:** All errors are collected and raised together in a single `PlanValidationError`, so users see every issue in one pass.
 
@@ -100,7 +96,7 @@ class PlanHasher:
 ```
 
 **Algorithm:**
-1. Serialize each entity list via Pydantic `model_dump(mode="json", by_alias=True)`
+1. Serialize `plan.items` via Pydantic `model_dump(mode="json", by_alias=True)`
 2. JSON-encode with `sort_keys=True, separators=(",", ":")`  (canonical form)
 3. SHA-256 hash, truncate to first 12 hex characters
 
@@ -112,18 +108,17 @@ The plan module confirms these plan domain types are sufficient:
 
 | Type | Fields Used by Plan Module |
 |------|--------------------------|
-| `Plan` | `.epics: list[Epic]`, `.stories: list[Story]`, `.tasks: list[Task]` |
-| `PlanItem` | `.id`, `.parent_id`, `.sub_item_ids`, `.depends_on` |
-| `Epic` | (inherits PlanItem, no additional fields needed by this module) |
-| `Story` | (inherits PlanItem, no additional fields needed by this module) |
-| `Task` | (inherits PlanItem, no additional fields needed by this module) |
+| `Plan` | `.items: list[PlanItem]` |
+| `PlanItem` | `.id`, `.type`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.verification` |
+| `PlanItemType` | `EPIC`, `STORY`, `TASK` — used for hierarchy and type-specific validation |
 
-All fields used here are defined in the `PlanItem` base class. The plan module does not need to distinguish between Epic/Story/Task for validation — it works through `PlanItem` properties. Entity type is determined by position in `Plan.epics`/`.stories`/`.tasks`.
+All fields live on the flat `PlanItem` class. Entity type is determined by `item.type`. The validator uses the type to enforce hierarchy rules (e.g. tasks must parent to stories).
 
 ## Changes from v1
 
 | v1 | v2 | Rationale |
 |----|-----|-----------|
 | Free functions: `load_plan()`, `validate_plan()`, `compute_plan_id()` | Classes: `PlanLoader`, `PlanValidator`, `PlanHasher` | OOP design, testable, mockable |
-| Validator checks `task.story_id`, `story.epic_id`, `epic.story_ids`, `story.task_ids` | Validator checks `parent_id` and `sub_item_ids` uniformly | PlanItem base class unifies the hierarchy |
+| Separate `Epic`, `Story`, `Task` subclasses | Single flat `PlanItem` with `type: PlanItemType` | Simpler model, no inheritance, type-driven validation |
+| Validator checks `task.story_id`, `story.epic_id`, `epic.story_ids`, `story.task_ids` | Validator checks `parent_id` and `sub_item_ids` uniformly using `type` for hierarchy rules | Unified hierarchy fields |
 | Functions imported directly by engine | SDK calls plan module, passes `Plan` to engine | Engine doesn't do I/O |

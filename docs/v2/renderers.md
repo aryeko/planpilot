@@ -10,7 +10,7 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 
 | Contract Domain | Types Used |
 |----------------|-----------|
-| **plan** | `PlanItem`, `Scope`, `SpecRef`, `Estimate`, `Verification` |
+| **plan** | `PlanItem`, `PlanItemType`, `Scope`, `SpecRef`, `Estimate`, `Verification` |
 | **renderer** | `BodyRenderer` ABC, `RenderContext` |
 
 No dependency on provider, item, sync, config, or engine.
@@ -26,7 +26,7 @@ class BodyRenderer(ABC):
         """Render body for any plan item.
 
         Args:
-            item: The PlanItem (Epic, Story, or Task).
+            item: The PlanItem to render.
             context: Resolved cross-references and metadata.
 
         Returns:
@@ -144,7 +144,7 @@ Blocked by:
 | ITEM_ID marker | Always | HTML comment |
 | Goal | `item.goal` is non-empty | Plain text |
 | Motivation | `item.motivation` is non-empty | Plain text |
-| Parent | `context.parent_ref` is not None | Bullet with ref |
+| Parent | `context.parent_ref` is not None | Bullet with ref (None for top-level epics) |
 | Scope | `item.scope` has in_scope or out_scope | In/Out bullet lists |
 | Requirements | `item.requirements` is non-empty | Bullet list |
 | Acceptance Criteria | `item.acceptance_criteria` is non-empty | Bullet list |
@@ -153,7 +153,7 @@ Blocked by:
 | Estimate | `item.estimate` has tshirt or hours | Inline text |
 | Verification | `item.verification` has any content | Sub-sections per field |
 | Spec Reference | `item.spec_ref` is non-empty | Formatted link |
-| Success Metrics | `item.success_metrics` is non-empty (Story only) | Bullet list |
+| Success Metrics | `item.success_metrics` is non-empty | Bullet list |
 | Sub-items | `context.sub_items` is non-empty | Checklist |
 | Dependencies | `context.dependencies` is non-empty | Blocked-by list |
 

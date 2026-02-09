@@ -10,8 +10,8 @@ The engine is the primary consumer of all Contracts. Every contract type used be
 
 | Contract Domain | Types Used |
 |----------------|-----------|
-| **plan** | `Plan`, `PlanItem` |
-| **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters`, `ItemType` |
+| **plan** | `Plan`, `PlanItem`, `PlanItemType` |
+| **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters` |
 | **sync** | `SyncEntry`, `SyncMap`, `SyncResult`, `to_sync_entry()` |
 | **config** | `PlanPilotConfig` |
 | **provider** | `Provider` ABC |
@@ -59,11 +59,11 @@ existing_items: list[Item] = await provider.search_items(filters)
 
 **Internal logic:**
 
-The engine parses body markers from each `Item.body` to extract `plan_id`, `epic_id`, `story_id`, `task_id`. Items whose `plan_id` matches are indexed into a lookup dict:
+The engine parses body markers from each `Item.body` to extract `plan_id` and `item_id`. Items whose `plan_id` matches are indexed into a lookup dict:
 
 ```python
-existing_map: dict[str, dict[str, Item]]
-# {"epics": {"E1": Item, ...}, "stories": {...}, "tasks": {...}}
+existing_map: dict[str, Item]
+# {item_id: Item, ...}
 ```
 
 **Contract types required:**
@@ -72,13 +72,13 @@ existing_map: dict[str, dict[str, Item]]
 - `Provider.search_items(ItemSearchFilters) -> list[Item]`
 
 **Internal utilities:**
-- `parse_markers(body: str) -> dict[str, str]` — extracts `PLAN_ID`, `EPIC_ID`, etc. from body text. This is an engine-internal utility, not a contract.
+- `parse_markers(body: str) -> dict[str, str]` — extracts `PLAN_ID` and `ITEM_ID` from body text. This is an engine-internal utility, not a contract.
 
 ## Phase 2: Upsert
 
 **Goal:** For each PlanItem (epic, story, task) in the plan, create it if it doesn't exist.
 
-**Processing order:** Epics first, then stories, then tasks (parent before child so parent refs are available).
+**Processing order:** Items sorted by type: epics first, then stories, then tasks (parent before child so parent refs are available). The engine groups `plan.items` by `item.type`.
 
 **Contract calls per item:**
 
@@ -98,7 +98,7 @@ body: str = renderer.render(plan_item, context)
 input = CreateItemInput(
     title=plan_item.title,
     body=body,
-    item_type=ItemType.EPIC,              # or STORY, TASK
+    item_type=plan_item.type,             # PlanItemType enum
     labels=[config.label],
     size=plan_item.estimate.tshirt,       # if available
 )
@@ -106,16 +106,16 @@ item: Item = await provider.create_item(input)
 
 # 4. Record in sync map
 entry: SyncEntry = to_sync_entry(item)
-sync_map.epics[plan_item.id] = entry
+sync_map.entries[plan_item.id] = entry
 ```
 
 **Contract types required:**
 - `RenderContext` — needs `plan_id: str`, `parent_ref: str`, `sub_items: list[tuple[str, str]]`, `dependencies: dict[str, str]`
 - `BodyRenderer.render(PlanItem, RenderContext) -> str`
-- `CreateItemInput` — needs `title: str`, `body: str`, `item_type: ItemType`, `labels: list[str]`, `size: str | None`
+- `CreateItemInput` — needs `title: str`, `body: str`, `item_type: PlanItemType`, `labels: list[str]`, `size: str | None`
 - `Provider.create_item(CreateItemInput) -> Item`
 - `to_sync_entry(Item) -> SyncEntry` — from sync domain
-- `SyncMap` — dict-like storage for entries by entity ID
+- `SyncMap` — flat `entries: dict[str, SyncEntry]` keyed by item ID
 
 **Dry-run behavior:** In dry-run mode, the engine skips all provider calls and creates placeholder `SyncEntry` objects with `key="dry-run"`, `url="dry-run"`.
 
@@ -166,18 +166,17 @@ await item.add_dependency(blocker_item)
 
 **Internal logic:**
 
-1. **Direct task dependencies:** For each task, set `add_dependency` for each task in `depends_on`.
-2. **Story roll-up:** If task in story A depends on task in story B, then story A is blocked by story B.
-3. **Epic roll-up:** If story in epic A is blocked by story in epic B, then epic A is blocked by epic B.
+1. **Direct dependencies:** For each item, set `add_dependency` for each item in `depends_on`.
+2. **Parent roll-up:** If a child in parent A depends on a child in parent B, then parent A is blocked by parent B (e.g. story-level roll-up from task deps, epic-level roll-up from story deps).
 
 Roll-up is computed by engine-internal utilities:
 
 ```python
-def compute_story_blocked_by(items: list[PlanItem]) -> set[tuple[str, str]]: ...
-def compute_epic_blocked_by(
-    story_blocked: set[tuple[str, str]],
-    story_epic_map: dict[str, str],
-) -> set[tuple[str, str]]: ...
+def compute_parent_blocked_by(
+    items: list[PlanItem],
+    item_type: PlanItemType,
+) -> set[tuple[str, str]]:
+    """Compute parent-level blocked-by from child dependencies."""
 ```
 
 **Contract types required:**
@@ -196,16 +195,14 @@ Path(config.sync_path).write_text(sync_map_json, encoding="utf-8")
 
 return SyncResult(
     sync_map=sync_map,
-    epics_created=counters["epics"],
-    stories_created=counters["stories"],
-    tasks_created=counters["tasks"],
+    items_created=counters,  # dict[PlanItemType, int]
     dry_run=config.dry_run,
 )
 ```
 
 **Contract types required:**
 - `SyncMap` — serializable to JSON via Pydantic
-- `SyncResult` — return value with sync_map + counters + dry_run flag
+- `SyncResult` — return value with sync_map + items_created counter dict + dry_run flag
 
 ## Internal Utilities
 
@@ -213,9 +210,8 @@ These are engine-internal, not Contracts:
 
 | Utility | Signature | Purpose |
 |---------|-----------|---------|
-| `parse_markers` | `(body: str) -> dict[str, str]` | Extract PLAN_ID, EPIC_ID, etc. from issue body |
-| `compute_story_blocked_by` | `(items: list[PlanItem]) -> set[tuple[str, str]]` | Roll up task deps to story level |
-| `compute_epic_blocked_by` | `(story_blocked, story_epic_map) -> set[tuple[str, str]]` | Roll up story deps to epic level |
+| `parse_markers` | `(body: str) -> dict[str, str]` | Extract PLAN_ID, ITEM_ID from issue body |
+| `compute_parent_blocked_by` | `(items: list[PlanItem], item_type: PlanItemType) -> set[tuple[str, str]]` | Roll up child deps to parent level |
 
 ## Contracts Summary
 
@@ -225,8 +221,9 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Fields/Methods Used |
 |------|-------------------|
-| `Plan` | `.epics`, `.stories`, `.tasks` (lists of PlanItem subclasses) |
-| `PlanItem` | `.id`, `.title`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.estimate` |
+| `Plan` | `.items: list[PlanItem]` |
+| `PlanItem` | `.id`, `.type`, `.title`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.estimate` |
+| `PlanItemType` | `EPIC`, `STORY`, `TASK` — used for processing order and `CreateItemInput.item_type` |
 
 ### item domain
 
@@ -236,15 +233,14 @@ Complete list of all Contract types the engine requires, organized by domain:
 | `CreateItemInput` | `.title`, `.body`, `.item_type`, `.labels`, `.size` |
 | `UpdateItemInput` | `.body` |
 | `ItemSearchFilters` | `.labels`, `.body_contains` |
-| `ItemType` | `EPIC`, `STORY`, `TASK` |
 
 ### sync domain
 
 | Type | Fields/Methods Used |
 |------|-------------------|
 | `SyncEntry` | `.id`, `.key`, `.url` |
-| `SyncMap` | `.plan_id`, `.target`, `.board_url`, `.epics`, `.stories`, `.tasks` |
-| `SyncResult` | `.sync_map`, `.epics_created`, `.stories_created`, `.tasks_created`, `.dry_run` |
+| `SyncMap` | `.plan_id`, `.target`, `.board_url`, `.entries` |
+| `SyncResult` | `.sync_map`, `.items_created`, `.dry_run` |
 | `to_sync_entry()` | `(Item) -> SyncEntry` |
 
 ### config domain

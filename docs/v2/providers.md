@@ -10,7 +10,7 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 
 | Contract Domain | Types Used |
 |----------------|-----------|
-| **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters`, `ItemType` |
+| **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters` |
 | **provider** | `Provider` ABC, `ProviderContext` |
 | **config** | `FieldConfig` |
 | **exceptions** | `ProviderError`, `AuthenticationError`, `ProjectURLError` |
@@ -57,7 +57,7 @@ class Item:
     url: str
     title: str
     body: str
-    item_type: ItemType | None
+    item_type: PlanItemType | None
 
     # Relation methods (provider-bound)
     async def set_parent(self, parent: Item) -> None: ...
