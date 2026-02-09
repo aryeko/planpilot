@@ -51,7 +51,7 @@ src/planpilot/
 
 Core modules depend on contracts, and the SDK composes the runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture guide.
+See [docs/design/architecture.md](docs/design/architecture.md) for the full architecture guide.
 
 ## Requirements
 
@@ -126,20 +126,23 @@ planpilot \
 | `--no-size-from-tshirt` | off | Disable t-shirt size mapping |
 | `--verbose` | off | Enable verbose logging |
 
-Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
+Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas
 
-See [docs/schemas.md](docs/schemas.md) for the expected structure of `epics.json`, `stories.json`, and `tasks.json`, with full examples.
+See [docs/modules/plan.md](docs/modules/plan.md) for plan schema and validation details.
 
 A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
 ## Documentation
 
-- [How It Works](docs/how-it-works.md) -- sync pipeline, idempotency, what gets created
-- [CLI Reference](docs/cli-reference.md) -- all flags and commands
-- [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
-- [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
+- [Docs Index](docs/README.md) -- v2 documentation hub
+- [Architecture](docs/design/architecture.md) -- layer rules and data flow
+- [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
+- [Engine](docs/design/engine.md) -- sync pipeline behavior
+- [CLI](docs/modules/cli.md) -- command structure, output, and exit codes
+- [SDK](docs/modules/sdk.md) -- public API and composition root
+- [Providers](docs/modules/providers.md) -- provider model and extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
 ## Support
