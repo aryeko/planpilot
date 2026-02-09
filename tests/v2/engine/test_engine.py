@@ -4,8 +4,6 @@ import asyncio
 from pathlib import Path
 
 import pytest
-from tests.v2.fakes.provider import FakeProvider
-from tests.v2.fakes.renderer import FakeRenderer
 
 from planpilot_v2.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot_v2.contracts.exceptions import CreateItemPartialFailureError, SyncError
@@ -14,6 +12,8 @@ from planpilot_v2.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot_v2.contracts.sync import SyncMap
 from planpilot_v2.engine.engine import SyncEngine
 from planpilot_v2.engine.utils import compute_parent_blocked_by, parse_metadata_block
+from tests.v2.fakes.provider import FakeProvider
+from tests.v2.fakes.renderer import FakeRenderer
 
 
 def make_config(tmp_path: Path, *, max_concurrent: int = 1, validation_mode: str = "strict") -> PlanPilotConfig:
