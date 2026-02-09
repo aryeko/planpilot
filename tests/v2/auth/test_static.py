@@ -1,6 +1,6 @@
 import pytest
 
-from planpilot_v2.auth.static import StaticTokenResolver
+from planpilot_v2.auth.resolvers.static import StaticTokenResolver
 from planpilot_v2.contracts.exceptions import AuthenticationError
 
 

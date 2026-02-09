@@ -5,9 +5,9 @@ from __future__ import annotations
 from urllib.parse import urlparse
 
 from planpilot_v2.auth.base import TokenResolver
-from planpilot_v2.auth.env import EnvTokenResolver
-from planpilot_v2.auth.gh_cli import GhCliTokenResolver
-from planpilot_v2.auth.static import StaticTokenResolver
+from planpilot_v2.auth.resolvers.env import EnvTokenResolver
+from planpilot_v2.auth.resolvers.gh_cli import GhCliTokenResolver
+from planpilot_v2.auth.resolvers.static import StaticTokenResolver
 from planpilot_v2.contracts.config import PlanPilotConfig
 from planpilot_v2.contracts.exceptions import ConfigError
 

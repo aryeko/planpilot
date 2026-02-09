@@ -2,10 +2,10 @@ from pathlib import Path
 
 import pytest
 
-from planpilot_v2.auth.env import EnvTokenResolver
 from planpilot_v2.auth.factory import create_token_resolver
-from planpilot_v2.auth.gh_cli import GhCliTokenResolver
-from planpilot_v2.auth.static import StaticTokenResolver
+from planpilot_v2.auth.resolvers.env import EnvTokenResolver
+from planpilot_v2.auth.resolvers.gh_cli import GhCliTokenResolver
+from planpilot_v2.auth.resolvers.static import StaticTokenResolver
 from planpilot_v2.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot_v2.contracts.exceptions import ConfigError
 

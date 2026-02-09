@@ -4,7 +4,7 @@ from typing import Any
 
 import pytest
 
-from planpilot_v2.auth.gh_cli import GhCliTokenResolver
+from planpilot_v2.auth.resolvers.gh_cli import GhCliTokenResolver
 from planpilot_v2.contracts.exceptions import AuthenticationError
 
 
