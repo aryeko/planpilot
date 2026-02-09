@@ -83,7 +83,7 @@ For the `label` strategy, the type label (e.g. `type:epic`) is included in `labe
 
 ### Atomic Issue Update
 
-`UpdateIssueInput` supports `issueTypeId`. For the `issue-type` strategy, the type is set atomically in the `updateIssue` mutation - no separate call. Labels still require `addLabelsToLabelable` calls since `updateIssue` does not accept `labelIds` for existing issues.
+`UpdateIssueInput` supports both `issueTypeId` and `labelIds`. For the `issue-type` strategy, the type is set atomically in the `updateIssue` mutation - no separate call. For the `label` strategy, labels can also be set atomically via `updateIssue` using `labelIds`. Separate `addLabelsToLabelable` calls are only needed when adding labels outside of the update flow (e.g. discovery labels).
 
 ### Shared IssueCore Fragment
 

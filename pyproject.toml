@@ -130,7 +130,7 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/planpilot_v2/providers/github/github_gql/*" = ["UP042", "UP045", "E501"]
+"src/planpilot_v2/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["planpilot", "planpilot_v2"]
