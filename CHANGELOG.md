@@ -2,6 +2,195 @@
 
 <!-- version list -->
 
+## v2.0.0 (2026-02-09)
+
+### Bug Fixes
+
+- Regenerate formatted client ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- Remove unused _UNIFIED_DEFAULT variable in scaffold.py
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Align engine behavior with v2 docs ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Guard self-parent relations in sync engine
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Normalize auth hostname parsing ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Update examples, add mypy to CI, drop legacy docs
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Address PR review feedback ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Harden provider spec compliance
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Optimize atomic create/update
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Chores
+
+- Remove phase 3 plan artifact ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Code Style
+
+- **v2**: Sort engine test imports ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Continuous Integration
+
+- **build**: Finalize canonical tooling and workflow paths
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Documentation
+
+- Add planpilot + skill install instructions to readme
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- Fix GitHub provider description in CONTRIBUTING.md
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- Overhaul agent skill and restructure install files
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- Update AGENTS.md for scaffold, skill, and install changes
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **skill**: Make spec-to-planpilot-sync standalone for pip usage
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Add AGENTS documentation for providers and knowledge base
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Add user guides and finalize docs cleanup
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Align documentation with post-cutover layout
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Align phase1 engine dry-run guidance ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Move v2 docs to root and archive v1 docs
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Refresh AGENTS knowledge hierarchy ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Features
+
+- Planpilot v2 — full rewrite with async engine, GraphQL client, and agent skill
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **test**: Add offline e2e suite and ci workflow
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Add phase-0 contracts, test infra, and ci gate
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Generate typed GitHub GraphQL client ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase 3 sdk and align implementation docs
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase 3 sdk and docs alignment
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase1 auth module ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase1 engine module ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase1 plan module ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Implement phase1 renderers module ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Integrate phase1 core modules ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Phase 2 - GitHub provider with generated GraphQL client
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2-cli**: Add `planpilot init` interactive config generator
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2-cli**: Implement phase 4 cli ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Add generated GraphQL GitHub provider
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Implement phase 2 github provider
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2/providers**: Migrate to generated GraphQL client
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Refactoring
+
+- **v2**: Cut over package layout and finalize v2 docs
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Cut over runtime and tests to canonical package
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Move auth resolvers into shared subpackage
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+### Testing
+
+- **v2**: Enforce 95% coverage floor and close gaps
+  ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Harden phase1 plan validator coverage ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Package phase1 test modules ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+- **v2**: Raise phase1 coverage for v2 gate ([#69](https://github.com/aryeko/planpilot/pull/69),
+  [`4c29efa`](https://github.com/aryeko/planpilot/commit/4c29efa09e8b2ac67496682f01361a7d1e2d6b69))
+
+
 ## v1.2.1 (2026-02-09)
 
 ### Bug Fixes
