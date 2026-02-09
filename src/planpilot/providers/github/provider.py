@@ -11,7 +11,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any, TYPE_CHECKING
 
 from planpilot.exceptions import ProjectURLError, ProviderError
-from planpilot.models.item import CreateItemInput, ItemFields, ItemType, TargetContext, UpdateItemInput
+from planpilot.models.item import CreateItemInput, ItemSearchFilters, ItemType, TargetContext, UpdateItemInput
 from planpilot.models.project import FieldConfig, FieldValue, ResolvedField
 from planpilot.providers.base import Provider
 from planpilot.providers.github.client import GhClient
@@ -261,13 +261,13 @@ class GitHubProvider(Provider):
 
     # ---- Search ----
 
-    async def search_items(self, filters: ItemFields) -> list[Item]:
+    async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
         """Search for work items matching filters.
 
-        Currently supports filtering by labels.
+        Supports filtering by labels and body text (via GitHub search syntax).
 
         Args:
-            filters: Search filters (labels field is used)
+            filters: Search filters (labels, body_contains, etc.)
 
         Returns:
             List of GitHubItem instances
@@ -277,13 +277,15 @@ class GitHubProvider(Provider):
 
         items: list[Item] = []
 
-        # Build search query
-        label_filter = ""
+        # Build search query using GitHub search syntax
+        search_query = f"repo:{self._ctx.repo} is:issue"
+
         if filters.labels:
             for label in filters.labels:
-                label_filter += f' label:"{label}"'
+                search_query += f' label:"{label}"'
 
-        search_query = f"repo:{self._ctx.repo}{label_filter}"
+        if filters.body_contains:
+            search_query += f' "{filters.body_contains}" in:body'
 
         after: str | None = None
         while True:
@@ -337,8 +339,7 @@ class GitHubProvider(Provider):
         if not self._ctx:
             raise ProviderError("Provider not initialized (not in async context)")
 
-        # Create the issue with the correct type
-        owner, repo = self._ctx.repo.split("/", 1)
+        # Use the base label resolved in __aenter__
         label_ids = [self._ctx.repo_label_id] if self._ctx.repo_label_id else []
         
         # Determine issue type ID

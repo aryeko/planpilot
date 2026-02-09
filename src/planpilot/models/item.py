@@ -10,7 +10,7 @@ from __future__ import annotations
 from enum import StrEnum
 from typing import TYPE_CHECKING
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 if TYPE_CHECKING:
     from planpilot.models.sync import SyncEntry
@@ -71,6 +71,17 @@ class UpdateItemInput(ItemFields):
     pass
 
 
+class ItemSearchFilters(ItemFields):
+    """Filters for searching existing work items.
+
+    Extends ItemFields with text-search filters. Providers map these
+    to their platform-specific query syntax. Unsupported filters are ignored.
+    """
+
+    title_contains: str | None = None  # Match items whose title contains this text
+    body_contains: str | None = None  # Match items whose body contains this text
+
+
 class TargetContext(BaseModel):
     """Opaque context returned by Provider.__aenter__().
 
@@ -80,17 +91,6 @@ class TargetContext(BaseModel):
     """
 
     pass
-
-
-class ExistingItemMap(BaseModel):
-    """Categorized existing items found during discovery."""
-
-    epics: dict[str, str] = Field(default_factory=dict)
-    """plan_id -> provider Item ID mapping."""
-    stories: dict[str, str] = Field(default_factory=dict)
-    """plan_id -> provider Item ID mapping."""
-    tasks: dict[str, str] = Field(default_factory=dict)
-    """plan_id -> provider Item ID mapping."""
 
 
 class Item:

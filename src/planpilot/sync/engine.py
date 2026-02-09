@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from planpilot.config import SyncConfig
 from planpilot.exceptions import SyncError
-from planpilot.models.item import CreateItemInput, ItemFields, ItemType, UpdateItemInput
+from planpilot.models.item import CreateItemInput, ItemSearchFilters, ItemType, UpdateItemInput
 from planpilot.models.plan import Epic, Plan, Story, Task
 from planpilot.models.sync import SyncEntry, SyncMap, SyncResult
 from planpilot.plan import compute_plan_id, load_plan, validate_plan
@@ -158,11 +158,11 @@ class SyncEngine:
             SyncResult with the sync map and creation counts.
         """
         # Phase 0: Provider is assumed to be in connected state (managed by caller)
-        # Phase 1: Discovery
+        # Phase 1: Discovery — search by label + plan_id body marker
         existing_items = await self._provider.search_items(
-            ItemFields(labels=[cfg.label])
+            ItemSearchFilters(labels=[cfg.label], body_contains=f"PLAN_ID: {plan_id}")
         )
-        existing_map = self._build_existing_map(existing_items, plan_id)
+        existing_map, existing_item_lookup = self._build_existing_map(existing_items, plan_id)
 
         sync_map = SyncMap(
             plan_id=plan_id,
@@ -179,19 +179,23 @@ class SyncEngine:
 
         # Phase 2: Upsert epics
         for epic in plan.epics:
-            entry, item = await self._upsert_epic(epic, plan_id, existing_map, counters)
+            entry, item = await self._upsert_epic(epic, plan_id, existing_map, existing_item_lookup, counters)
             sync_map.epics[epic.id] = entry
             items_by_id[epic.id] = item
 
         # Upsert stories
         for story in plan.stories:
-            entry, item = await self._upsert_story(story, plan_id, existing_map, sync_map, counters)
+            entry, item = await self._upsert_story(
+                story, plan_id, existing_map, existing_item_lookup, sync_map, counters,
+            )
             sync_map.stories[story.id] = entry
             items_by_id[story.id] = item
 
         # Upsert tasks
         for task in plan.tasks:
-            entry, item = await self._upsert_task(task, plan_id, existing_map, sync_map, counters)
+            entry, item = await self._upsert_task(
+                task, plan_id, existing_map, existing_item_lookup, sync_map, counters,
+            )
             sync_map.tasks[task.id] = entry
             items_by_id[task.id] = item
 
@@ -216,51 +220,52 @@ class SyncEngine:
         self,
         existing_items: Sequence[Item],
         plan_id: str,
-    ) -> dict[str, dict[str, dict[str, str]]]:
+    ) -> tuple[dict[str, dict[str, dict[str, str]]], dict[str, Item]]:
         """Build a mapping of entity IDs to item metadata, filtered by plan_id.
 
         Parses body markers to extract plan_id and entity IDs.
 
         Args:
-            existing_items: Raw item instances from search.
+            existing_items: Item instances from search.
             plan_id: Only include items matching this plan_id.
 
         Returns:
-            Nested dict: {"epics": {id: {...}}, "stories": {...}, "tasks": {...}}.
+            Tuple of:
+            - Nested dict: ``{"epics": {id: {...}}, "stories": {...}, "tasks": {...}}``.
+            - Item lookup: ``{entity_id: Item}`` for reuse in relation setup.
         """
         result: dict[str, dict[str, dict[str, str]]] = {"epics": {}, "stories": {}, "tasks": {}}
+        item_lookup: dict[str, Item] = {}
 
         for item in existing_items:
-            # Extract item data (assuming Item-like interface)
-            item_id = item.id
-            item_key = item.key
-            item_url = item.url
-            item_body = item.body
-
-            # Parse markers from body
-            markers = parse_markers(item_body)
+            markers = parse_markers(item.body)
             if markers.get("plan_id") != plan_id:
                 continue
 
-            # Determine entity type from markers
             epic_id = markers.get("epic_id", "")
             story_id = markers.get("story_id", "")
             task_id = markers.get("task_id", "")
 
-            if epic_id:
-                result["epics"][epic_id] = {"id": item_id, "key": item_key, "url": item_url}
-            elif story_id:
-                result["stories"][story_id] = {"id": item_id, "key": item_key, "url": item_url}
-            elif task_id:
-                result["tasks"][task_id] = {"id": item_id, "key": item_key, "url": item_url}
+            entry = {"id": item.id, "key": item.key, "url": item.url}
 
-        return result
+            if epic_id:
+                result["epics"][epic_id] = entry
+                item_lookup[epic_id] = item
+            elif story_id:
+                result["stories"][story_id] = entry
+                item_lookup[story_id] = item
+            elif task_id:
+                result["tasks"][task_id] = entry
+                item_lookup[task_id] = item
+
+        return result, item_lookup
 
     async def _upsert_epic(
         self,
         epic: Epic,
         plan_id: str,
         existing_map: dict[str, dict[str, dict[str, str]]],
+        item_lookup: dict[str, Item],
         counters: dict[str, int],
     ) -> tuple[SyncEntry, Item | None]:
         """Create or find an epic item."""
@@ -268,7 +273,7 @@ class SyncEngine:
         if existing:
             return (
                 SyncEntry(id=existing["id"], key=existing["key"], url=existing["url"]),
-                None,
+                item_lookup.get(epic.id),
             )
 
         body = self._renderer.render_epic(epic, plan_id)
@@ -289,6 +294,7 @@ class SyncEngine:
         story: Story,
         plan_id: str,
         existing_map: dict[str, dict[str, dict[str, str]]],
+        item_lookup: dict[str, Item],
         sync_map: SyncMap,
         counters: dict[str, int],
     ) -> tuple[SyncEntry, Item | None]:
@@ -297,7 +303,7 @@ class SyncEngine:
         if existing:
             return (
                 SyncEntry(id=existing["id"], key=existing["key"], url=existing["url"]),
-                None,
+                item_lookup.get(story.id),
             )
 
         epic_entry = _get_sync_entry(sync_map.epics, story.epic_id, "epic")
@@ -320,6 +326,7 @@ class SyncEngine:
         task: Task,
         plan_id: str,
         existing_map: dict[str, dict[str, dict[str, str]]],
+        item_lookup: dict[str, Item],
         sync_map: SyncMap,
         counters: dict[str, int],
     ) -> tuple[SyncEntry, Item | None]:
@@ -328,7 +335,7 @@ class SyncEngine:
         if existing:
             return (
                 SyncEntry(id=existing["id"], key=existing["key"], url=existing["url"]),
-                None,
+                item_lookup.get(task.id),
             )
 
         story_entry = _get_sync_entry(sync_map.stories, task.story_id, "story")

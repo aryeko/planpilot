@@ -14,7 +14,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from planpilot.models.item import CreateItemInput, ItemFields, UpdateItemInput
+from planpilot.models.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 
 if TYPE_CHECKING:
     from planpilot.models.item import Item
@@ -56,14 +56,14 @@ class Provider(ABC):
     # ---- Search ----
 
     @abstractmethod
-    async def search_items(self, filters: ItemFields) -> list[Item]:
+    async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
         """Search for work items matching the given filters.
 
-        Generic search accepting platform-agnostic ItemFields. Providers map
-        these fields internally. Unsupported filter fields are ignored.
+        Generic search accepting platform-agnostic SearchFilters. Providers map
+        these to their query syntax. Unsupported filters are ignored.
 
         Args:
-            filters: Search filters (labels, status, etc.)
+            filters: Search filters (labels, body_contains, etc.)
 
         Returns:
             List of matching Item instances.

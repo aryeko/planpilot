@@ -6,10 +6,6 @@ not provider-specific.
 
 from __future__ import annotations
 
-import re
-from typing import Any
-
-
 def parse_markers(body: str) -> dict[str, str]:
     """Extract plan markers from an item body.
 
