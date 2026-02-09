@@ -1,89 +1,104 @@
-"""Tests for plan hasher."""
-
 from __future__ import annotations
 
-from planpilot.models.plan import Epic, Estimate, Plan, Scope, Story, Task, Verification
-from planpilot.plan.hasher import compute_plan_id
+import re
+
+from planpilot.contracts.plan import Plan, PlanItem, PlanItemType, Scope, Verification
+from planpilot.plan.hasher import PlanHasher
 
 
-def create_minimal_plan() -> Plan:
-    """Create a minimal valid plan for testing."""
-    epic = Epic(
-        id="epic1",
-        title="Epic",
-        goal="Goal",
-        spec_ref="spec.md",
-        story_ids=["story1"],
-        scope=Scope(),
-        success_metrics=[],
-        risks=[],
-        assumptions=[],
+def _plan_items_in_default_order() -> list[PlanItem]:
+    return [
+        PlanItem(
+            id="E1",
+            type=PlanItemType.EPIC,
+            title="Epic",
+            goal="Goal",
+            requirements=["R1"],
+            acceptance_criteria=["AC1"],
+        ),
+        PlanItem(
+            id="S1",
+            type=PlanItemType.STORY,
+            title="Story",
+            goal="Goal",
+            parent_id="E1",
+            requirements=["R1"],
+            acceptance_criteria=["AC1"],
+        ),
+    ]
+
+
+def test_hash_is_deterministic() -> None:
+    plan = Plan(items=_plan_items_in_default_order())
+
+    hasher = PlanHasher()
+    first = hasher.compute_plan_id(plan)
+    second = hasher.compute_plan_id(plan)
+
+    assert first == second
+
+
+def test_hash_is_stable_when_items_reordered() -> None:
+    hasher = PlanHasher()
+    ordered = Plan(items=_plan_items_in_default_order())
+    reordered = Plan(items=list(reversed(_plan_items_in_default_order())))
+
+    assert hasher.compute_plan_id(ordered) == hasher.compute_plan_id(reordered)
+
+
+def test_hash_changes_for_semantically_different_plan() -> None:
+    hasher = PlanHasher()
+    left = Plan(items=_plan_items_in_default_order())
+    right = Plan(
+        items=[
+            PlanItem(
+                id="E1",
+                type=PlanItemType.EPIC,
+                title="Epic",
+                goal="Different goal",
+                requirements=["R1"],
+                acceptance_criteria=["AC1"],
+            )
+        ]
     )
-    story = Story(
-        id="story1",
-        epic_id="epic1",
-        title="Story",
-        goal="Goal",
-        spec_ref="spec.md",
-        task_ids=["task1"],
-        scope=Scope(),
-        success_metrics=[],
-        risks=[],
-        assumptions=[],
+
+    assert hasher.compute_plan_id(left) != hasher.compute_plan_id(right)
+
+
+def test_empty_and_missing_optional_containers_hash_the_same() -> None:
+    hasher = PlanHasher()
+    without_optional_containers = Plan(
+        items=[
+            PlanItem(
+                id="E1",
+                type=PlanItemType.EPIC,
+                title="Epic",
+                goal="Goal",
+                requirements=["R1"],
+                acceptance_criteria=["AC1"],
+            )
+        ]
     )
-    task = Task(
-        id="task1",
-        story_id="story1",
-        title="Task",
-        motivation="Motivation",
-        spec_ref="spec.md",
-        requirements=[],
-        acceptance_criteria=[],
-        verification=Verification(),
-        artifacts=[],
-        depends_on=[],
-        estimate=Estimate(),
-        scope=Scope(),
+    with_empty_optional_containers = Plan(
+        items=[
+            PlanItem(
+                id="E1",
+                type=PlanItemType.EPIC,
+                title="Epic",
+                goal="Goal",
+                requirements=["R1"],
+                acceptance_criteria=["AC1"],
+                scope=Scope(in_scope=[], out_scope=[]),
+                verification=Verification(commands=[], ci_checks=[], evidence=[], manual_steps=[]),
+            )
+        ]
     )
-    return Plan(epics=[epic], stories=[story], tasks=[task])
+
+    assert hasher.compute_plan_id(without_optional_containers) == hasher.compute_plan_id(with_empty_optional_containers)
 
 
-def test_compute_plan_id_returns_12_char_hex():
-    """Test that compute_plan_id returns a 12-char hex string."""
-    plan = create_minimal_plan()
-    plan_id = compute_plan_id(plan)
+def test_hash_format_is_12_hex_chars() -> None:
+    plan = Plan(items=_plan_items_in_default_order())
+    value = PlanHasher().compute_plan_id(plan)
 
-    assert len(plan_id) == 12
-    assert all(c in "0123456789abcdef" for c in plan_id)
-
-
-def test_compute_plan_id_deterministic():
-    """Test that the same plan always produces the same hash."""
-    plan = create_minimal_plan()
-    plan_id1 = compute_plan_id(plan)
-    plan_id2 = compute_plan_id(plan)
-
-    assert plan_id1 == plan_id2
-
-
-def test_compute_plan_id_different_plans_different_hashes():
-    """Test that different plans produce different hashes."""
-    plan1 = create_minimal_plan()
-    plan2 = create_minimal_plan()
-    plan2.epics[0].title = "Different Title"
-
-    plan_id1 = compute_plan_id(plan1)
-    plan_id2 = compute_plan_id(plan2)
-
-    assert plan_id1 != plan_id2
-
-
-def test_compute_plan_id_stable_across_reconstruction():
-    """Test that separately reconstructed identical plans hash the same."""
-    plan1 = create_minimal_plan()
-    plan2 = create_minimal_plan()
-
-    plan_id1 = compute_plan_id(plan1)
-    plan_id2 = compute_plan_id(plan2)
-
-    assert plan_id1 == plan_id2
+    assert re.fullmatch(r"[0-9a-f]{12}", value) is not None

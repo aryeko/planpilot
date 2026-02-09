@@ -1,8 +1,7 @@
-"""Provider adapters for issue-tracking systems.
+"""Provider implementations and factory."""
 
-The :class:`Provider` ABC defines the contract every adapter must fulfil.
-"""
+from planpilot.providers.base import ProviderContext
+from planpilot.providers.dry_run import DryRunItem, DryRunProvider
+from planpilot.providers.factory import create_provider
 
-from planpilot.providers.base import Provider
-
-__all__ = ["Provider"]
+__all__ = ["DryRunItem", "DryRunProvider", "ProviderContext", "create_provider"]

@@ -1,86 +1,62 @@
-"""Shared test fixtures for planpilot tests."""
-
-from __future__ import annotations
-
-import json
 from pathlib import Path
 
 import pytest
 
-from planpilot.config import SyncConfig
-from planpilot.models.plan import Epic, Plan, Story, Task, Verification
+from planpilot.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 
 
 @pytest.fixture
-def sample_epic() -> Epic:
-    """A minimal valid Epic."""
-    return Epic(
-        id="E-1",
-        title="Test Epic",
-        goal="Test goal",
-        spec_ref="spec.md",
-        story_ids=["S-1"],
+def sample_epic() -> PlanItem:
+    return PlanItem(
+        id="E1",
+        type=PlanItemType.EPIC,
+        title="Epic One",
+        goal="Deliver feature X",
+        requirements=["R1"],
+        acceptance_criteria=["AC1"],
+        sub_item_ids=["S1"],
     )
 
 
 @pytest.fixture
-def sample_story() -> Story:
-    """A minimal valid Story."""
-    return Story(
-        id="S-1",
-        epic_id="E-1",
-        title="Test Story",
-        goal="Story goal",
-        spec_ref="spec.md",
-        task_ids=["T-1"],
+def sample_story() -> PlanItem:
+    return PlanItem(
+        id="S1",
+        type=PlanItemType.STORY,
+        title="Story One",
+        goal="Implement part A",
+        parent_id="E1",
+        requirements=["R1"],
+        acceptance_criteria=["AC1"],
+        sub_item_ids=["T1"],
     )
 
 
 @pytest.fixture
-def sample_task() -> Task:
-    """A minimal valid Task."""
-    return Task(
-        id="T-1",
-        story_id="S-1",
-        title="Test Task",
-        motivation="Task motivation",
-        spec_ref="spec.md",
-        requirements=["req1"],
-        acceptance_criteria=["ac1"],
-        verification=Verification(),
-        artifacts=["artifact1"],
-        depends_on=[],
+def sample_task() -> PlanItem:
+    return PlanItem(
+        id="T1",
+        type=PlanItemType.TASK,
+        title="Task One",
+        goal="Code module A",
+        parent_id="S1",
+        requirements=["R1"],
+        acceptance_criteria=["AC1"],
     )
 
 
 @pytest.fixture
-def sample_plan(sample_epic: Epic, sample_story: Story, sample_task: Task) -> Plan:
-    """A minimal valid Plan with one epic, one story, one task."""
-    return Plan(epics=[sample_epic], stories=[sample_story], tasks=[sample_task])
+def sample_plan(sample_epic: PlanItem, sample_story: PlanItem, sample_task: PlanItem) -> Plan:
+    return Plan(items=[sample_epic, sample_story, sample_task])
 
 
 @pytest.fixture
-def plan_json_files(
-    tmp_path: Path, sample_epic: Epic, sample_story: Story, sample_task: Task
-) -> tuple[Path, Path, Path]:
-    """Write sample plan to JSON files and return (epics_path, stories_path, tasks_path)."""
-    epics_path = tmp_path / "epics.json"
-    stories_path = tmp_path / "stories.json"
-    tasks_path = tmp_path / "tasks.json"
-    epics_path.write_text(json.dumps([sample_epic.model_dump(mode="json", by_alias=True)]), encoding="utf-8")
-    stories_path.write_text(json.dumps([sample_story.model_dump(mode="json", by_alias=True)]), encoding="utf-8")
-    tasks_path.write_text(json.dumps([sample_task.model_dump(mode="json", by_alias=True)]), encoding="utf-8")
-    return epics_path, stories_path, tasks_path
-
-
-@pytest.fixture
-def sample_config(tmp_path: Path) -> SyncConfig:
-    """A minimal valid SyncConfig."""
-    return SyncConfig(
-        repo="owner/repo",
-        project_url="https://github.com/orgs/myorg/projects/1",
-        epics_path=tmp_path / "epics.json",
-        stories_path=tmp_path / "stories.json",
-        tasks_path=tmp_path / "tasks.json",
-        sync_path=tmp_path / "sync.json",
+def sample_config(tmp_path: Path) -> PlanPilotConfig:
+    return PlanPilotConfig(
+        provider="github",
+        target="owner/repo",
+        board_url="https://github.com/orgs/owner/projects/1",
+        plan_paths=PlanPaths(unified=tmp_path / "plan.json"),
+        sync_path=tmp_path / "sync-map.json",
     )

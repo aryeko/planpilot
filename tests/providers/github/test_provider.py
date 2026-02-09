@@ -1,709 +1,408 @@
-"""Tests for the GitHub provider implementation."""
-
-from __future__ import annotations
-
-from unittest.mock import AsyncMock, MagicMock, patch
-
 import pytest
 
-from planpilot.exceptions import AuthenticationError, ProjectURLError, ProviderError
-from planpilot.models.project import (
-    CreateIssueInput,
-    ExistingIssue,
-    FieldConfig,
-    FieldValue,
-    IssueRef,
-    ProjectContext,
-    RelationMap,
-    RepoContext,
-)
+from planpilot.contracts.config import FieldConfig
+from planpilot.contracts.exceptions import CreateItemPartialFailureError
+from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
+from planpilot.contracts.plan import PlanItemType
+from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
+from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
 from planpilot.providers.github.provider import GitHubProvider
 
 
-@pytest.fixture
-def mock_client():
-    """Create a mocked GhClient."""
-    return AsyncMock()
-
-
-@pytest.fixture
-def provider(mock_client):
-    """Create a GitHubProvider with a mocked client."""
-    return GitHubProvider(mock_client)
-
-
-@pytest.mark.asyncio
-async def test_check_auth_delegates_to_client(provider, mock_client):
-    """Test that check_auth delegates to client.check_auth()."""
-    mock_client.check_auth.return_value = None
-
-    await provider.check_auth()
-
-    mock_client.check_auth.assert_called_once()
+def _make_issue_core(
+    *,
+    id: str = "I1",
+    number: int = 42,
+    url: str = "https://github.com/acme/repo/issues/42",
+    title: str = "T",
+    body: str = "B",
+    label_names: list[str] | None = None,
+) -> IssueCore:
+    """Build a typed IssueCore instance for tests."""
+    labels = IssueCoreLabels(nodes=[IssueCoreLabelsNodes(id=f"lbl-{n}", name=n) for n in (label_names or [])])
+    return IssueCore(id=id, number=number, url=url, title=title, body=body, labels=labels)
 
 
 @pytest.mark.asyncio
-async def test_check_auth_raises_on_client_error(provider, mock_client):
-    """Test that check_auth raises AuthenticationError when client raises it."""
-    mock_client.check_auth.side_effect = AuthenticationError("Auth failed")
-
-    with pytest.raises(AuthenticationError, match="Auth failed"):
-        await provider.check_auth()
-
-
-@pytest.mark.asyncio
-async def test_get_repo_context_success(provider, mock_client):
-    """Test that get_repo_context returns RepoContext with repo_id, label_id, issue_type_ids."""
-    owner, name = "owner", "repo"
-    repo = f"{owner}/{name}"
-    label = "planpilot"
-
-    mock_client.graphql.return_value = {
-        "data": {
-            "repository": {
-                "id": "repo_node_id",
-                "issueTypes": {
-                    "nodes": [
-                        {"id": "type1", "name": "Epic"},
-                        {"id": "type2", "name": "Story"},
-                    ]
-                },
-                "labels": {"nodes": [{"id": "label_node_id", "name": "planpilot"}]},
-            }
-        }
-    }
-
-    result = await provider.get_repo_context(repo, label)
-
-    assert isinstance(result, RepoContext)
-    assert result.repo_id == "repo_node_id"
-    assert result.label_id == "label_node_id"
-    assert result.issue_type_ids == {"Epic": "type1", "Story": "type2"}
-
-
-@pytest.mark.asyncio
-async def test_get_repo_context_creates_label_if_missing(provider, mock_client):
-    """Test that get_repo_context creates label if missing, then re-fetches."""
-    owner, name = "owner", "repo"
-    repo = f"{owner}/{name}"
-    label = "planpilot"
-
-    # First call: label not found
-    mock_client.graphql.return_value = {
-        "data": {
-            "repository": {
-                "id": "repo_node_id",
-                "issueTypes": {"nodes": []},
-                "labels": {"nodes": []},
-            }
-        }
-    }
-
-    # Mock the label creation
-    mock_client.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-
-    # Second call: label found after creation
-    mock_client.graphql.side_effect = [
-        {
-            "data": {
-                "repository": {
-                    "id": "repo_node_id",
-                    "issueTypes": {"nodes": []},
-                    "labels": {"nodes": []},
-                }
-            }
-        },
-        {
-            "data": {
-                "repository": {
-                    "id": "repo_node_id",
-                    "issueTypes": {"nodes": []},
-                    "labels": {"nodes": [{"id": "label_node_id", "name": "planpilot"}]},
-                }
-            }
-        },
-    ]
-
-    result = await provider.get_repo_context(repo, label)
-
-    # Should have called run to create label
-    mock_client.run.assert_called_once()
-    call_args = mock_client.run.call_args[0][0]
-    assert "label" in call_args
-    assert "create" in call_args
-    assert label in call_args
-
-    # Should have called graphql twice (initial fetch + re-fetch)
-    assert mock_client.graphql.call_count == 2
-    assert result.label_id == "label_node_id"
-
-
-@pytest.mark.asyncio
-async def test_get_repo_context_handles_label_creation_provider_error(provider, mock_client):
-    """Test that get_repo_context handles ProviderError during label creation."""
-    repo = "owner/repo"
-    label = "planpilot"
-
-    mock_client.graphql.return_value = {
-        "data": {
-            "repository": {
-                "id": "repo_node_id",
-                "issueTypes": {"nodes": []},
-                "labels": {"nodes": []},
-            }
-        }
-    }
-    mock_client.run.side_effect = ProviderError("label create failed")
-
-    result = await provider.get_repo_context(repo, label)
-
-    assert isinstance(result, RepoContext)
-    assert result.repo_id == "repo_node_id"
-    assert result.label_id is None  # label creation failed
-
-
-@pytest.mark.asyncio
-async def test_get_repo_context_handles_label_creation_unexpected_error(provider, mock_client):
-    """Test that get_repo_context handles unexpected errors during label creation."""
-    repo = "owner/repo"
-    label = "planpilot"
-
-    mock_client.graphql.return_value = {
-        "data": {
-            "repository": {
-                "id": "repo_node_id",
-                "issueTypes": {"nodes": []},
-                "labels": {"nodes": []},
-            }
-        }
-    }
-    mock_client.run.side_effect = OSError("unexpected")
-
-    result = await provider.get_repo_context(repo, label)
-
-    assert isinstance(result, RepoContext)
-    assert result.label_id is None
-
-
-@pytest.mark.asyncio
-async def test_set_project_field_text_value(provider, mock_client):
-    """Test that set_project_field handles text values."""
-    mock_client.graphql_raw.return_value = {
-        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "item_id"}}}
-    }
-
-    value = FieldValue(text="some text")
-    await provider.set_project_field("project_id", "item_id", "field_id", value)
-
-    mock_client.graphql_raw.assert_called_once()
-    call_args = mock_client.graphql_raw.call_args[0][0]
-    value_str = " ".join(call_args)
-    assert "text" in value_str
-
-
-@pytest.mark.asyncio
-async def test_get_project_context_success(provider, mock_client):
-    """Test that get_project_context returns ProjectContext with resolved fields."""
-    project_url = "https://github.com/orgs/myorg/projects/1"
-    field_config = FieldConfig(
-        status="Backlog",
-        priority="P1",
-        iteration="active",
-        size_field="Size",
-        size_from_tshirt=True,
+async def test_aenter_builds_context(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
     )
 
-    # Mock parse_project_url
-    with patch(
-        "planpilot.providers.github.provider.parse_project_url",
-        return_value=("myorg", 1),
-    ):
-        # Mock FETCH_PROJECT query (first call) and FETCH_PROJECT_ITEMS query (second call)
-        mock_client.graphql.side_effect = [
-            {
-                "data": {
-                    "organization": {
-                        "projectV2": {
-                            "id": "project_id",
-                            "fields": {
-                                "nodes": [
-                                    {
-                                        "id": "status_field_id",
-                                        "name": "Status",
-                                        "options": [
-                                            {"id": "backlog_opt_id", "name": "Backlog"},
-                                            {"id": "todo_opt_id", "name": "Todo"},
-                                        ],
-                                    },
-                                    {
-                                        "id": "priority_field_id",
-                                        "name": "Priority",
-                                        "options": [
-                                            {"id": "p1_opt_id", "name": "P1"},
-                                            {"id": "p2_opt_id", "name": "P2"},
-                                        ],
-                                    },
-                                    {
-                                        "id": "iteration_field_id",
-                                        "name": "Iteration",
-                                        "configuration": {
-                                            "iterations": [
-                                                {
-                                                    "id": "iter1_id",
-                                                    "title": "Sprint 1",
-                                                    "startDate": "2026-02-01T00:00:00Z",
-                                                    "duration": 14,
-                                                },
-                                                {
-                                                    "id": "iter2_id",
-                                                    "title": "Sprint 2",
-                                                    "startDate": "2026-02-15T00:00:00Z",
-                                                    "duration": 14,
-                                                },
-                                            ]
-                                        },
-                                    },
-                                    {
-                                        "id": "size_field_id",
-                                        "name": "Size",
-                                        "options": [
-                                            {"id": "xs_id", "name": "XS"},
-                                            {"id": "s_id", "name": "S"},
-                                        ],
-                                    },
-                                ]
-                            },
-                        }
-                    }
-                }
-            },
-            {
-                "data": {
-                    "node": {
-                        "items": {
-                            "nodes": [
-                                {"id": "item1", "content": {"id": "issue1"}},
-                                {"id": "item2", "content": {"id": "issue2"}},
-                            ],
-                            "pageInfo": {"hasNextPage": False, "endCursor": None},
-                        }
-                    }
-                }
-            },
-        ]
+    async def fake_enter_transport() -> None:
+        return None
 
-        result = await provider.get_project_context(project_url, field_config)
+    async def fake_resolve_repo() -> tuple[str, str, dict[str, str]]:
+        return "repo-id", "label-id", {"EPIC": "type-1"}
 
-        assert isinstance(result, ProjectContext)
-        assert result.project_id == "project_id"
-        assert result.status_field is not None
-        assert result.status_field.field_id == "status_field_id"
-        assert result.status_field.value.single_select_option_id == "backlog_opt_id"
-        assert result.priority_field is not None
-        assert result.priority_field.field_id == "priority_field_id"
-        assert result.priority_field.value.single_select_option_id == "p1_opt_id"
-        assert result.size_field_id == "size_field_id"
-        assert result.item_map == {"issue1": "item1", "issue2": "item2"}
+    async def fake_resolve_project() -> tuple[str, str, int, str | None]:
+        return "org", "acme", 1, "project-id"
+
+    async def fake_resolve_project_fields(
+        project_id: str,
+    ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
+        return "size-f", [{"id": "opt-1", "name": "S"}], None, None, None
+
+    monkeypatch.setattr(provider, "_open_transport", fake_enter_transport)
+    monkeypatch.setattr(provider, "_resolve_repo_context", fake_resolve_repo)
+    monkeypatch.setattr(provider, "_resolve_project_context", fake_resolve_project)
+    monkeypatch.setattr(provider, "_resolve_project_fields", fake_resolve_project_fields)
+
+    entered = await provider.__aenter__()
+
+    assert entered is provider
+    assert provider.context.repo_id == "repo-id"
+    assert provider.context.project_id == "project-id"
+    assert provider.context.size_field_id == "size-f"
+    assert provider.context.size_options == [{"id": "opt-1", "name": "S"}]
+    # issue_type_ids populated -> supports_issue_type is True
+    assert provider.context.supports_issue_type is True
 
 
 @pytest.mark.asyncio
-async def test_get_project_context_returns_none_on_error(provider, mock_client):
-    """Test that get_project_context returns None if URL is bad or API fails."""
-    # Test with invalid URL
-    with patch(
-        "planpilot.providers.github.provider.parse_project_url",
-        side_effect=ProjectURLError("Invalid URL"),
-    ):
-        result = await provider.get_project_context("bad-url", FieldConfig())
-        assert result is None
-
-    # Test with API failure
-    with patch(
-        "planpilot.providers.github.provider.parse_project_url",
-        return_value=("myorg", 1),
-    ):
-        mock_client.graphql.side_effect = ProviderError("API failed")
-        result = await provider.get_project_context("https://github.com/orgs/myorg/projects/1", FieldConfig())
-        assert result is None
-
-
-@pytest.mark.asyncio
-async def test_search_issues_single_page(provider, mock_client):
-    """Test that search_issues handles single-page results."""
-    repo = "owner/repo"
-    plan_id = "plan123"
-    label = "planpilot"
-
-    mock_client.graphql.return_value = {
-        "data": {
-            "search": {
-                "nodes": [
-                    {"id": "issue1", "number": 1, "body": "<!-- PLAN_ID: plan123 -->"},
-                    {"id": "issue2", "number": 2, "body": "<!-- PLAN_ID: plan123 -->"},
-                ],
-                "pageInfo": {"hasNextPage": False, "endCursor": None},
-            }
-        }
-    }
-
-    result = await provider.search_issues(repo, plan_id, label)
-
-    assert len(result) == 2
-    assert all(isinstance(issue, ExistingIssue) for issue in result)
-    assert result[0].id == "issue1"
-    assert result[0].number == 1
-    assert result[1].id == "issue2"
-    assert result[1].number == 2
-
-
-@pytest.mark.asyncio
-async def test_search_issues_paginates(provider, mock_client):
-    """Test that search_issues handles multi-page results."""
-    repo = "owner/repo"
-    plan_id = "plan123"
-    label = "planpilot"
-
-    mock_client.graphql.side_effect = [
-        {
-            "data": {
-                "search": {
-                    "nodes": [
-                        {"id": "issue1", "number": 1, "body": "<!-- PLAN_ID: plan123 -->"},
-                    ],
-                    "pageInfo": {"hasNextPage": True, "endCursor": "cursor1"},
-                }
-            }
-        },
-        {
-            "data": {
-                "search": {
-                    "nodes": [
-                        {"id": "issue2", "number": 2, "body": "<!-- PLAN_ID: plan123 -->"},
-                    ],
-                    "pageInfo": {"hasNextPage": False, "endCursor": None},
-                }
-            }
-        },
-    ]
-
-    result = await provider.search_issues(repo, plan_id, label)
-
-    assert len(result) == 2
-    assert mock_client.graphql.call_count == 2
-
-
-@pytest.mark.asyncio
-async def test_create_issue_success(provider, mock_client):
-    """Test that create_issue returns IssueRef."""
-    issue_input = CreateIssueInput(
-        repo_id="repo_id",
-        title="Test Issue",
-        body="Body text",
-        label_ids=["label1"],
+async def test_aenter_falls_back_to_label_when_no_issue_types(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
     )
 
-    mock_client.graphql_raw.return_value = {
-        "data": {
-            "createIssue": {
-                "issue": {
-                    "id": "issue_id",
-                    "number": 42,
-                    "url": "https://github.com/owner/repo/issues/42",
-                }
-            }
-        }
-    }
+    async def fake_enter_transport() -> None:
+        return None
 
-    result = await provider.create_issue(issue_input)
+    async def fake_resolve_repo() -> tuple[str, str, dict[str, str]]:
+        return "repo-id", "label-id", {}  # no issue types
 
-    assert isinstance(result, IssueRef)
-    assert result.id == "issue_id"
-    assert result.number == 42
-    assert result.url == "https://github.com/owner/repo/issues/42"
+    async def fake_resolve_project() -> tuple[str, str, int, str | None]:
+        return "org", "acme", 1, "project-id"
 
-    # Verify graphql_raw was called with correct args
-    mock_client.graphql_raw.assert_called_once()
-    call_args = mock_client.graphql_raw.call_args[0][0]
-    assert "api" in call_args
-    assert "graphql" in call_args
-    assert "-F" in call_args
+    async def fake_resolve_project_fields(
+        project_id: str,
+    ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
+        return None, [], None, None, None
 
+    monkeypatch.setattr(provider, "_open_transport", fake_enter_transport)
+    monkeypatch.setattr(provider, "_resolve_repo_context", fake_resolve_repo)
+    monkeypatch.setattr(provider, "_resolve_project_context", fake_resolve_project)
+    monkeypatch.setattr(provider, "_resolve_project_fields", fake_resolve_project_fields)
 
-@pytest.mark.asyncio
-async def test_create_issue_raises_on_failure(provider, mock_client):
-    """Test that create_issue raises ProviderError on failure."""
-    issue_input = CreateIssueInput(repo_id="repo_id", title="Test", body="Body")
+    await provider.__aenter__()
 
-    mock_client.graphql_raw.side_effect = ProviderError("Creation failed")
-
-    with pytest.raises(ProviderError, match="Creation failed"):
-        await provider.create_issue(issue_input)
+    # No issue types found -> supports_issue_type is False, strategy falls back to label
+    assert provider.context.supports_issue_type is False
+    assert provider.context.create_type_strategy == "label"
 
 
 @pytest.mark.asyncio
-async def test_update_issue_calls_gh_run(provider, mock_client):
-    """Test that update_issue calls client.run with correct args."""
-    repo = "owner/repo"
-    number = 42
-    title = "New Title"
-    body = "New Body"
+async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={"TASK": "task-type"},
+        project_owner_type="org",
+        project_id="project-id",
+        supports_issue_type=True,
+        create_type_strategy="issue-type",
+        create_type_map={"TASK": "Task"},
+        size_field_id="size-id",
+        size_options=[{"id": "opt-s", "name": "S"}],
+    )
 
-    mock_client.run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+    calls: list[str] = []
 
-    await provider.update_issue(repo, number, title, body)
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
+        calls.append("issue_created")
+        return _make_issue_core(title=input.title, body=input.body)
 
-    mock_client.run.assert_called_once()
-    call_args = mock_client.run.call_args[0][0]
-    assert "issue" in call_args
-    assert "edit" in call_args
-    assert str(number) in call_args
-    assert title in call_args
-    assert body in call_args
+    async def fake_project(issue_id: str) -> str:
+        calls.append("project_item_added")
+        return "PVTI_1"
 
+    async def fake_fields(project_item_id: str, input: CreateItemInput) -> None:
+        calls.append("project_fields_set")
 
-@pytest.mark.asyncio
-async def test_set_issue_type_calls_graphql(provider, mock_client):
-    """Test that set_issue_type calls graphql with correct mutation."""
-    issue_id = "issue_id"
-    type_id = "type_id"
+    monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
+    monkeypatch.setattr(provider, "_ensure_project_item", fake_project)
+    monkeypatch.setattr(provider, "_ensure_project_fields", fake_fields)
 
-    mock_client.graphql.return_value = {"data": {"updateIssue": {"issue": {"id": issue_id}}}}
+    created = await provider.create_item(
+        CreateItemInput(title="T", body="B", item_type=PlanItemType.TASK, labels=["planpilot"], size="S")
+    )
 
-    await provider.set_issue_type(issue_id, type_id)
-
-    mock_client.graphql.assert_called_once()
-    call_args = mock_client.graphql.call_args
-    assert "UPDATE_ISSUE_TYPE" in call_args[0][0] or "updateIssue" in call_args[0][0]
-    assert call_args[1]["variables"]["id"] == issue_id
-    assert call_args[1]["variables"]["issueTypeId"] == type_id
-
-
-@pytest.mark.asyncio
-async def test_add_to_project_success(provider, mock_client):
-    """Test that add_to_project returns item_id."""
-    project_id = "project_id"
-    issue_id = "issue_id"
-
-    mock_client.graphql.return_value = {"data": {"addProjectV2ItemById": {"item": {"id": "item_id"}}}}
-
-    result = await provider.add_to_project(project_id, issue_id)
-
-    assert result == "item_id"
-    mock_client.graphql.assert_called_once()
+    assert created.id == "I1"
+    # Labels, issue type, and project are set atomically in _create_issue;
+    # only project item retrieval and field assignment are separate calls
+    assert calls == ["issue_created", "project_item_added", "project_fields_set"]
 
 
 @pytest.mark.asyncio
-async def test_add_to_project_returns_none_on_failure(provider, mock_client):
-    """Test that add_to_project returns None on failure."""
-    project_id = "project_id"
-    issue_id = "issue_id"
+async def test_create_item_raises_partial_failure_after_issue_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={"TASK": "task-type"},
+        project_owner_type="org",
+        project_id="project-id",
+        create_type_strategy="issue-type",
+        create_type_map={"TASK": "Task"},
+    )
 
-    mock_client.graphql.side_effect = ProviderError("Failed")
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
+        return _make_issue_core(title=input.title, body=input.body)
 
-    result = await provider.add_to_project(project_id, issue_id)
+    async def fake_project_item(issue_id: str) -> str:
+        raise RuntimeError("boom")
 
-    assert result is None
+    monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
+    monkeypatch.setattr(provider, "_ensure_project_item", fake_project_item)
 
+    with pytest.raises(CreateItemPartialFailureError) as excinfo:
+        await provider.create_item(CreateItemInput(title="T", body="B", item_type=PlanItemType.TASK))
 
-@pytest.mark.asyncio
-async def test_set_project_field_calls_graphql_raw(provider, mock_client):
-    """Test that set_project_field calls graphql_raw with correct -F flags."""
-    project_id = "project_id"
-    item_id = "item_id"
-    field_id = "field_id"
-    value = FieldValue(single_select_option_id="option_id")
-
-    mock_client.graphql_raw.return_value = {
-        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": item_id}}}
-    }
-
-    await provider.set_project_field(project_id, item_id, field_id, value)
-
-    mock_client.graphql_raw.assert_called_once()
-    call_args = mock_client.graphql_raw.call_args[0][0]
-    assert "api" in call_args
-    assert "graphql" in call_args
-    assert "-F" in call_args
-
-
-@pytest.mark.asyncio
-async def test_get_issue_relations_chunks_ids(provider, mock_client):
-    """Test that get_issue_relations batches IDs into groups of 50."""
-    # Create 75 issue IDs
-    issue_ids = [f"issue_{i}" for i in range(75)]
-
-    # Mock responses for 2 batches (50 + 25)
-    mock_client.graphql_raw.side_effect = [
-        {"data": {"nodes": [{"id": f"issue_{i}", "parent": None, "blockedBy": {"nodes": []}} for i in range(50)]}},
-        {"data": {"nodes": [{"id": f"issue_{i}", "parent": None, "blockedBy": {"nodes": []}} for i in range(50, 75)]}},
-    ]
-
-    result = await provider.get_issue_relations(issue_ids)
-
-    assert isinstance(result, RelationMap)
-    assert len(result.parents) == 75
-    assert len(result.blocked_by) == 75
-    # Should have called graphql_raw twice (50 + 25)
-    assert mock_client.graphql_raw.call_count == 2
+    assert excinfo.value.created_item_id == "I1"
+    # Atomic create succeeded (labels + type set), but project item failed
+    assert excinfo.value.completed_steps == ("issue_created", "issue_type_set", "labels_set")
 
 
 @pytest.mark.asyncio
-async def test_get_issue_relations_builds_maps(provider, mock_client):
-    """Test that get_issue_relations correctly builds parent and blocked_by maps."""
-    issue_ids = ["issue1", "issue2", "issue3"]
+async def test_update_item_uses_update_issue(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
 
-    mock_client.graphql_raw.return_value = {
-        "data": {
-            "nodes": [
-                {
-                    "id": "issue1",
-                    "parent": {"id": "parent1"},
-                    "blockedBy": {"nodes": [{"id": "blocker1"}]},
-                },
-                {"id": "issue2", "parent": None, "blockedBy": {"nodes": []}},
-                {
-                    "id": "issue3",
-                    "parent": {"id": "parent2"},
-                    "blockedBy": {"nodes": [{"id": "blocker2"}, {"id": "blocker3"}]},
-                },
-            ]
-        }
-    }
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
 
-    result = await provider.get_issue_relations(issue_ids)
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(
+            id=item_id, number=2, url="u", title=update_input.title or "old", body=update_input.body or "old"
+        )
 
-    assert result.parents["issue1"] == "parent1"
-    assert result.parents["issue2"] is None
-    assert result.parents["issue3"] == "parent2"
-    assert result.blocked_by["issue1"] == {"blocker1"}
-    assert result.blocked_by["issue2"] == set()
-    assert result.blocked_by["issue3"] == {"blocker2", "blocker3"}
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+
+    updated = await provider.update_item("I1", UpdateItemInput(title="new"))
+    assert updated.title == "new"
 
 
 @pytest.mark.asyncio
-async def test_add_sub_issue_calls_graphql(provider, mock_client):
-    """Test that add_sub_issue calls graphql with ADD_SUB_ISSUE."""
-    parent_id = "parent_id"
-    child_id = "child_id"
+async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
 
-    mock_client.graphql.return_value = {"data": {"addSubIssue": {"issue": {"id": parent_id}}}}
+    captured: dict[str, str] = {}
 
-    await provider.add_sub_issue(parent_id, child_id)
+    async def fake_search(query: str) -> list[IssueCore]:
+        captured["query"] = query
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="PLAN_ID:abc")]
 
-    mock_client.graphql.assert_called_once()
-    call_args = mock_client.graphql.call_args
-    assert "ADD_SUB_ISSUE" in call_args[0][0] or "addSubIssue" in call_args[0][0]
-    assert call_args[1]["variables"]["issueId"] == parent_id
-    assert call_args[1]["variables"]["subIssueId"] == child_id
+    monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
+
+    items = await provider.search_items(ItemSearchFilters(labels=["planpilot", "foo"], body_contains="PLAN_ID:abc"))
+
+    assert len(items) == 1
+    assert "label:planpilot" in captured["query"]
+    assert "label:foo" in captured["query"]
+    assert "PLAN_ID:abc in:body" in captured["query"]
 
 
 @pytest.mark.asyncio
-async def test_add_blocked_by_calls_graphql(provider, mock_client):
-    """Test that add_blocked_by calls graphql with ADD_BLOCKED_BY."""
-    issue_id = "issue_id"
-    blocker_id = "blocker_id"
+async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
 
-    mock_client.graphql.return_value = {"data": {"addBlockedBy": {"issue": {"id": issue_id}}}}
+    captured: dict[str, str] = {}
 
-    await provider.add_blocked_by(issue_id, blocker_id)
+    async def fake_search(query: str) -> list[IssueCore]:
+        captured["query"] = query
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="")]
 
-    mock_client.graphql.assert_called_once()
-    call_args = mock_client.graphql.call_args
-    assert "ADD_BLOCKED_BY" in call_args[0][0] or "addBlockedBy" in call_args[0][0]
-    assert call_args[1]["variables"]["issueId"] == issue_id
-    assert call_args[1]["variables"]["blockingIssueId"] == blocker_id
+    monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
+
+    await provider.search_items(ItemSearchFilters(labels=["planpilot"]))
+    assert "label:planpilot" in captured["query"]
+    assert "PLAN_ID:" not in captured["query"]
+    assert "in:body" not in captured["query"]
 
 
-def test_build_issue_map_basic(provider):
-    """Test that build_issue_map extracts entity markers into nested dict."""
-    issues = [
-        ExistingIssue(
-            id="i1",
-            number=1,
-            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
+@pytest.mark.asyncio
+async def test_create_item_raises_original_error_when_issue_not_created(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
+
+    async def fake_create_issue(input: CreateItemInput) -> IssueCore:
+        raise RuntimeError("create boom")
+
+    monkeypatch.setattr(provider, "_create_issue", fake_create_issue)
+
+    with pytest.raises(RuntimeError, match="create boom"):
+        await provider.create_item(CreateItemInput(title="T", body="B", item_type=PlanItemType.TASK))
+
+
+@pytest.mark.asyncio
+async def test_update_item_applies_optional_mutations(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        project_id="P1",
+        create_type_strategy="label",
+    )
+
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
+
+    async def fake_get_labels(item_id: str) -> list[str]:
+        return ["existing"]
+
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(
+            id=item_id, number=2, url="u", title=update_input.title or "old", body=update_input.body or "old"
+        )
+
+    called: list[str] = []
+
+    async def fake_type_label(item_id: str, item_type: PlanItemType) -> None:
+        called.append("type_label")
+
+    async def fake_discovery(item_id: str, labels: list[str]) -> None:
+        called.append("discovery")
+
+    async def fake_project_item(item_id: str) -> str:
+        called.append("project")
+        return "PVTI_1"
+
+    async def fake_project_fields(project_item_id: str, create_input: CreateItemInput) -> None:
+        called.append("fields")
+
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_get_item_labels", fake_get_labels)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+    monkeypatch.setattr(provider, "_ensure_type_label", fake_type_label)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_discovery)
+    monkeypatch.setattr(provider, "_ensure_project_item", fake_project_item)
+    monkeypatch.setattr(provider, "_ensure_project_fields", fake_project_fields)
+
+    updated = await provider.update_item(
+        "I1",
+        UpdateItemInput(
+            title="new",
+            item_type=PlanItemType.TASK,
+            labels=["planpilot"],
+            size="S",
         ),
-        ExistingIssue(
-            id="i2",
-            number=2,
-            body="<!-- PLAN_ID: plan1 -->\n<!-- STORY_ID: S-1 -->",
-        ),
-        ExistingIssue(
-            id="i3",
-            number=3,
-            body="<!-- PLAN_ID: plan1 -->\n<!-- TASK_ID: T-1 -->",
-        ),
-    ]
-    result = provider.build_issue_map(issues, "plan1")
-    assert result["epics"] == {"E-1": {"id": "i1", "number": 1}}
-    assert result["stories"] == {"S-1": {"id": "i2", "number": 2}}
-    assert result["tasks"] == {"T-1": {"id": "i3", "number": 3}}
+    )
 
-
-def test_build_issue_map_filters_by_plan_id(provider):
-    """Test that build_issue_map skips issues with non-matching plan_id."""
-    issues = [
-        ExistingIssue(
-            id="i1",
-            number=1,
-            body="<!-- PLAN_ID: plan1 -->\n<!-- EPIC_ID: E-1 -->",
-        ),
-        ExistingIssue(
-            id="i2",
-            number=2,
-            body="<!-- PLAN_ID: other -->\n<!-- EPIC_ID: E-2 -->",
-        ),
-    ]
-    result = provider.build_issue_map(issues, "plan1")
-    assert "E-1" in result["epics"]
-    assert "E-2" not in result["epics"]
-
-
-def test_resolve_option_id_found(provider):
-    """Test that resolve_option_id returns matching option ID (case-insensitive)."""
-    options = [
-        {"id": "opt1", "name": "High"},
-        {"id": "opt2", "name": "Low"},
-    ]
-    assert provider.resolve_option_id(options, "high") == "opt1"
-    assert provider.resolve_option_id(options, "LOW") == "opt2"
-
-
-def test_resolve_option_id_not_found(provider):
-    """Test that resolve_option_id returns None when no match."""
-    options = [{"id": "opt1", "name": "High"}]
-    assert provider.resolve_option_id(options, "Medium") is None
-
-
-def test_resolve_option_id_none_name(provider):
-    """Test that resolve_option_id returns None when name is None."""
-    options = [{"id": "opt1", "name": "High"}]
-    assert provider.resolve_option_id(options, None) is None
+    assert updated.title == "new"
+    assert called == ["type_label", "discovery", "project", "fields"]
 
 
 @pytest.mark.asyncio
-async def test_get_project_context_returns_none_on_unexpected_error(provider, mock_client):
-    """Test that get_project_context returns None on unexpected (non-Provider) errors."""
-    with patch(
-        "planpilot.providers.github.provider.parse_project_url",
-        return_value=("myorg", 1),
-    ):
-        mock_client.graphql.side_effect = RuntimeError("Unexpected")
-        result = await provider.get_project_context("https://github.com/orgs/myorg/projects/1", FieldConfig())
-        assert result is None
+async def test_update_item_issue_type_strategy_sets_type_atomically(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Issue type is set atomically inside _update_issue; no separate _ensure_issue_type call."""
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={"TASK": "task-id"},
+        project_owner_type="org",
+        create_type_strategy="issue-type",
+    )
+
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
+
+    update_calls: list[tuple[str, UpdateItemInput]] = []
+
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        update_calls.append((item_id, update_input))
+        return _make_issue_core(id=item_id, number=2, url="u", title="new", body="old")
+
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+
+    await provider.update_item("I1", UpdateItemInput(title="new", item_type=PlanItemType.TASK))
+
+    # _update_issue was called; it handles issue_type_id atomically
+    assert len(update_calls) == 1
+    assert update_calls[0][0] == "I1"
+    assert update_calls[0][1].item_type == PlanItemType.TASK
 
 
-@pytest.mark.asyncio
-async def test_set_project_field_iteration_value(provider, mock_client):
-    """Test that set_project_field handles iteration_id values."""
-    mock_client.graphql_raw.return_value = {
-        "data": {"updateProjectV2ItemFieldValue": {"projectV2Item": {"id": "item_id"}}}
-    }
+def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/users/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
 
-    value = FieldValue(iteration_id="iter-123")
-    await provider.set_project_field("project_id", "item_id", "field_id", value)
-
-    mock_client.graphql_raw.assert_called_once()
-    call_args = mock_client.graphql_raw.call_args[0][0]
-    # Verify the iteration value was serialized
-    value_str = " ".join(call_args)
-    assert "iterationId" in value_str
+    strategy, mapping = provider._resolve_create_type_policy("user")
+    assert strategy == "label"
+    assert mapping["EPIC"] == "Epic"
