@@ -9,6 +9,8 @@ A complete redesign focused on SDK-first development with clean layered architec
 1. **[Architecture](./design/architecture.md)** — Layers, dependency rules, UML class diagram, data flow
 2. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
 3. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
+4. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+5. **[Plan Schemas](./schemas.md)** — Plan file shapes and examples
 
 ### Module specs
 

@@ -73,70 +73,66 @@ poetry add planpilot
 
 ## Quickstart
 
-### 1. Dry-run (preview changes)
+### 1. Create `planpilot.json`
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --dry-run
+cat > planpilot.json <<'JSON'
+{
+  "provider": "github",
+  "target": "your-org/your-repo",
+  "board_url": "https://github.com/orgs/your-org/projects/1",
+  "plan_paths": {
+    "epics": ".plans/epics.json",
+    "stories": ".plans/stories.json",
+    "tasks": ".plans/tasks.json"
+  },
+  "sync_path": ".plans/github-sync-map.json"
+}
+JSON
 ```
 
-### 2. Apply changes
+### 2. Dry-run (preview changes)
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --apply
+planpilot sync --config ./planpilot.json --dry-run
 ```
 
-### 3. Multi-epic plans
-
-planpilot supports multi-epic plans natively. Run once with full plan files:
+### 3. Apply changes
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --apply
+planpilot sync --config ./planpilot.json --apply
 ```
 
-## Optional flags
+### 4. Multi-epic plans
+
+planpilot supports multi-epic plans natively. Keep all epics/stories/tasks in the configured plan files and run once:
+
+```bash
+planpilot sync --config ./planpilot.json --apply
+```
+
+## CLI flags
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--label` | `planpilot` | Label applied to created issues |
-| `--status` | `Backlog` | Project status field value |
-| `--priority` | `P1` | Project priority field value |
-| `--iteration` | `active` | Iteration title, `active`, or `none` |
-| `--size-field` | `Size` | Project size field name |
-| `--no-size-from-tshirt` | off | Disable t-shirt size mapping |
+| `--config` | — | Path to `planpilot.json` |
+| `--dry-run` | — | Preview mode (no provider mutations) |
+| `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
 
 Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas
 
-See [docs/modules/plan.md](docs/modules/plan.md) for plan schema and validation details.
+See [docs/schemas.md](docs/schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
 
 A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
 ## Documentation
 
 - [Docs Index](docs/README.md) -- v2 documentation hub
+- [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
+- [Plan Schemas](docs/schemas.md) -- plan JSON shapes and examples
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
 - [Engine](docs/design/engine.md) -- sync pipeline behavior
