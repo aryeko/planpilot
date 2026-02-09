@@ -21,7 +21,7 @@
 
 ```python
 class PlanPilot:
-    def __init__(self, *, provider: Provider, renderer: BodyRenderer,
+    def __init__(self, *, provider: Provider | None, renderer: BodyRenderer,
                  config: PlanPilotConfig) -> None:
         """Initialize with injected dependencies (advanced/testing)."""
 
@@ -29,10 +29,9 @@ class PlanPilot:
     async def from_config(cls, config: PlanPilotConfig, *,
                           renderer_name: str = "markdown") -> "PlanPilot":
         """Create PlanPilot from config.
-        1. Resolve token via create_token_resolver(config)
-        2. Build provider via create_provider(...)
-        3. Build renderer via create_renderer(renderer_name)
-        4. Return PlanPilot(provider, renderer, config)
+        1. Build renderer via create_renderer(renderer_name)
+        2. Defer provider/auth construction to sync() mode branch
+        3. Return PlanPilot(provider=None, renderer, config)
         """
 
     async def sync(self, plan: Plan | None = None, *,
@@ -97,4 +96,4 @@ def load_plan(*, unified: str | Path | None = None,
 
 | Test File | Key Cases |
 |-----------|-----------|
-| `test_sdk.py` | `from_config` wires dependencies, `sync` happy path with FakeProvider, `sync` loads plan from config when not provided, `sync` persists sync map, dry-run persists to .dry-run, error propagation (PlanLoadError, PlanValidationError, ProviderError), provider `__aexit__` called even on error, `load_config` reads JSON + resolves paths, `load_config` invalid JSON -> ConfigError |
+| `test_sdk.py` | `from_config` wires renderer + deferred provider lifecycle, `sync` happy path with FakeProvider, `sync` loads plan from config when not provided, `sync` persists sync map, dry-run persists to .dry-run, error propagation (PlanLoadError, PlanValidationError, ProviderError), provider `__aexit__` called even on error, `load_config` reads JSON + resolves paths, `load_config` invalid JSON -> ConfigError |

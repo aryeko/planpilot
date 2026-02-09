@@ -1,7 +1,8 @@
 # PlanPilot v2 — Implementation Guide
 
-> Single source of truth for agents implementing v2.
+> Execution guide for agents implementing v2.
 > Each file is self-contained — read only the file you need for your current task.
+> If an implementation doc conflicts with `../docs/` design/module specs, treat `../docs/` as source of truth.
 
 **Generated:** 2026-02-09
 
