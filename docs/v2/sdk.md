@@ -24,6 +24,7 @@ The SDK contains no business logic. It is pure orchestration and wiring: load co
 | **Core** | plan | `PlanLoader`, `PlanValidator`, `PlanHasher` |
 | **Core** | providers | `create_provider` (factory) |
 | **Core** | renderers | `create_renderer` (factory) |
+| **Core** | auth | `create_token_resolver` (factory) |
 
 No dependency on CLI.
 
@@ -40,7 +41,9 @@ class PlanPilot:
     persistence.
 
     Usage:
-        provider = create_provider(config.provider, target=config.target)
+        resolver = create_token_resolver(config)
+        token = await resolver.resolve()
+        provider = create_provider(config.provider, target=config.target, token=token)
         renderer = create_renderer("markdown")
         pp = PlanPilot(provider=provider, renderer=renderer, config=config)
         result = await pp.sync()
@@ -125,7 +128,7 @@ result = await pp.sync()  # provider lifecycle managed internally
 
 **Error handling:** If the engine or provider raises during execution, `__aexit__` is still called (via `async with`). The exception propagates to the caller after cleanup.
 
-**Sync map persistence:** After the engine returns `SyncResult`, the SDK writes `result.sync_map.model_dump_json(indent=2)` to `config.sync_path`. This is a no-op in dry-run mode if `config.sync_path` is unset, but in normal operation the sync map is always persisted (even in dry-run mode, so users can inspect it).
+**Sync map persistence:** After the engine returns `SyncResult`, the SDK writes `result.sync_map.model_dump_json(indent=2)` to `config.sync_path`. Persistence is skipped if `config.sync_path` is unset. Otherwise, the sync map is always written — including in dry-run mode, so users can inspect the projected output.
 
 ## Public API Surface
 
@@ -154,9 +157,10 @@ from planpilot.exceptions import (
 # Factory convenience functions (re-exported from Core)
 from planpilot.providers.factory import create_provider
 from planpilot.renderers.factory import create_renderer
+from planpilot.auth.factory import create_token_resolver
 
-# Config loader (SDK function)
-from planpilot.sdk import load_config
+# Config/plan loaders (SDK functions)
+from planpilot.sdk import load_config, load_plan
 ```
 
 ### Convenience Functions
@@ -200,12 +204,21 @@ def load_plan(*paths: str | Path) -> Plan:
 ### Standard config-file flow
 
 ```python
-from planpilot import PlanPilot, PlanItemType, create_provider, create_renderer, load_config
+from planpilot import (
+    PlanPilot, PlanItemType, create_provider, create_renderer,
+    create_token_resolver, load_config,
+)
 
 config = load_config("planpilot.json")
+
+# Resolve auth token (reads config.auth to pick strategy)
+resolver = create_token_resolver(config)
+token = await resolver.resolve()
+
+# Construct provider and renderer
 provider = create_provider(config.provider, target=config.target,
-                           board_url=config.board_url, label=config.label,
-                           field_config=config.field_config)
+                           token=token, board_url=config.board_url,
+                           label=config.label, field_config=config.field_config)
 renderer = create_renderer("markdown")
 
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)
@@ -217,12 +230,18 @@ print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
 ### Pre-loaded plan
 
 ```python
-from planpilot import PlanPilot, create_provider, create_renderer, load_config, load_plan
+from planpilot import (
+    PlanPilot, create_provider, create_renderer,
+    create_token_resolver, load_config, load_plan,
+)
 
 config = load_config("planpilot.json")
 plan = load_plan("epics.json", "stories.json", "tasks.json")
 
-provider = create_provider(config.provider, target=config.target)
+resolver = create_token_resolver(config)
+token = await resolver.resolve()
+
+provider = create_provider(config.provider, target=config.target, token=token)
 renderer = create_renderer("markdown")
 
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)
@@ -232,8 +251,16 @@ result = await pp.sync(plan=plan)
 ### Dry-run mode
 
 ```python
+from planpilot import (
+    PlanPilot, create_provider, create_renderer,
+    create_token_resolver, load_config,
+)
+
 config = load_config("planpilot.json")
-provider = create_provider(config.provider, target=config.target)
+resolver = create_token_resolver(config)
+token = await resolver.resolve()
+
+provider = create_provider(config.provider, target=config.target, token=token)
 renderer = create_renderer("markdown")
 
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)

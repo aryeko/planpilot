@@ -196,7 +196,7 @@ def compute_parent_blocked_by(
 return SyncResult(
     sync_map=sync_map,
     items_created=counters,  # dict[PlanItemType, int]
-    dry_run=config.dry_run,
+    dry_run=self._dry_run,
 )
 ```
 

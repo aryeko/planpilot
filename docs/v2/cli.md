@@ -15,7 +15,7 @@ In v2, the CLI shifts from argument-driven configuration to **config-file-driven
 | Source | Types/Functions Used |
 |--------|---------------------|
 | **SDK public API** | `PlanPilot`, `PlanItemType`, `SyncResult`, `PlanPilotConfig` |
-| **SDK public API** | `load_config`, `create_provider`, `create_renderer` |
+| **SDK public API** | `load_config`, `create_provider`, `create_renderer`, `create_token_resolver` |
 | **SDK public API** | `PlanPilotError` (and subclasses) |
 | **stdlib** | `argparse`, `asyncio`, `sys`, `logging` |
 
@@ -95,10 +95,12 @@ flowchart TB
     Logging -- Yes --> SetDebug["logging.basicConfig(DEBUG)"]
     Logging -- No --> LoadConfig
     SetDebug --> LoadConfig["config = load_config(args.config)"]
-    LoadConfig --> Provider["provider = create_provider(...)"]
+    LoadConfig --> Auth["resolver = create_token_resolver(config)"]
+    Auth --> Token["token = await resolver.resolve()"]
+    Token --> Provider["provider = create_provider(..., token=token)"]
     Provider --> Renderer["renderer = create_renderer('markdown')"]
     Renderer --> SDK["pp = PlanPilot(provider, renderer, config)"]
-    SDK --> Sync["result = await pp.sync()"]
+    SDK --> Sync["result = await pp.sync(dry_run=args.dry_run)"]
     Sync --> Format["print summary"]
     Format --> Exit["exit 0"]
 ```
@@ -114,9 +116,13 @@ async def _run_sync(args: argparse.Namespace) -> None:
     """
     config = load_config(args.config)
 
+    resolver = create_token_resolver(config)
+    token = await resolver.resolve()
+
     provider = create_provider(
         config.provider,
         target=config.target,
+        token=token,
         board_url=config.board_url,
         label=config.label,
         field_config=config.field_config,
@@ -212,7 +218,7 @@ Items are displayed grouped by type (epics, stories, tasks), using the `SyncEntr
 | Column | Source | Description |
 |--------|--------|-------------|
 | Type | `PlanItemType` name | "Epic", "Story", "Task" |
-| ID | `PlanItem.id` | Plan-level item ID |
+| ID | `sync_map.entries` dict key | Plan-level item ID |
 | Key | `SyncEntry.key` | Provider-assigned key (e.g. `#42`) |
 | URL | `SyncEntry.url` | Full URL to the created/existing item |
 
@@ -226,7 +232,7 @@ error: Plan validation failed:
   - Item T3 depends on non-existent item T99
 ```
 
-Exit code `2` for all PlanPilot errors (distinguishable from argparse's exit code `2` for usage errors — but both indicate failure).
+Exit code `2` for all PlanPilot errors (same as argparse's exit code `2` for usage errors — both indicate failure, not distinguishable by code alone).
 
 ## File Structure
 

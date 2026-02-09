@@ -237,6 +237,11 @@ Four peer modules that contain all business logic. Each depends only on Contract
    - `markdown.py` — Markdown renderer (GitHub-flavored)
    - `factory.py` — Renderer registry and factory
 
+5. **`auth/`** — Token resolution strategies
+   - `base.py` — `TokenResolver` ABC
+   - `gh_cli.py`, `env.py`, `static.py` — Concrete resolvers
+   - `factory.py` — `create_token_resolver()` factory
+
 **Rules:**
 - Each module depends only on Contracts
 - No imports between Core modules
@@ -380,6 +385,7 @@ classDiagram
         -Provider provider
         -BodyRenderer renderer
         -PlanPilotConfig config
+        -bool dry_run
         +sync(Plan, str) SyncResult
     }
 
@@ -407,7 +413,7 @@ classDiagram
         -Provider provider
         -BodyRenderer renderer
         -PlanPilotConfig config
-        +sync(plan: Plan | None) SyncResult
+        +sync(plan: Plan | None, *, dry_run: bool) SyncResult
     }
 
     PlanItem --> PlanItemType : has type
@@ -441,14 +447,15 @@ sequenceDiagram
     participant Renderer as BodyRenderer
 
     User->>CLI: planpilot sync --config planpilot.json --apply
+    CLI->>CLI: resolve token via create_token_resolver(config)
     CLI->>SDK: PlanPilot(provider, renderer, config)
-    CLI->>SDK: sync()
+    CLI->>SDK: sync(dry_run=False)
     SDK->>SDK: load_plan(config.plan_paths)
     SDK->>Provider: __aenter__()
     Provider-->>SDK: authenticated provider
 
-    SDK->>Engine: SyncEngine(provider, renderer, config)
     SDK->>SDK: compute_plan_id(plan)
+    SDK->>Engine: SyncEngine(provider, renderer, config, dry_run)
     SDK->>Engine: sync(plan, plan_id)
 
     Engine->>Provider: search_items(filters)
@@ -482,13 +489,20 @@ sequenceDiagram
 ### Programmatic Usage
 
 ```python
-from planpilot import PlanPilot, PlanItemType, create_provider, create_renderer, load_config
+from planpilot import (
+    PlanPilot, PlanItemType, create_provider, create_renderer,
+    create_token_resolver, load_config, load_plan,
+)
 
 # Load config from file
 config = load_config("planpilot.json")
 
+# Resolve auth token (strategy determined by config.auth)
+resolver = create_token_resolver(config)
+token = await resolver.resolve()
+
 # Construct provider and renderer (by name, via factories)
-provider = create_provider(config.provider, target=config.target)
+provider = create_provider(config.provider, target=config.target, token=token)
 renderer = create_renderer("markdown")
 
 # Create SDK instance and sync (loads plan from config.plan_paths)
@@ -585,7 +599,7 @@ PROVIDERS: dict[str, type[Provider]] = {
 3. **Use it:**
 
 ```python
-provider = create_provider("jira", ...)
+provider = create_provider("jira", token=token, ...)
 pp = PlanPilot(provider=provider, ...)
 ```
 
