@@ -15,8 +15,9 @@ A complete redesign focused on SDK-first development with clean layered architec
 | Module | Spec | Purpose |
 |--------|------|---------|
 | Plan | [modules/plan.md](./modules/plan.md) | Loading, validation, hashing |
-| Providers | [modules/providers.md](./modules/providers.md) | Provider ABC, factory, GitHub adapter overview, extension guide |
-| GitHub | [modules/github-provider.md](./modules/github-provider.md) | Auth, codegen setup, operational hardening, operations inventory |
+| Providers | [modules/providers.md](./modules/providers.md) | Provider ABC, factory, extension guide |
+| GitHub | [modules/github-provider.md](./modules/github-provider.md) | Core classes, codegen setup, operational hardening, operations inventory |
+| Auth | [modules/auth.md](./modules/auth.md) | TokenResolver ABC, concrete resolvers, factory |
 | Renderers | [modules/renderers.md](./modules/renderers.md) | Renderer ABC, Markdown implementation |
 | Config | [modules/config.md](./modules/config.md) | Config models, JSON schema, validation rules |
 | SDK | [modules/sdk.md](./modules/sdk.md) | Public API facade, lifecycle, load_config |

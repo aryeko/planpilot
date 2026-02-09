@@ -75,40 +75,11 @@ class GitHubProviderContext(ProviderContext):
     create_type_map: dict[str, str]
 ```
 
-## Authentication (Token Resolution)
+## Authentication
 
-Token resolution is orthogonal to the provider. The provider receives a resolved token.
+Token resolution is handled by the auth module (see [auth.md](auth.md) for `TokenResolver` ABC, concrete resolvers, factory, and auth flow diagram). The provider receives a resolved token string — it does not know which resolver was used.
 
-```mermaid
-sequenceDiagram
-    participant Config as PlanPilotConfig
-    participant Factory as create_token_resolver()
-    participant Resolver as TokenResolver
-    participant Provider as GitHubProvider
-
-    Config->>Factory: config.auth = "gh-cli"
-    Factory->>Resolver: GhCliTokenResolver()
-    Resolver->>Resolver: gh auth token --hostname github.com
-    Resolver-->>Factory: token string
-    Factory-->>Provider: GitHubProvider(token=token, ...)
-    Provider->>Provider: __aenter__() with Bearer token
-```
-
-```
-auth/
-├── base.py            # TokenResolver ABC
-├── gh_cli.py          # Shell out to `gh auth token --hostname <host>` once
-├── env.py             # Read GITHUB_TOKEN env var
-└── static.py          # Direct injection (testing, CI)
-```
-
-| `auth` value | Resolver | Notes |
-|-------------|----------|-------|
-| `"gh-cli"` (default) | `GhCliTokenResolver` | Single subprocess call |
-| `"env"` | `EnvTokenResolver` | Reads `GITHUB_TOKEN` env var |
-| `"token"` | `StaticTokenResolver` | From config `token` field |
-
-### Required Token Permissions
+### Required Token Permissions (GitHub)
 
 | Capability | Required permission |
 |------------|---------------------|
@@ -118,19 +89,6 @@ auth/
 | Discovery + relation queries/mutations | GraphQL access with above permissions |
 
 Provider startup must execute capability probes and return explicit missing-permission errors.
-
-## Token Resolver Factory
-
-```python
-RESOLVERS: dict[str, type[TokenResolver]] = {
-    "gh-cli": GhCliTokenResolver,
-    "env": EnvTokenResolver,
-    "token": StaticTokenResolver,
-}
-
-def create_token_resolver(config: PlanPilotConfig) -> TokenResolver:
-    """Create a token resolver from config.auth setting."""
-```
 
 ## Codegen Setup
 

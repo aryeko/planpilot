@@ -31,6 +31,7 @@ flowchart TB
         PlanCore["plan/<br/>load, validate, hash"]
         Providers["providers/<br/>concrete adapters<br/>+ factory"]
         Renderers["renderers/<br/>concrete renderers<br/>+ factory"]
+        Auth["auth/<br/>token resolution<br/>+ factory"]
     end
 
     subgraph SDK["SDK Layer"]
@@ -46,6 +47,7 @@ flowchart TB
     SDK --> PlanCore
     SDK --> Providers
     SDK --> Renderers
+    SDK --> Auth
     Engine --> ProviderDomain
     Engine --> RendererDomain
     Engine --> PlanDomain
@@ -57,6 +59,7 @@ flowchart TB
     Providers --> ItemDomain
     Renderers --> RendererDomain
     Renderers --> PlanDomain
+    Auth --> ConfigDomain
     RendererDomain --> PlanDomain
     ProviderDomain --> ItemDomain
 ```
@@ -75,7 +78,7 @@ Five peer modules containing all business logic. Each depends only on Contracts,
 | `plan/` | Load, validate, hash plan files | [plan.md](../modules/plan.md) |
 | `providers/` | Concrete provider adapters + factory | [providers.md](../modules/providers.md) |
 | `renderers/` | Concrete renderer implementations + factory | [renderers.md](../modules/renderers.md) |
-| `auth/` | Token resolution strategies + factory | [github-provider.md](../modules/github-provider.md) (Auth section) |
+| `auth/` | Token resolution strategies + factory | [auth.md](../modules/auth.md) |
 
 **Rules:** No imports between Core modules. Engine receives Provider and Renderer via dependency injection. Factories are Core utilities, not SDK concerns.
 
