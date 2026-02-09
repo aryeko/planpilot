@@ -62,7 +62,7 @@ class PlanLoader:
         if not path.is_file():
             raise PlanLoadError(f"plan path is not a file: {path}")
         try:
-            return json.loads(path.read_text())
+            return json.loads(path.read_text(encoding="utf-8"))
         except OSError as exc:
             raise PlanLoadError(f"failed reading plan file: {path}") from exc
         except json.JSONDecodeError as exc:

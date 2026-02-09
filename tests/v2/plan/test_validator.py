@@ -32,7 +32,7 @@ def _item(
 
 
 def test_duplicate_ids_fail_validation() -> None:
-    plan = Plan(items=[_item("DUP", PlanItemType.EPIC), _item("DUP", PlanItemType.STORY, parent_id="E1")])
+    plan = Plan(items=[_item("DUP", PlanItemType.EPIC), _item("DUP", PlanItemType.EPIC)])
 
     with pytest.raises(PlanValidationError):
         PlanValidator().validate(plan)
@@ -90,10 +90,23 @@ def test_missing_required_fields_fail_validation() -> None:
 def test_sub_item_consistency_fails_when_parent_inverse_missing() -> None:
     plan = Plan(
         items=[
-            _item("E1", PlanItemType.EPIC, sub_item_ids=["S1"]),
-            _item("S1", PlanItemType.STORY, parent_id="E2"),
+            _item("E1", PlanItemType.EPIC),
+            _item("S1", PlanItemType.STORY, parent_id="E1"),
         ]
     )
 
     with pytest.raises(PlanValidationError):
         PlanValidator().validate(plan)
+
+
+def test_strict_mode_missing_dependency_reference_fails() -> None:
+    plan = Plan(items=[_item("E1", PlanItemType.EPIC, depends_on=["E404"])])
+
+    with pytest.raises(PlanValidationError):
+        PlanValidator().validate(plan, mode="strict")
+
+
+def test_partial_mode_missing_dependency_reference_is_allowed() -> None:
+    plan = Plan(items=[_item("E1", PlanItemType.EPIC, depends_on=["E404"])])
+
+    PlanValidator().validate(plan, mode="partial")
