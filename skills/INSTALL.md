@@ -38,29 +38,41 @@ Check pip is available:
 python3 -m pip --version
 ```
 
-### 2) Install `planpilot`
+### 2) Install `pipx` (if not already installed)
 
-Important: `python3 -m pip install -g planpilot` is **not valid** (`pip` has no `-g` flag).
-
-Use one of these:
+[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments -- avoids PEP 668 / "externally managed environment" errors on macOS Homebrew and system Python.
 
 ```bash
-# Recommended user install (no sudo)
-python3 -m pip install --user --upgrade planpilot
+pipx --version
 ```
+
+If `pipx` is not found:
 
 ```bash
-# Alternative (inside a virtualenv)
-python3 -m pip install --upgrade planpilot
+# macOS
+brew install pipx
+pipx ensurepath
+
+# Debian / Ubuntu
+sudo apt install -y pipx
+pipx ensurepath
 ```
 
-Verify installation:
+You may need to restart your shell after `ensurepath`.
+
+### 3) Install `planpilot`
 
 ```bash
-planpilot --version || python3 -m planpilot --version
+pipx install planpilot
 ```
 
-### 3) Install the skill into open skill path
+Verify:
+
+```bash
+planpilot --version
+```
+
+### 4) Install the skill into open skill path
 
 Create destination directory:
 
@@ -84,7 +96,7 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadm
 
 If your skill is on a branch, replace `main` with that branch name.
 
-### 4) Verify skill install
+### 5) Verify skill install
 
 ```bash
 ls -la ~/.agents/skills/roadmap-to-github-project
@@ -95,11 +107,11 @@ Expected frontmatter should include:
 
 - `name: roadmap-to-github-project`
 
-### 5) Restart your agent
+### 6) Restart your agent
 
 **Restart your agent** (start a new session) so it discovers the newly installed skill. The skill won't be available until the agent re-scans `~/.agents/skills/`.
 
-### 6) Update / uninstall
+### 7) Update / uninstall
 
 Update (re-copy or re-fetch `SKILL.md`):
 
