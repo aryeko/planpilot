@@ -177,6 +177,13 @@ class SyncEngine:
             if plan_item.id not in item_objects:
                 continue
             if plan_item.parent_id:
+                if plan_item.parent_id == plan_item.id:
+                    self._handle_unresolved_reference(
+                        source_item_id=plan_item.id,
+                        reference_type="parent_id",
+                        reference_id=plan_item.parent_id,
+                    )
+                    continue
                 if plan_item.parent_id in item_objects:
                     parent_pairs.add((plan_item.id, plan_item.parent_id))
                 elif plan_item.parent_id not in plan_ids:

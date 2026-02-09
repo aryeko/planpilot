@@ -456,6 +456,38 @@ async def test_set_relations_strict_raises_for_external_parent_reference(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_set_relations_strict_raises_for_self_parent_reference(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, validation_mode="strict")
+    engine = SyncEngine(provider, renderer, config)
+    existing = await provider.create_item(
+        CreateItemInput(title="Task", body="body", item_type=PlanItemType.TASK, labels=[config.label])
+    )
+    plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
+
+    with pytest.raises(SyncError, match="Unresolved parent_id"):
+        await engine._set_relations(plan, item_objects={"T1": existing})
+
+
+@pytest.mark.asyncio
+async def test_set_relations_partial_warns_for_self_parent_reference(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, validation_mode="partial")
+    engine = SyncEngine(provider, renderer, config)
+    existing = await provider.create_item(
+        CreateItemInput(title="Task", body="body", item_type=PlanItemType.TASK, labels=[config.label])
+    )
+    plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
+
+    with pytest.warns(UserWarning, match="Unresolved parent_id"):
+        await engine._set_relations(plan, item_objects={"T1": existing})
+
+    assert existing.id not in provider.parents
+
+
+@pytest.mark.asyncio
 async def test_set_relations_skips_story_rollup_without_story_parents(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
