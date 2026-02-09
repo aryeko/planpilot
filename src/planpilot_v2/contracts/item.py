@@ -14,33 +14,33 @@ class Item(ABC):
 
     @property
     @abstractmethod
-    def id(self) -> str: ...
+    def id(self) -> str: ...  # pragma: no cover
 
     @property
     @abstractmethod
-    def key(self) -> str: ...
+    def key(self) -> str: ...  # pragma: no cover
 
     @property
     @abstractmethod
-    def url(self) -> str: ...
+    def url(self) -> str: ...  # pragma: no cover
 
     @property
     @abstractmethod
-    def title(self) -> str: ...
+    def title(self) -> str: ...  # pragma: no cover
 
     @property
     @abstractmethod
-    def body(self) -> str: ...
+    def body(self) -> str: ...  # pragma: no cover
 
     @property
     @abstractmethod
-    def item_type(self) -> PlanItemType | None: ...
+    def item_type(self) -> PlanItemType | None: ...  # pragma: no cover
 
     @abstractmethod
-    async def set_parent(self, parent: Item) -> None: ...
+    async def set_parent(self, parent: Item) -> None: ...  # pragma: no cover
 
     @abstractmethod
-    async def add_dependency(self, blocker: Item) -> None: ...
+    async def add_dependency(self, blocker: Item) -> None: ...  # pragma: no cover
 
 
 class CreateItemInput(BaseModel):

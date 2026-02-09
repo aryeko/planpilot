@@ -10,7 +10,7 @@ from planpilot_v2.contracts.item import CreateItemInput, Item, ItemSearchFilters
 
 class Provider(ABC):
     @abstractmethod
-    async def __aenter__(self) -> Provider: ...
+    async def __aenter__(self) -> Provider: ...  # pragma: no cover
 
     @abstractmethod
     async def __aexit__(
@@ -18,19 +18,19 @@ class Provider(ABC):
         exc_type: type[BaseException] | None,
         exc_val: BaseException | None,
         exc_tb: TracebackType | None,
-    ) -> None: ...
+    ) -> None: ...  # pragma: no cover
 
     @abstractmethod
-    async def search_items(self, filters: ItemSearchFilters) -> list[Item]: ...
+    async def search_items(self, filters: ItemSearchFilters) -> list[Item]: ...  # pragma: no cover
 
     @abstractmethod
-    async def create_item(self, input: CreateItemInput) -> Item: ...
+    async def create_item(self, input: CreateItemInput) -> Item: ...  # pragma: no cover
 
     @abstractmethod
-    async def update_item(self, item_id: str, input: UpdateItemInput) -> Item: ...
+    async def update_item(self, item_id: str, input: UpdateItemInput) -> Item: ...  # pragma: no cover
 
     @abstractmethod
-    async def get_item(self, item_id: str) -> Item: ...
+    async def get_item(self, item_id: str) -> Item: ...  # pragma: no cover
 
     @abstractmethod
-    async def delete_item(self, item_id: str) -> None: ...
+    async def delete_item(self, item_id: str) -> None: ...  # pragma: no cover

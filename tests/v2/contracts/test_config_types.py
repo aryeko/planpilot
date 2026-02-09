@@ -65,6 +65,18 @@ def test_planpilot_config_auth_token_combinations() -> None:
         )
 
 
+def test_planpilot_config_rejects_unknown_auth_mode() -> None:
+    with pytest.raises(ValidationError):
+        PlanPilotConfig(
+            provider="github",
+            target="owner/repo",
+            auth="invalid-mode",
+            token=None,
+            board_url="https://github.com/orgs/owner/projects/1",
+            plan_paths=PlanPaths(unified=Path("plan.json")),
+        )
+
+
 def test_planpilot_config_is_frozen() -> None:
     config = PlanPilotConfig(
         provider="github",
