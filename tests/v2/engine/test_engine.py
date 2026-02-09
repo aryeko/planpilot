@@ -1,0 +1,320 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+
+import pytest
+from tests.v2.fakes.provider import FakeProvider
+from tests.v2.fakes.renderer import FakeRenderer
+
+from planpilot_v2.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot_v2.contracts.exceptions import CreateItemPartialFailureError, SyncError
+from planpilot_v2.contracts.item import CreateItemInput, Item
+from planpilot_v2.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot_v2.contracts.sync import SyncMap
+from planpilot_v2.engine.engine import SyncEngine
+from planpilot_v2.engine.utils import compute_parent_blocked_by, parse_metadata_block
+
+
+def make_config(tmp_path: Path, *, max_concurrent: int = 1) -> PlanPilotConfig:
+    return PlanPilotConfig(
+        provider="github",
+        target="owner/repo",
+        board_url="https://github.com/orgs/owner/projects/1",
+        plan_paths=PlanPaths(unified=tmp_path / "plan.json"),
+        max_concurrent=max_concurrent,
+    )
+
+
+def test_parse_metadata_block_parses_valid_block() -> None:
+    body = "\n".join(
+        [
+            "PLANPILOT_META_V1",
+            "PLAN_ID:plan-123",
+            "ITEM_ID:T1",
+            "END_PLANPILOT_META",
+            "",
+            "# title",
+        ]
+    )
+
+    metadata = parse_metadata_block(body)
+
+    assert metadata == {"PLAN_ID": "plan-123", "ITEM_ID": "T1"}
+
+
+def test_parse_metadata_block_returns_empty_when_missing() -> None:
+    assert parse_metadata_block("# no metadata") == {}
+
+
+def test_parse_metadata_block_ignores_invalid_lines_and_empty_keys() -> None:
+    body = "\n".join(
+        [
+            "PLANPILOT_META_V1",
+            "INVALID",
+            ":missing-key",
+            "ITEM_ID:T1",
+            "END_PLANPILOT_META",
+        ]
+    )
+
+    metadata = parse_metadata_block(body)
+
+    assert metadata == {"ITEM_ID": "T1"}
+
+
+@pytest.mark.parametrize(
+    ("parent_type", "items", "expected"),
+    [
+        (
+            PlanItemType.STORY,
+            [
+                PlanItem(id="T1", type=PlanItemType.TASK, title="T1", parent_id="S1", depends_on=["T2"]),
+                PlanItem(id="T2", type=PlanItemType.TASK, title="T2", parent_id="S2"),
+            ],
+            {("S1", "S2")},
+        ),
+        (
+            PlanItemType.EPIC,
+            [
+                PlanItem(id="S1", type=PlanItemType.STORY, title="S1", parent_id="E1", depends_on=["S2"]),
+                PlanItem(id="S2", type=PlanItemType.STORY, title="S2", parent_id="E2"),
+            ],
+            {("E1", "E2")},
+        ),
+    ],
+)
+def test_compute_parent_blocked_by_rolls_up_dependencies(
+    parent_type: PlanItemType,
+    items: list[PlanItem],
+    expected: set[tuple[str, str]],
+) -> None:
+    assert compute_parent_blocked_by(items, parent_type) == expected
+
+
+def test_compute_parent_blocked_by_handles_non_rollup_and_invalid_edges() -> None:
+    items = [
+        PlanItem(id="T1", type=PlanItemType.TASK, title="T1", parent_id="S1", depends_on=["T2", "MISSING"]),
+        PlanItem(id="T2", type=PlanItemType.TASK, title="T2", parent_id="S1"),
+        PlanItem(id="S1", type=PlanItemType.STORY, title="S1", parent_id="E1", depends_on=["UNKNOWN"]),
+    ]
+
+    assert compute_parent_blocked_by(items, PlanItemType.TASK) == set()
+    assert compute_parent_blocked_by(items, PlanItemType.STORY) == set()
+
+
+@pytest.mark.asyncio
+async def test_sync_discovers_existing_and_skips_create(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Existing story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-1",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Existing story",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+
+    result = await SyncEngine(provider, renderer, config).sync(plan, "plan-1")
+
+    assert len(provider.search_calls) == 1
+    assert provider.search_calls[0].labels == [config.label]
+    assert provider.search_calls[0].body_contains == "PLAN_ID:plan-1"
+    assert provider.create_calls[1:] == []
+    assert result.items_created[PlanItemType.STORY] == 0
+    assert result.sync_map.entries["S1"].id == existing.id
+
+
+@pytest.mark.asyncio
+async def test_sync_discovery_ignores_wrong_plan_and_missing_item_id(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Wrong plan",
+            body="\n".join(
+                ["PLANPILOT_META_V1", "PLAN_ID:other-plan", "ITEM_ID:S1", "END_PLANPILOT_META", "", "# Wrong"]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+    await provider.create_item(
+        CreateItemInput(
+            title="Missing item id",
+            body="\n".join(["PLANPILOT_META_V1", "PLAN_ID:plan-1", "END_PLANPILOT_META", "", "# Missing"]),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    result = await SyncEngine(provider, renderer, config).sync(plan, "plan-1")
+
+    assert result.items_created[PlanItemType.STORY] == 1
+
+
+@pytest.mark.asyncio
+async def test_sync_creates_in_type_level_order(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="S1"),
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1"),
+        ]
+    )
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-2")
+
+    assert [call.item_type for call in provider.create_calls] == [
+        PlanItemType.EPIC,
+        PlanItemType.STORY,
+        PlanItemType.TASK,
+    ]
+
+
+@pytest.mark.asyncio
+async def test_sync_enrich_and_relations_use_full_context(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", sub_item_ids=["S1"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1", sub_item_ids=["T1"]),
+            PlanItem(id="S2", type=PlanItemType.STORY, title="Blocked Story", parent_id="E2", sub_item_ids=["T2"]),
+            PlanItem(id="E2", type=PlanItemType.EPIC, title="Other Epic", sub_item_ids=["S2"]),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="S1", depends_on=["T2"]),
+            PlanItem(id="T2", type=PlanItemType.TASK, title="Blocker", parent_id="S2"),
+        ]
+    )
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-3")
+
+    story_entry = next(entry for entry in provider.update_calls if entry[1].title == "Story")
+    body = story_entry[1].body
+    assert body is not None
+    assert "Parent:" in body
+    assert "Sub:" in body
+
+    task_item_id = next(item.id for item in provider.items.values() if item.title == "Task")
+    blocker_item_id = next(item.id for item in provider.items.values() if item.title == "Blocker")
+    assert provider.dependencies[task_item_id] == {blocker_item_id}
+
+    epic_item_id = next(item.id for item in provider.items.values() if item.title == "Epic")
+    other_epic_item_id = next(item.id for item in provider.items.values() if item.title == "Other Epic")
+    assert provider.dependencies[epic_item_id] == {other_epic_item_id}
+
+
+@pytest.mark.asyncio
+async def test_sync_dry_run_skips_provider_calls(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+
+    result = await SyncEngine(provider, renderer, config, dry_run=True).sync(plan, "plan-4")
+
+    assert result.dry_run is True
+    assert provider.search_calls == []
+    assert provider.create_calls == []
+    assert provider.update_calls == []
+    assert result.sync_map.entries["E1"].key == "dry-run"
+    assert result.items_created[PlanItemType.EPIC] == 1
+
+
+class ConcurrencyProvider(FakeProvider):
+    def __init__(self) -> None:
+        super().__init__()
+        self.active_creates = 0
+        self.max_active_creates = 0
+
+    async def create_item(self, input: CreateItemInput) -> Item:
+        self.active_creates += 1
+        self.max_active_creates = max(self.max_active_creates, self.active_creates)
+        try:
+            await asyncio.sleep(0.01)
+            return await super().create_item(input)
+        finally:
+            self.active_creates -= 1
+
+
+@pytest.mark.asyncio
+async def test_sync_respects_semaphore_limit(tmp_path: Path) -> None:
+    provider = ConcurrencyProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, max_concurrent=2)
+    plan = Plan(items=[PlanItem(id=f"E{i}", type=PlanItemType.EPIC, title=f"Epic {i}") for i in range(5)])
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-5")
+
+    assert provider.max_active_creates <= 2
+
+
+@pytest.mark.asyncio
+async def test_sync_relations_skip_unresolved_rollup_edges(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", sub_item_ids=["S1"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1", sub_item_ids=["T1"]),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="S1", depends_on=["T2"]),
+            PlanItem(id="T2", type=PlanItemType.TASK, title="Blocker"),
+        ]
+    )
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-7")
+
+    story_id = next(item.id for item in provider.items.values() if item.title == "Story")
+    assert provider.dependencies.get(story_id) is None
+
+
+@pytest.mark.asyncio
+async def test_sync_enrich_skips_items_without_sync_entries(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+    engine = SyncEngine(provider, renderer, config)
+    sync_map = SyncMap(plan_id="plan-8", target=config.target, board_url=config.board_url)
+
+    await engine._enrich(plan, "plan-8", sync_map, item_objects={})
+
+    assert provider.update_calls == []
+
+
+class PartialFailureProvider(FakeProvider):
+    async def create_item(self, input: CreateItemInput) -> Item:
+        raise CreateItemPartialFailureError("create partially failed", created_item_id="partial-1")
+
+
+@pytest.mark.asyncio
+async def test_sync_wraps_partial_create_failures(tmp_path: Path) -> None:
+    provider = PartialFailureProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+
+    with pytest.raises(SyncError, match="partial"):
+        await SyncEngine(provider, renderer, config).sync(plan, "plan-6")
