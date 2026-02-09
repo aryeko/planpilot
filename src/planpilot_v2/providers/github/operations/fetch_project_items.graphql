@@ -1,0 +1,9 @@
+query FetchProjectItems($projectId: ID!, $cursor: String) {
+  node(id: $projectId) {
+    ... on ProjectV2 {
+      items(first: 100, after: $cursor) {
+        pageInfo { hasNextPage endCursor }
+      }
+    }
+  }
+}

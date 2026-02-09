@@ -1,0 +1,5 @@
+query SearchIssues($query: String!, $cursor: String) {
+  search(type: ISSUE, query: $query, first: 100, after: $cursor) {
+    pageInfo { hasNextPage endCursor }
+  }
+}

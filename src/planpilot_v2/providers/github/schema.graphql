@@ -1,0 +1,14 @@
+# Vendored GraphQL schema is intentionally omitted from tests.
+# Production refresh source: https://github.com/octokit/graphql-schema
+schema {
+  query: Query
+  mutation: Mutation
+}
+
+type Query {
+  _placeholder: String
+}
+
+type Mutation {
+  _placeholder: String
+}
