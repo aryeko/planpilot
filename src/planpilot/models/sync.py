@@ -6,26 +6,39 @@ from pydantic import BaseModel, Field
 
 
 class SyncEntry(BaseModel):
-    """Sync-map entry for a single issue (epic, story, or task)."""
+    """Sync-map entry for a single work item (epic, story, or task).
 
-    issue_number: int
+    Provider-agnostic representation carrying:
+    - id: opaque provider ID (was node_id)
+    - key: human-readable reference (was issue_number)
+    - url: web URL
+    """
+
+    id: str = Field(alias="node_id")
+    """Opaque provider ID. Accepts legacy 'node_id' via alias."""
+    key: str = Field(alias="issue_number")
+    """Human-readable reference. Accepts legacy 'issue_number' via alias."""
     url: str
-    node_id: str
-    project_item_id: str | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class SyncMap(BaseModel):
     """The full sync map written to disk after a sync run.
 
-    Maps plan entity IDs to their corresponding GitHub issue metadata.
+    Provider-agnostic mapping of plan entity IDs to their corresponding work item metadata.
     """
 
     plan_id: str
-    repo: str
-    project_url: str
+    target: str = Field(alias="repo")
+    """Target designation (e.g. 'owner/repo'). Accepts legacy 'repo' via alias."""
+    board_url: str | None = Field(default=None, alias="project_url")
+    """Board URL (optional). Accepts legacy 'project_url' via alias."""
     epics: dict[str, SyncEntry] = Field(default_factory=dict)
     stories: dict[str, SyncEntry] = Field(default_factory=dict)
     tasks: dict[str, SyncEntry] = Field(default_factory=dict)
+
+    model_config = {"populate_by_name": True}
 
 
 class SyncResult(BaseModel):

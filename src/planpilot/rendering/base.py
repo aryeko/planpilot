@@ -72,11 +72,12 @@ class BodyRenderer(Protocol):
         """
         ...
 
-    def render_checklist(self, items: list[tuple[int, str]]) -> str:
-        """Render a checklist of ``(issue_number, title)`` pairs.
+    def render_checklist(self, items: list[tuple[str, str]]) -> str:
+        """Render a checklist of ``(item_key, title)`` pairs.
 
         Args:
-            items: List of ``(number, title)`` tuples.
+            items: List of ``(key, title)`` tuples. key is a string
+                   reference (e.g. ``"#123"`` for GitHub, ``"PROJ-456"`` for Jira).
 
         Returns:
             Rendered checklist string.

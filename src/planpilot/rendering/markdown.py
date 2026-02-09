@@ -92,18 +92,19 @@ class MarkdownRenderer:
             f"## Dependencies\n\n{deps_block}\n"
         )
 
-    def render_checklist(self, items: list[tuple[int, str]]) -> str:
-        """Render a checklist of (issue_number, title) pairs.
+    def render_checklist(self, items: list[tuple[str, str]]) -> str:
+        """Render a checklist of (item_key, title) pairs.
 
         Args:
-            items: List of (number, title) tuples.
+            items: List of (key, title) tuples where key is a string
+                   reference (e.g. "#123" for GitHub, "PROJ-456" for Jira).
 
         Returns:
             Rendered checklist string.
         """
         if not items:
             return "* (none)"
-        return "\n".join(f"* [ ] #{number} {title}" for number, title in items)
+        return "\n".join(f"* [ ] {key} {title}" for key, title in items)
 
     def render_deps_block(self, deps: dict[str, str]) -> str:
         """Render a dependency block from {task_id: issue_ref} mapping.
