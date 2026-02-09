@@ -1,0 +1,5 @@
+query FetchUserProject($owner: String!, $number: Int!) {
+  user(login: $owner) {
+    projectV2(number: $number) { id }
+  }
+}

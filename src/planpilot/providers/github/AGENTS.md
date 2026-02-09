@@ -1,37 +1,30 @@
-# GITHUB PROVIDER GUIDE
+# GITHUB PROVIDER KNOWLEDGE BASE
 
 ## OVERVIEW
-GitHub-specific provider implementation backed by `gh` CLI and GraphQL queries.
-
-## STRUCTURE
-```text
-src/planpilot/providers/github/
-├── client.py     # Async `gh` subprocess wrapper
-├── mapper.py     # Parse/mapping helpers (markers, URLs, options)
-├── provider.py   # Provider ABC implementation
-└── queries.py    # GraphQL query/mutation constants
-```
+GitHub adapter layer: project/repo context resolution, issue CRUD, relations, and generated GraphQL client integration.
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Add/change GraphQL operations | `src/planpilot/providers/github/queries.py` | Keep query constants centralized |
-| Change API call execution | `src/planpilot/providers/github/client.py` | Async subprocess wrapper + error handling |
-| Map API responses | `src/planpilot/providers/github/mapper.py` | Parse markers, options, project URLs |
-| Provider behavior | `src/planpilot/providers/github/provider.py` | Implements `Provider` ABC end-to-end |
+| Main adapter behavior | `src/planpilot/providers/github/provider.py` | `GitHubProvider` context manager + provider contract methods |
+| Item wrapper behavior | `src/planpilot/providers/github/item.py` | `Item` implementation for relations |
+| URL/field mapping | `src/planpilot/providers/github/mapper.py` | project URL parsing + option resolution |
+| Provider context models | `src/planpilot/providers/github/models.py` | resolved field/context state |
+| GraphQL operations source | `src/planpilot/providers/github/operations/` | `.graphql` operation definitions |
+| Generated typed client | `src/planpilot/providers/github/github_gql/` | ariadne-codegen output |
 
 ## CONVENTIONS
-- `provider.py` owns workflow logic; `client.py` owns command execution.
-- Use mapper helpers for parsing/transformations instead of inline duplication.
-- Prefer resilient handling for optional project fields/iteration resolution.
-- Keep issue relation fetches batched (current implementation chunks IDs).
+- Keep `provider.py` as a thin adapter over generated client methods.
+- Add/modify GraphQL queries in `operations/`; regenerate client instead of manual client edits.
+- Preserve idempotent behavior in create/update flows (`_ensure_*` helpers).
+- Keep capability gates explicit (`supports_sub_issues`, `supports_blocked_by`, etc.).
 
 ## ANTI-PATTERNS
-- Do not hardcode repository/project IDs in code paths.
-- Do not let raw `gh` failures leak; wrap/translate to `ProviderError`/domain errors.
-- Do not spread GraphQL query strings across files; keep them in `queries.py`.
-- Do not make network calls in tests for this module; mock `GhClient`.
+- Do not hand-edit files under `src/planpilot/providers/github/github_gql/` as primary change path.
+- Do not add raw GraphQL string literals directly in `provider.py`.
+- Do not leak GitHub-specific exceptions outside provider boundary without mapping.
+- Do not skip context resolution in `__aenter__`; provider methods rely on populated `self.context`.
 
 ## NOTES
-- Project item lookups and issue relation queries are pagination/batch sensitive.
-- Label creation fallback exists in `provider.py`; keep it idempotent and failure-tolerant.
+- `gen-client` task regenerates `github_gql` and applies Ruff fix/format.
+- Mypy excludes generated client; keep strict typing in non-generated provider code.

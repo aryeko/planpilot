@@ -1,7 +1,7 @@
-"""Plan loading, validation, and hashing."""
+"""Plan module entrypoints."""
 
-from planpilot.plan.hasher import compute_plan_id
-from planpilot.plan.loader import load_plan
-from planpilot.plan.validator import validate_plan
+from planpilot.plan.hasher import PlanHasher
+from planpilot.plan.loader import PlanLoader
+from planpilot.plan.validator import PlanValidator
 
-__all__ = ["compute_plan_id", "load_plan", "validate_plan"]
+__all__ = ["PlanHasher", "PlanLoader", "PlanValidator"]

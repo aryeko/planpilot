@@ -1,38 +1,40 @@
-# RUNTIME PACKAGE GUIDE
+# RUNTIME KNOWLEDGE BASE
 
 ## OVERVIEW
-Core runtime package for CLI sync orchestration, plan modeling, rendering, and provider integration.
+Runtime package for SDK composition, sync orchestration, contracts, plan loading/validation, and provider/rendering adapters.
 
 ## STRUCTURE
 ```text
 src/planpilot/
-├── cli.py                  # argparse wiring + top-level execution
-├── sync/                   # pipeline coordinator + relation logic
-├── providers/              # provider abstraction and implementations
-├── plan/                   # load/validate/hash plan JSON
-├── models/                 # typed domain models (Plan/Project/Sync)
-├── rendering/              # issue-body rendering protocol + markdown impl
-├── config.py               # SyncConfig
-└── exceptions.py           # exception hierarchy
+|- cli.py                    # CLI entry and output formatting
+|- sdk.py                    # Public facade and runtime composition
+|- engine/                   # 5-phase orchestration pipeline
+|- contracts/                # Provider-agnostic models + ABCs + errors
+|- providers/                # Provider factory and implementations
+|- plan/                     # Plan loader/validator/hasher
+|- renderers/                # Body rendering implementations
+`- auth/                     # Token resolver strategy + factory
 ```
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Add/change CLI flags | `src/planpilot/cli.py` | Keep dry-run/apply mutually exclusive |
-| Change orchestration order | `src/planpilot/sync/engine.py` | Preserve 5-phase flow |
-| Add provider capabilities | `src/planpilot/providers/base.py` | Extend ABC first, then implementation |
-| Parse/load plan files | `src/planpilot/plan/loader.py` | Raises `PlanLoadError` on input failures |
-| Enforce plan relations | `src/planpilot/plan/validator.py` | Aggregates validation errors |
-| Update markdown body layout | `src/planpilot/rendering/markdown.py` | Reuse helpers in `components.py` |
+| Compose runtime from config | `src/planpilot/sdk.py` | `load_config()`, `PlanPilot.from_config()`, `sync()` |
+| CLI behavior and exits | `src/planpilot/cli.py` | `build_parser()`, `_format_summary()`, `main()` |
+| Sync ordering/concurrency | `src/planpilot/engine/engine.py` | discovery -> upsert -> enrich -> relations |
+| Provider contract | `src/planpilot/contracts/provider.py` | Single boundary engine depends on |
+| Domain schemas | `src/planpilot/contracts/plan.py`, `src/planpilot/contracts/sync.py` | Typed plan/sync payloads |
+| Plan semantics | `src/planpilot/plan/validator.py` | strict vs partial behaviors |
+| Renderer metadata | `src/planpilot/renderers/markdown.py` | idempotency markers in issue body |
 
 ## CONVENTIONS
-- Keep async boundaries in provider/client layers; domain/model code remains simple and typed.
-- Prefer raising project-specific exceptions from `exceptions.py` over raw exceptions.
-- Maintain idempotency markers in rendered issue bodies (`plan_id`, entity IDs).
-- Avoid coupling `sync/engine.py` to GitHub implementation details.
+- Keep engine orchestration-only; no provider-specific API calls outside `providers/`.
+- Keep SDK as composition root; avoid wiring providers/renderers directly in unrelated modules.
+- Preserve strict typing (`disallow_untyped_defs = true`) for runtime code.
+- Keep provider-facing data in contracts; provider internals stay provider-local.
 
 ## ANTI-PATTERNS
-- Do not bypass `Provider`/`BodyRenderer` abstractions in orchestration code.
-- Do not add untyped runtime functions; mypy strictness is enforced.
-- Do not introduce destructive sync semantics (auto-close/delete) in v1 behavior.
+- Do not import GitHub-specific modules into `engine/` or `contracts/`.
+- Do not bypass `PlanValidator` before sync execution.
+- Do not write side effects in dry-run code paths.
+- Do not duplicate orchestration logic outside `SyncEngine`.

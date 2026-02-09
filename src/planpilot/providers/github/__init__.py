@@ -1,4 +1,4 @@
-"""GitHub provider adapter using the ``gh`` CLI."""
+"""GitHub provider implementation."""
 
 from planpilot.providers.github.provider import GitHubProvider
 

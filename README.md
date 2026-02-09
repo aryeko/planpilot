@@ -38,20 +38,20 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 
 ```text
 src/planpilot/
-├── models/          # Pydantic domain models (Plan, Epic, Story, Task, …)
+├── contracts/       # Core types, ABCs, and exception hierarchy
 ├── plan/            # Plan loading, validation, and hashing
-├── providers/       # Provider adapter pattern (ABC + implementations)
-│   └── github/      # GitHub adapter (gh CLI)
-├── rendering/       # Issue body rendering (Protocol + Markdown impl)
-├── sync/            # Sync engine orchestrator + relation logic
-├── config.py        # SyncConfig (pydantic)
-├── exceptions.py    # Custom exception hierarchy
+├── auth/            # Token resolver strategy + factory
+├── renderers/       # Body rendering implementations
+├── engine/          # 5-phase sync orchestration
+├── providers/       # Provider adapter layer
+│   └── github/      # GitHub GraphQL adapter + generated client
+├── sdk.py           # Composition root and config loading
 └── cli.py           # CLI entry point
 ```
 
-The sync engine depends only on abstract interfaces (`Provider` ABC and `BodyRenderer` Protocol), making it easy to add new providers (Jira, Linear) without touching the core sync logic.
+Core modules depend on contracts, and the SDK composes the runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
 
-See [docs/architecture.md](docs/architecture.md) for the full architecture guide.
+See [docs/design/architecture.md](docs/design/architecture.md) for the full architecture guide.
 
 ## Requirements
 
@@ -71,75 +71,131 @@ Or with Poetry:
 poetry add planpilot
 ```
 
+Verify Python and pip:
+
+```bash
+python3 --version
+python3 -m pip --version
+```
+
+Note: `python3 -m pip install -g planpilot` is invalid (`pip` has no `-g` flag). Use `pip install` with `--user`, a virtualenv, or your system package policy.
+
+## Install Agent Skill
+
+### Agent Self-Install
+
+Tell your agent:
+
+```
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/refs/heads/main/skills/INSTALL.agent.md
+```
+
+The agent will install both `planpilot` and the skill automatically.
+
+### Manual Install
+
+Install the skill to the open discovery path used by agent platforms that support filesystem skills:
+
+```bash
+mkdir -p ~/.agents/skills/roadmap-to-github-project
+
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+  -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
+```
+
+Or from a local checkout:
+
+```bash
+cp skills/roadmap-to-github-project/SKILL.md \
+  ~/.agents/skills/roadmap-to-github-project/SKILL.md
+```
+
+Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)
+
 ## Quickstart
 
-### 1. Dry-run (preview changes)
+### 1. Generate `planpilot.json`
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --dry-run
+planpilot init
 ```
 
-### 2. Apply changes
+The interactive wizard auto-detects your git remote and guides you through provider, target repo, board URL, plan layout, and auth. Or create the config manually:
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --apply
+cat > planpilot.json <<'JSON'
+{
+  "provider": "github",
+  "target": "your-org/your-repo",
+  "board_url": "https://github.com/orgs/your-org/projects/1",
+  "plan_paths": {
+    "epics": ".plans/epics.json",
+    "stories": ".plans/stories.json",
+    "tasks": ".plans/tasks.json"
+  },
+  "sync_path": ".plans/github-sync-map.json"
+}
+JSON
 ```
 
-### 3. Multi-epic plans
-
-planpilot supports multi-epic plans natively. Run once with full plan files:
+### 2. Dry-run (preview changes)
 
 ```bash
-planpilot \
-  --repo your-org/your-repo \
-  --project-url https://github.com/orgs/your-org/projects/1 \
-  --epics-path .plans/epics.json \
-  --stories-path .plans/stories.json \
-  --tasks-path .plans/tasks.json \
-  --sync-path .plans/github-sync-map.json \
-  --apply
+planpilot sync --config ./planpilot.json --dry-run
 ```
 
-## Optional flags
+### 3. Apply changes
+
+```bash
+planpilot sync --config ./planpilot.json --apply
+```
+
+### 4. Multi-epic plans
+
+planpilot supports multi-epic plans natively. Keep all epics/stories/tasks in the configured plan files and run once:
+
+```bash
+planpilot sync --config ./planpilot.json --apply
+```
+
+## CLI commands
+
+### `planpilot init`
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--label` | `planpilot` | Label applied to created issues |
-| `--status` | `Backlog` | Project status field value |
-| `--priority` | `P1` | Project priority field value |
-| `--iteration` | `active` | Iteration title, `active`, or `none` |
-| `--size-field` | `Size` | Project size field name |
-| `--no-size-from-tshirt` | off | Disable t-shirt size mapping |
+| `--output`, `-o` | `planpilot.json` | Output file path |
+| `--defaults` | off | Generate config with auto-detected defaults (no prompts) |
+
+### `planpilot sync`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | — | Path to `planpilot.json` |
+| `--dry-run` | — | Preview mode (no provider mutations) |
+| `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
 
-Full CLI reference: [docs/cli-reference.md](docs/cli-reference.md)
+Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas
 
-See [docs/schemas.md](docs/schemas.md) for the expected structure of `epics.json`, `stories.json`, and `tasks.json`, with full examples.
+See [docs/schemas.md](docs/schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
 
 A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
 ## Documentation
 
-- [How It Works](docs/how-it-works.md) -- sync pipeline, idempotency, what gets created
-- [CLI Reference](docs/cli-reference.md) -- all flags and commands
-- [Plan Schemas](docs/schemas.md) -- JSON format with examples and validation rules
-- [Architecture](docs/architecture.md) -- module map, data flow, provider pattern, extension guide
+- [Docs Index](docs/README.md) -- v2 documentation hub
+- [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
+- [E2E Testing](docs/e2e-testing.md) -- offline end-to-end test design, coverage, and usage
+- [Plan Schemas](docs/schemas.md) -- plan JSON shapes and examples
+- [Architecture](docs/design/architecture.md) -- layer rules and data flow
+- [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
+- [Engine](docs/design/engine.md) -- sync pipeline behavior
+- [CLI](docs/modules/cli.md) -- command structure, output, and exit codes
+- [SDK](docs/modules/sdk.md) -- public API and composition root
+- [Providers](docs/modules/providers.md) -- provider model and extension guide
 - [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
 
 ## Support
@@ -159,7 +215,9 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 poe lint           # ruff check
 poe format         # ruff format
 poe test           # pytest -v
+poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
+poe coverage-e2e   # E2E-only coverage XML
 poe typecheck      # mypy
 poe check          # lint + format-check + tests (all-in-one)
 ```

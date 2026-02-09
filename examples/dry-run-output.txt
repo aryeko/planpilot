@@ -1,20 +1,19 @@
 
-planpilot — sync complete (dry-run)
+planpilot - sync complete (dry-run)
 
-  Plan ID:   ebcbac1f2062
-  Repo:      example-org/example-repo
-  Project:   https://github.com/orgs/example-org/projects/1
+  Plan ID:   3832d3ffce22
+  Target:    example-org/example-repo
+  Board:     https://github.com/orgs/example-org/projects/1
 
   Created:   1 epic(s), 2 story(s), 3 task(s)
 
-  Epic   E-1     #0      dry-run
-  Story  S-1     #0      dry-run
-  Story  S-2     #0      dry-run
-  Task   T-1     #0      dry-run
-  Task   T-2     #0      dry-run
-  Task   T-3     #0      dry-run
+  Epic   E-1     dry-run  dry-run
+  Story  S-1     dry-run  dry-run
+  Story  S-2     dry-run  dry-run
+  Task   T-1     dry-run  dry-run
+  Task   T-2     dry-run  dry-run
+  Task   T-3     dry-run  dry-run
 
-  Sync map:  examples/sync-map-sample.json
+  Sync map:  examples/sync-map-sample.json.dry-run
 
-  [dry-run] No changes were made to GitHub
-
+  [dry-run] No changes were made

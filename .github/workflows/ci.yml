@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main, v2]
+    branches: [main]
 
 jobs:
   commitlint:
@@ -30,6 +30,8 @@ jobs:
         run: poetry run ruff check .
       - name: Ruff format check
         run: poetry run ruff format --check .
+      - name: Type check
+        run: poetry run poe typecheck
 
   test:
     runs-on: ubuntu-latest
@@ -45,8 +47,8 @@ jobs:
           cache: "poetry"
       - name: Install dependencies
         run: poetry install --no-interaction
-      - name: Run tests
-        run: poetry run pytest -v
+      - name: Run tests (excluding E2E)
+        run: poetry run poe test
       - name: Upload coverage
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
@@ -56,3 +58,17 @@ jobs:
           fail_ci_if_error: false
       - name: Verify CLI
         run: poetry run planpilot --help
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: pipx install poetry
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Run E2E tests
+        run: poetry run poe test-e2e

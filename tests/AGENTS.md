@@ -1,34 +1,37 @@
-# TEST SUITE GUIDE
+# TEST SUITE KNOWLEDGE BASE
 
 ## OVERVIEW
-Pytest suite mirroring `src/planpilot` domains with heavy use of fixtures and provider mocking.
+Offline-first test suite mirroring runtime domains (`auth`, `contracts`, `engine`, `plan`, `providers`, `renderers`) plus CLI-focused E2E tests.
 
 ## STRUCTURE
 ```text
 tests/
-├── models/                 # model-level validation behavior
-├── plan/                   # loader/validator/hash tests
-├── providers/github/       # gh client/provider/mapper behavior via mocks
-├── rendering/              # markdown + component formatting
-├── sync/                   # orchestration and relation logic
-├── conftest.py             # shared fixtures
-└── test_cli.py             # CLI integration-level behavior
+|- auth/                   # Token resolver and auth factory behavior
+|- contracts/              # Core type/model validation and errors
+|- engine/                 # Sync orchestration behavior and edge cases
+|- plan/                   # Loader/validator/hasher behavior
+|- providers/github/       # GitHub adapter behavior with fakes/mocks
+|- renderers/              # Markdown rendering output contracts
+|- e2e/                    # Offline CLI flow tests
+`- fakes/                  # In-memory provider/renderer test doubles
 ```
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Add fixture shared by domains | `tests/conftest.py` | Prefer reusable fixture over local duplication |
-| Validate sync orchestration | `tests/sync/test_engine.py` | Covers dry-run/apply and failure cases |
-| Validate provider GitHub calls | `tests/providers/github/` | Mocks subprocess/GraphQL interactions |
-| Validate CLI semantics | `tests/test_cli.py` | Arg parsing, exit codes, run behavior |
+| End-to-end CLI behavior | `tests/e2e/test_cli_e2e.py` | Calls real CLI entrypoint without live network |
+| Engine correctness | `tests/engine/test_engine.py` | discovery/upsert/enrich/relations coverage |
+| SDK lifecycle/errors | `tests/test_sdk.py` | provider enter/exit and failure paths |
+| GitHub adapter behavior | `tests/providers/github/test_provider.py` | provider CRUD/context behaviors |
+| Shared fixtures | `tests/conftest.py` | sample plan/config fixtures |
 
 ## CONVENTIONS
-- Mirror new source modules with matching test path under `tests/`.
-- Use `pytest.mark.asyncio` for async entry points and provider/client tests.
-- Keep tests offline: mock provider/client; no real GitHub auth/API traffic.
+- Keep tests offline; use mocks/fakes instead of live GitHub API calls.
+- Mirror runtime module layout to keep ownership clear.
+- Prefer behavior assertions over internal implementation details.
+- Keep E2E deterministic by invoking `planpilot.cli.main()` directly.
 
 ## ANTI-PATTERNS
-- Do not add tests that require live `gh` authentication or network access.
-- Do not collapse domain tests into monolithic files; preserve mirrored layout.
-- Do not weaken assertions to snapshot broad outputs when specific behavior is testable.
+- Do not introduce real network/token dependencies in test paths.
+- Do not couple tests to generated GraphQL client internals.
+- Do not make E2E tests shell-dependent when direct Python entrypoints are available.

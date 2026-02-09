@@ -1,0 +1,9 @@
+query FetchRelations($ids: [ID!]!) {
+  nodes(ids: $ids) {
+    ... on Issue {
+      id
+      parent { id }
+      blockedBy(first: 100) { nodes { id } }
+    }
+  }
+}

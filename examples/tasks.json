@@ -1,10 +1,11 @@
 [
   {
     "id": "T-1",
-    "story_id": "S-1",
+    "parent_id": "S-1",
     "title": "Add user model and migration",
     "motivation": "Need a users table to store registration data.",
-    "spec_ref": { "path": "docs/spec.md", "section": "Data Model" },
+    "goal": "Create user data model with secure password storage.",
+    "spec_ref": { "url": "docs/spec.md#data-model", "section": "Data Model" },
     "requirements": [
       "Create User model with email, hashed_password, created_at",
       "Add database migration"
@@ -18,16 +19,16 @@
       "ci_checks": ["test"],
       "evidence": ["Migration file exists in alembic/versions/"]
     },
-    "artifacts": ["src/models/user.py", "alembic/versions/001_add_users.py"],
     "depends_on": [],
     "estimate": { "tshirt": "S" }
   },
   {
     "id": "T-2",
-    "story_id": "S-1",
+    "parent_id": "S-1",
     "title": "Implement registration endpoint",
     "motivation": "Users need an API to create accounts.",
-    "spec_ref": { "path": "docs/spec.md", "section": "Registration API" },
+    "goal": "Build registration API with input validation.",
+    "spec_ref": { "url": "docs/spec.md#registration-api", "section": "Registration API" },
     "requirements": [
       "POST /api/register accepts email and password",
       "Returns 201 on success, 422 on validation error, 409 on duplicate"
@@ -43,16 +44,16 @@
       "evidence": ["API endpoint responds correctly"],
       "manual_steps": ["Call POST /api/register via curl and verify response"]
     },
-    "artifacts": ["src/routes/register.py", "tests/test_register.py"],
     "depends_on": ["T-1"],
     "estimate": { "tshirt": "M" }
   },
   {
     "id": "T-3",
-    "story_id": "S-2",
+    "parent_id": "S-2",
     "title": "Implement login endpoint with token generation",
     "motivation": "Users need to authenticate and receive session tokens.",
-    "spec_ref": { "path": "docs/spec.md", "section": "Login API" },
+    "goal": "Build login API that issues JWT tokens.",
+    "spec_ref": { "url": "docs/spec.md#login-api", "section": "Login API" },
     "requirements": [
       "POST /api/login accepts email and password",
       "Returns JWT token on valid credentials",
@@ -68,7 +69,6 @@
       "ci_checks": ["test"],
       "evidence": ["JWT token decodes correctly with expected claims"]
     },
-    "artifacts": ["src/routes/login.py", "src/auth/tokens.py", "tests/test_login.py"],
     "depends_on": ["T-1"],
     "estimate": { "tshirt": "M" }
   }

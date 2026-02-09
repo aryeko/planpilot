@@ -1,0 +1,11 @@
+{
+  "provider": "github",
+  "target": "example-org/example-repo",
+  "board_url": "https://github.com/orgs/example-org/projects/1",
+  "plan_paths": {
+    "epics": "epics.json",
+    "stories": "stories.json",
+    "tasks": "tasks.json"
+  },
+  "sync_path": "sync-map-sample.json"
+}

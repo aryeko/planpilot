@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "id": "S1",
+      "type": "STORY",
+      "title": "Invalid story",
+      "goal": "Reference missing epic",
+      "parent_id": "E404",
+      "requirements": ["R1"],
+      "acceptance_criteria": ["AC1"]
+    }
+  ]
+}

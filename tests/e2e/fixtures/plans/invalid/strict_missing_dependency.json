@@ -1,0 +1,13 @@
+{
+  "items": [
+    {
+      "id": "T1",
+      "type": "TASK",
+      "title": "Invalid task",
+      "goal": "Reference missing dependency",
+      "requirements": ["R1"],
+      "acceptance_criteria": ["AC1"],
+      "depends_on": ["T404"]
+    }
+  ]
+}
