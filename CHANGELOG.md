@@ -2,6 +2,23 @@
 
 <!-- version list -->
 
+## v2.0.1 (2026-02-09)
+
+### Bug Fixes
+
+- Resolve TaskGroup crashes in sync relations ([#71](https://github.com/aryeko/planpilot/pull/71),
+  [`750f3a7`](https://github.com/aryeko/planpilot/commit/750f3a716a0038835dfd8331a64c790f61967513))
+
+### Documentation
+
+- Fix step reference in agent install instructions
+  ([#70](https://github.com/aryeko/planpilot/pull/70),
+  [`3083ce7`](https://github.com/aryeko/planpilot/commit/3083ce78b7f297af8f2a817c895e85e7cd7e8755))
+
+- Recommend pipx for install (fixes PEP 668) ([#70](https://github.com/aryeko/planpilot/pull/70),
+  [`3083ce7`](https://github.com/aryeko/planpilot/commit/3083ce78b7f297af8f2a817c895e85e7cd7e8755))
+
+
 ## v2.0.0 (2026-02-09)
 
 ### Bug Fixes
