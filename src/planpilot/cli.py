@@ -12,16 +12,19 @@ from planpilot.config import SyncConfig
 from planpilot.exceptions import PlanPilotError
 from planpilot.models.project import FieldConfig
 from planpilot.models.sync import SyncResult
-from planpilot.providers.github.client import GhClient
-from planpilot.providers.github.provider import GitHubProvider
+from planpilot.providers.factory import create_provider
 from planpilot.rendering.markdown import MarkdownRenderer
 from planpilot.sync.engine import SyncEngine
+
+# Import GitHub provider to trigger registration
+import planpilot.providers.github  # noqa: F401
 
 
 def _add_sync_args(parser: argparse.ArgumentParser) -> None:
     """Attach shared sync arguments to a parser."""
-    parser.add_argument("--repo", required=True, help="GitHub repo (OWNER/REPO)")
-    parser.add_argument("--project-url", required=True, help="GitHub Project URL")
+    parser.add_argument("--provider", default="github", help="Provider name (default: github)")
+    parser.add_argument("--target", required=True, help="Target designation (e.g. OWNER/REPO for GitHub)")
+    parser.add_argument("--board-url", required=False, help="Board URL (optional)")
     parser.add_argument("--epics-path", required=True, help="Path to epics.json")
     parser.add_argument("--stories-path", required=True, help="Path to stories.json")
     parser.add_argument("--tasks-path", required=True, help="Path to tasks.json")
@@ -87,8 +90,9 @@ def _build_config(args: argparse.Namespace) -> SyncConfig:
         Configured SyncConfig.
     """
     return SyncConfig(
-        repo=args.repo,
-        project_url=args.project_url,
+        provider=args.provider,
+        target=args.target,
+        board_url=args.board_url,
         epics_path=args.epics_path,
         stories_path=args.stories_path,
         tasks_path=args.tasks_path,
@@ -123,8 +127,8 @@ def _format_summary(result: SyncResult, config: SyncConfig) -> str:
         f"planpilot - sync complete ({mode})",
         "",
         f"  Plan ID:   {sm.plan_id}",
-        f"  Repo:      {sm.repo}",
-        f"  Project:   {sm.project_url}",
+        f"  Target:    {sm.target}",
+        f"  Board:     {sm.board_url or '(none)'}",
         "",
     ]
 
@@ -145,20 +149,20 @@ def _format_summary(result: SyncResult, config: SyncConfig) -> str:
         )
     lines.append("")
 
-    # Issue table
+    # Item table
     for eid, entry in sm.epics.items():
-        lines.append(f"  Epic   {eid:<6}  #{entry.issue_number:<5}  {entry.url}")
+        lines.append(f"  Epic   {eid:<6}  {entry.key:<5}  {entry.url}")
     for sid, entry in sm.stories.items():
-        lines.append(f"  Story  {sid:<6}  #{entry.issue_number:<5}  {entry.url}")
+        lines.append(f"  Story  {sid:<6}  {entry.key:<5}  {entry.url}")
     for tid, entry in sm.tasks.items():
-        lines.append(f"  Task   {tid:<6}  #{entry.issue_number:<5}  {entry.url}")
+        lines.append(f"  Task   {tid:<6}  {entry.key:<5}  {entry.url}")
 
     lines.append("")
     lines.append(f"  Sync map:  {config.sync_path}")
 
     if result.dry_run:
         lines.append("")
-        lines.append("  [dry-run] No changes were made to GitHub")
+        lines.append("  [dry-run] No changes were made")
 
     lines.append("")
     return "\n".join(lines)
@@ -170,7 +174,13 @@ async def _run_sync(config: SyncConfig) -> None:
     Args:
         config: Sync configuration.
     """
-    provider = GitHubProvider(GhClient())
+    provider = create_provider(
+        config.provider,
+        target=config.target,
+        board_url=config.board_url,
+        label=config.label,
+        field_config=config.field_config,
+    )
     renderer = MarkdownRenderer()
     engine = SyncEngine(provider=provider, renderer=renderer, config=config)
     result = await engine.sync()

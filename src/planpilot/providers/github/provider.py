@@ -1,30 +1,22 @@
-"""GitHub provider implementation for planpilot."""
+"""GitHub provider implementation for planpilot (refactored for new Provider ABC).
+
+Implements the thin CRUD layer Provider ABC using gh CLI and GraphQL.
+"""
 
 from __future__ import annotations
 
 import json
 import logging
 from datetime import UTC, datetime, timedelta
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from planpilot.exceptions import ProjectURLError, ProviderError
-from planpilot.models.project import (
-    CreateIssueInput,
-    ExistingIssue,
-    FieldConfig,
-    FieldValue,
-    IssueRef,
-    ProjectContext,
-    RelationMap,
-    RepoContext,
-    ResolvedField,
-)
+from planpilot.models.item import CreateItemInput, ItemFields, ItemType, TargetContext, UpdateItemInput
+from planpilot.models.project import FieldConfig, FieldValue, ResolvedField
 from planpilot.providers.base import Provider
 from planpilot.providers.github.client import GhClient
+from planpilot.providers.github.item import GitHubItem
 from planpilot.providers.github.mapper import (
-    build_blocked_by_map,
-    build_parent_map,
-    build_project_item_map,
     parse_markers,
     parse_project_url,
     resolve_option_id,
@@ -43,49 +35,76 @@ from planpilot.providers.github.queries import (
     UPDATE_PROJECT_FIELD,
 )
 
+if TYPE_CHECKING:
+    from planpilot.providers.item import Item
+
 logger = logging.getLogger(__name__)
 
 
-class GitHubProvider(Provider):
-    """GitHub provider implementation using the gh CLI."""
+class GitHubTargetContext(TargetContext):
+    """GitHub-specific target context (opaque to the engine)."""
 
-    def __init__(self, client: GhClient) -> None:
+    repo: str
+    board_url: str | None
+    repo_id: str | None
+    repo_label_id: str | None
+    issue_type_ids: dict[str, str]
+    project_id: str | None
+    status_field: ResolvedField | None
+    priority_field: ResolvedField | None
+    iteration_field: ResolvedField | None
+    size_field_id: str | None
+    size_options: list[dict[str, str]]
+
+
+class GitHubProvider(Provider):
+    """GitHub provider implementing the Provider ABC using gh CLI and GraphQL."""
+
+    def __init__(
+        self,
+        *,
+        target: str,
+        board_url: str | None = None,
+        label: str | None = None,
+        field_config: FieldConfig | None = None,
+        client: GhClient | None = None,
+    ) -> None:
         """Initialize the GitHub provider.
 
         Args:
-            client: The GitHub client to use for API calls.
+            target: Repository in "owner/repo" format.
+            board_url: GitHub Projects v2 board URL (optional).
+            label: Label to apply to created items.
+            field_config: Project field configuration.
+            client: GitHub client (optional; created if not provided).
         """
-        self.client = client
+        self.target = target
+        self.board_url = board_url
+        self.label = label or "planpilot"
+        self.field_config = field_config or FieldConfig()
+        self.client = client or GhClient()
+        self._ctx: GitHubTargetContext | None = None
 
-    async def check_auth(self) -> None:
-        """Verify the current session is authenticated.
+    # ---- Context manager lifecycle ----
 
-        Raises:
-            AuthenticationError: If authentication fails.
+    async def __aenter__(self) -> Provider:
+        """Enter async context manager.
+
+        Performs authentication, target resolution, field resolution, etc.
         """
         await self.client.check_auth()
 
-    async def get_repo_context(self, repo: str, label: str) -> RepoContext:
-        """Fetch repository metadata, issue types, and ensure *label* exists.
+        owner, repo = self.target.split("/", 1)
 
-        Args:
-            repo: Repository identifier (e.g. ``"owner/repo"``).
-            label: Label name to ensure exists.
-
-        Returns:
-            Resolved :class:`RepoContext`.
-        """
-        owner, name = repo.split("/", 1)
-
-        # Fetch repo data
+        # Fetch repo context
         response = await self.client.graphql(
             FETCH_REPO,
-            variables={"owner": owner, "name": name, "label": label},
+            variables={"owner": owner, "name": repo, "label": self.label},
         )
 
         repo_data = response.get("data", {}).get("repository")
         if not repo_data:
-            raise ProviderError(f"Repository {repo} not found")
+            raise ProviderError(f"Repository {self.target} not found")
 
         repo_id = repo_data.get("id")
         issue_types = repo_data.get("issueTypes", {}).get("nodes", [])
@@ -99,482 +118,407 @@ class GitHubProvider(Provider):
             if it_name and it_id:
                 issue_type_ids[it_name] = it_id
 
-        # Check if label exists
-        label_id: str | None = None
+        # Check if label exists, create if not
+        repo_label_id: str | None = None
         if labels:
-            label_id = labels[0].get("id")
+            repo_label_id = labels[0].get("id")
         else:
-            # Label not found, try to create it
-            logger.info("Label '%s' not found in %s, attempting to create it", label, repo)
+            logger.info("Label '%s' not found in %s, attempting to create it", self.label, self.target)
             try:
                 await self.client.run(
-                    ["label", "create", label, "--repo", repo],
+                    ["label", "create", self.label, "--repo", self.target],
                     check=True,
                 )
                 # Re-fetch to get the label ID
                 response = await self.client.graphql(
                     FETCH_REPO,
-                    variables={"owner": owner, "name": name, "label": label},
+                    variables={"owner": owner, "name": repo, "label": self.label},
                 )
                 repo_data = response.get("data", {}).get("repository", {})
                 labels = repo_data.get("labels", {}).get("nodes", [])
                 if labels:
-                    label_id = labels[0].get("id")
+                    repo_label_id = labels[0].get("id")
             except ProviderError as e:
-                logger.warning("Failed to create label '%s': %s", label, e)
+                logger.warning("Failed to create label '%s': %s", self.label, e)
             except (OSError, TypeError, KeyError, AttributeError) as e:
-                logger.warning("Unexpected error creating label '%s': %s: %s", label, type(e).__name__, e)
+                logger.warning("Unexpected error creating label '%s': %s: %s", self.label, type(e).__name__, e)
 
-        return RepoContext(
+        # Fetch project context (if board_url provided)
+        project_id: str | None = None
+        status_field: ResolvedField | None = None
+        priority_field: ResolvedField | None = None
+        iteration_field: ResolvedField | None = None
+        size_field_id: str | None = None
+        size_options: list[dict[str, str]] = []
+
+        if self.board_url:
+            try:
+                org, number = parse_project_url(self.board_url)
+                response = await self.client.graphql(
+                    FETCH_PROJECT,
+                    variables={"org": org, "number": number},
+                )
+                project_data = response.get("data", {}).get("organization", {}).get("projectV2")
+                if project_data:
+                    project_id = project_data.get("id")
+                    fields = project_data.get("fields", {}).get("nodes", [])
+
+                    for field in fields:
+                        field_id = field.get("id")
+                        field_name = field.get("name", "")
+
+                        # Status field
+                        if field_name == "Status" and "options" in field:
+                            options = field.get("options", [])
+                            option_id = resolve_option_id(options, self.field_config.status)
+                            if option_id:
+                                status_field = ResolvedField(
+                                    field_id=field_id,
+                                    value=FieldValue(single_select_option_id=option_id),
+                                )
+
+                        # Priority field
+                        if field_name == "Priority" and "options" in field:
+                            options = field.get("options", [])
+                            option_id = resolve_option_id(options, self.field_config.priority)
+                            if option_id:
+                                priority_field = ResolvedField(
+                                    field_id=field_id,
+                                    value=FieldValue(single_select_option_id=option_id),
+                                )
+
+                        # Iteration field
+                        if field_name == "Iteration" and "configuration" in field:
+                            config = field.get("configuration", {})
+                            iterations = config.get("iterations", [])
+                            iteration_id: str | None = None
+
+                            if self.field_config.iteration == "active":
+                                now = datetime.now(UTC)
+                                for it in iterations:
+                                    start = it.get("startDate")
+                                    duration = it.get("duration")
+                                    if not start or duration is None:
+                                        continue
+                                    try:
+                                        start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
+                                    except ValueError:
+                                        continue
+                                    if start_dt.tzinfo is None:
+                                        start_dt = start_dt.replace(tzinfo=UTC)
+                                    end_dt = start_dt + timedelta(days=int(duration))
+                                    if start_dt <= now < end_dt:
+                                        iteration_id = it.get("id")
+                                        break
+                            else:
+                                for it in iterations:
+                                    if it.get("title", "").lower() == self.field_config.iteration.lower():
+                                        iteration_id = it.get("id")
+                                        break
+
+                            if iteration_id:
+                                iteration_field = ResolvedField(
+                                    field_id=field_id,
+                                    value=FieldValue(iteration_id=iteration_id),
+                                )
+
+                        # Size field
+                        if field_name == self.field_config.size_field and "options" in field:
+                            size_field_id = field_id
+                            size_options = [
+                                {"id": opt.get("id"), "name": opt.get("name")}
+                                for opt in field.get("options", [])
+                                if opt.get("id") and opt.get("name")
+                            ]
+            except ProjectURLError:
+                logger.error("Invalid board URL: %s", self.board_url)
+            except Exception as e:
+                logger.error("Failed to fetch project context: %s", e, exc_info=True)
+
+        # Store context
+        self._ctx = GitHubTargetContext(
+            repo=self.target,
+            board_url=self.board_url,
             repo_id=repo_id,
-            label_id=label_id,
+            repo_label_id=repo_label_id,
             issue_type_ids=issue_type_ids,
+            project_id=project_id,
+            status_field=status_field,
+            priority_field=priority_field,
+            iteration_field=iteration_field,
+            size_field_id=size_field_id,
+            size_options=size_options,
         )
 
-    async def get_project_context(
-        self,
-        project_url: str,
-        field_config: FieldConfig,
-    ) -> ProjectContext | None:
-        """Fetch project board metadata and resolve field IDs.
+        return self
+
+    async def __aexit__(self, exc_type: object, exc_val: object, exc_tb: object) -> None:
+        """Exit async context manager. Clean up resources."""
+        await self.client.close()
+
+    # ---- Search ----
+
+    async def search_items(self, filters: ItemFields) -> list[Item]:
+        """Search for work items matching filters.
+
+        Currently supports filtering by labels.
 
         Args:
-            project_url: Full URL to the project board.
-            field_config: User-specified field preferences.
+            filters: Search filters (labels field is used)
 
         Returns:
-            Resolved :class:`ProjectContext`, or *None* if unavailable.
+            List of GitHubItem instances
         """
-        try:
-            org, number = parse_project_url(project_url)
-        except ProjectURLError:
-            logger.error("Invalid project URL: %s", project_url)
-            return None
+        if not self._ctx:
+            raise ProviderError("Provider not initialized (not in async context)")
 
-        try:
-            # Fetch project data
-            response = await self.client.graphql(
-                FETCH_PROJECT,
-                variables={"org": org, "number": number},
-            )
+        items: list[Item] = []
 
-            project_data = response.get("data", {}).get("organization", {}).get("projectV2")
-            if not project_data:
-                logger.error("Project %s/%s not found", org, number)
-                return None
+        # Build search query
+        label_filter = ""
+        if filters.labels:
+            for label in filters.labels:
+                label_filter += f' label:"{label}"'
 
-            project_id = project_data.get("id")
-            fields = project_data.get("fields", {}).get("nodes", [])
+        search_query = f"repo:{self._ctx.repo}{label_filter}"
 
-            # Resolve fields
-            status_field: ResolvedField | None = None
-            priority_field: ResolvedField | None = None
-            iteration_field: ResolvedField | None = None
-            size_field_id: str | None = None
-            size_options: list[dict[str, str]] = []
-
-            for field in fields:
-                field_id = field.get("id")
-                field_name = field.get("name", "")
-
-                # Status field
-                if field_name == "Status" and "options" in field:
-                    options = field.get("options", [])
-                    option_id = resolve_option_id(options, field_config.status)
-                    if option_id:
-                        status_field = ResolvedField(
-                            field_id=field_id,
-                            value=FieldValue(single_select_option_id=option_id),
-                        )
-
-                # Priority field
-                if field_name == "Priority" and "options" in field:
-                    options = field.get("options", [])
-                    option_id = resolve_option_id(options, field_config.priority)
-                    if option_id:
-                        priority_field = ResolvedField(
-                            field_id=field_id,
-                            value=FieldValue(single_select_option_id=option_id),
-                        )
-
-                # Iteration field
-                if field_name == "Iteration" and "configuration" in field:
-                    config = field.get("configuration", {})
-                    iterations = config.get("iterations", [])
-                    iteration_id: str | None = None
-
-                    if field_config.iteration == "active":
-                        # Find active iteration
-                        now = datetime.now(UTC)
-                        for it in iterations:
-                            start = it.get("startDate")
-                            duration = it.get("duration")
-                            if not start or duration is None:
-                                continue
-                            try:
-                                start_dt = datetime.fromisoformat(start.replace("Z", "+00:00"))
-                            except ValueError:
-                                continue
-                            if start_dt.tzinfo is None:
-                                start_dt = start_dt.replace(tzinfo=UTC)
-                            end_dt = start_dt + timedelta(days=int(duration))
-                            if start_dt <= now < end_dt:
-                                iteration_id = it.get("id")
-                                break
-                    else:
-                        # Find iteration by name
-                        for it in iterations:
-                            if it.get("title", "").lower() == field_config.iteration.lower():
-                                iteration_id = it.get("id")
-                                break
-
-                    if iteration_id:
-                        iteration_field = ResolvedField(
-                            field_id=field_id,
-                            value=FieldValue(iteration_id=iteration_id),
-                        )
-
-                # Size field
-                if field_name == field_config.size_field and "options" in field:
-                    size_field_id = field_id
-                    size_options = [
-                        {"id": opt.get("id"), "name": opt.get("name")}
-                        for opt in field.get("options", [])
-                        if opt.get("id") and opt.get("name")
-                    ]
-
-            # Fetch project items with pagination
-            item_map: dict[str, str] = {}
-            after: str | None = None
-            while True:
-                response = await self.client.graphql(
-                    FETCH_PROJECT_ITEMS,
-                    variables={"projectId": project_id, "after": after},
-                )
-
-                node_data = response.get("data", {}).get("node", {})
-                items_data = node_data.get("items", {})
-                nodes = items_data.get("nodes", [])
-                page_info = items_data.get("pageInfo", {})
-
-                item_map.update(build_project_item_map(nodes))
-
-                if not page_info.get("hasNextPage"):
-                    break
-                after = page_info.get("endCursor")
-
-            return ProjectContext(
-                project_id=project_id,
-                status_field=status_field,
-                priority_field=priority_field,
-                iteration_field=iteration_field,
-                size_field_id=size_field_id,
-                size_options=size_options,
-                item_map=item_map,
-            )
-
-        except (ProviderError, ProjectURLError) as e:
-            logger.error("Failed to fetch project context: %s", e)
-            return None
-        except Exception as e:
-            logger.error("Unexpected error fetching project context: %s", e, exc_info=True)
-            return None
-
-    async def search_issues(self, repo: str, plan_id: str, label: str) -> list[ExistingIssue]:
-        """Search for issues belonging to *plan_id*.
-
-        Args:
-            repo: Repository identifier.
-            plan_id: Deterministic plan hash embedded in issue bodies.
-            label: Label name to filter search results.
-
-        Returns:
-            List of matching :class:`ExistingIssue` instances.
-        """
-        search_query = f'repo:{repo} label:{label} "{plan_id}" in:body'
-        issues: list[ExistingIssue] = []
         after: str | None = None
-
         while True:
             response = await self.client.graphql(
                 SEARCH_ISSUES,
-                variables={"searchQuery": search_query, "after": after},
+                variables={"query": search_query, "after": after},
             )
 
             search_data = response.get("data", {}).get("search", {})
             nodes = search_data.get("nodes", [])
-            page_info = search_data.get("pageInfo", {})
 
-            for node in nodes:
-                issues.append(
-                    ExistingIssue(
-                        id=node.get("id", ""),
-                        number=node.get("number", 0),
-                        body=node.get("body", ""),
-                    )
+            for issue in nodes:
+                item = GitHubItem(
+                    id=issue.get("id", ""),
+                    key=f"#{issue.get('number')}",
+                    url=issue.get("url", ""),
+                    title=issue.get("title", ""),
+                    body=issue.get("body", ""),
+                    item_type=None,  # GitHub API doesn't expose type directly in search
+                    parent_id=None,  # Would need additional query
+                    labels=[label.get("name", "") for label in issue.get("labels", {}).get("nodes", [])],
+                    provider=self,
+                    ctx=self._ctx,
                 )
+                items.append(item)
 
+            page_info = search_data.get("pageInfo", {})
             if not page_info.get("hasNextPage"):
                 break
             after = page_info.get("endCursor")
 
-        return issues
+        return items
 
-    def build_issue_map(
-        self, existing_issues: list[ExistingIssue], plan_id: str
-    ) -> dict[str, dict[str, dict[str, Any]]]:
-        """Build a mapping of entity IDs to issue metadata, filtered by plan_id.
+    # ---- CRUD ----
 
-        Args:
-            existing_issues: Raw issue instances from the search API.
-            plan_id: Only include issues matching this plan_id.
+    async def create_item(self, input: CreateItemInput) -> Item:
+        """Create a new work item atomically.
 
-        Returns:
-            Nested dict: ``{"epics": {id: {id, number}}, "stories": ..., "tasks": ...}``.
-        """
-        mapping: dict[str, dict[str, dict[str, Any]]] = {"epics": {}, "stories": {}, "tasks": {}}
-        for issue in existing_issues:
-            markers = parse_markers(issue.body)
-            if plan_id and markers.get("plan_id") != plan_id:
-                continue
-            entry = {"id": issue.id, "number": issue.number}
-            if markers.get("epic_id"):
-                mapping["epics"][markers["epic_id"]] = entry
-            if markers.get("story_id"):
-                mapping["stories"][markers["story_id"]] = entry
-            if markers.get("task_id"):
-                mapping["tasks"][markers["task_id"]] = entry
-        return mapping
-
-    def resolve_option_id(self, options: list[dict[str, str]], name: str | None) -> str | None:
-        """Find the option ID matching *name* (case-insensitive).
-
-        Delegates to :func:`planpilot.providers.github.mapper.resolve_option_id`.
-        """
-        return resolve_option_id(options, name)
-
-    async def create_issue(self, issue_input: CreateIssueInput) -> IssueRef:
-        """Create a new issue.
+        Handles:
+        - Issue creation
+        - Type assignment (if needed)
+        - Field settings (status, priority, size, iteration)
+        - Adding to project board (if configured)
 
         Args:
-            issue_input: All data required to create the issue.
+            input: Item creation data
 
         Returns:
-            Newly-created :class:`IssueRef`.
-
-        Raises:
-            ProviderError: If the creation fails.
+            Created GitHubItem
         """
-        # Build the input object as JSON
-        input_obj: dict[str, Any] = {
-            "repositoryId": issue_input.repo_id,
-            "title": issue_input.title,
-            "body": issue_input.body,
-        }
-        if issue_input.label_ids:
-            input_obj["labelIds"] = issue_input.label_ids
+        if not self._ctx:
+            raise ProviderError("Provider not initialized (not in async context)")
 
-        input_json = json.dumps(input_obj)
+        # Create the issue
+        owner, repo = self._ctx.repo.split("/", 1)
+        label_ids = [self._ctx.repo_label_id] if self._ctx.repo_label_id else []
 
-        # Use graphql_raw with -F flags
-        args = [
-            "api",
-            "graphql",
-            "-f",
-            f"query={CREATE_ISSUE}",
-            "-F",
-            f"input={input_json}",
-        ]
+        response = await self.client.graphql(
+            CREATE_ISSUE,
+            variables={
+                "repositoryId": self._ctx.repo_id,
+                "title": input.title,
+                "body": input.body or "",
+                "issueTypeId": self._ctx.issue_type_ids.get("Task"),
+                "labelIds": label_ids,
+            },
+        )
 
-        try:
-            response = await self.client.graphql_raw(args)
-            issue_data = response.get("data", {}).get("createIssue", {}).get("issue", {})
-            if not issue_data:
-                raise ProviderError("Failed to create issue: no issue data returned")
+        issue_data = response.get("data", {}).get("createIssue", {}).get("issue", {})
+        if not issue_data:
+            raise ProviderError("Failed to create issue")
 
-            return IssueRef(
-                id=issue_data.get("id", ""),
-                number=issue_data.get("number", 0),
-                url=issue_data.get("url", ""),
+        issue_id = issue_data.get("id")
+        issue_number = issue_data.get("number")
+        issue_url = issue_data.get("url", f"https://github.com/{self._ctx.repo}/issues/{issue_number}")
+
+        # Set issue type based on item_type
+        if input.item_type and input.item_type.value.capitalize() in self._ctx.issue_type_ids:
+            type_id = self._ctx.issue_type_ids[input.item_type.value.capitalize()]
+            await self.client.graphql(
+                UPDATE_ISSUE_TYPE,
+                variables={"issueId": issue_id, "issueTypeId": type_id},
             )
-        except Exception as e:
-            raise ProviderError(f"Failed to create issue: {e}") from e
 
-    async def update_issue(
-        self,
-        repo: str,
-        number: int,
-        title: str,
-        body: str,
-    ) -> None:
-        """Update an existing issue's title and body.
-
-        Args:
-            repo: Repository identifier.
-            number: Issue number.
-            title: New title.
-            body: New body (markdown).
-        """
-        await self.client.run(
-            [
-                "issue",
-                "edit",
-                str(number),
-                "--repo",
-                repo,
-                "--title",
-                title,
-                "--body",
-                body,
-            ],
-            check=True,
-        )
-
-    async def set_issue_type(self, issue_id: str, type_id: str) -> None:
-        """Set the issue type (e.g. Epic, Story, Task).
-
-        Args:
-            issue_id: Issue node ID.
-            type_id: Issue-type node ID.
-        """
-        await self.client.graphql(
-            UPDATE_ISSUE_TYPE,
-            variables={"id": issue_id, "issueTypeId": type_id},
-        )
-
-    async def add_to_project(
-        self,
-        project_id: str,
-        issue_id: str,
-    ) -> str | None:
-        """Add an issue to a project board.
-
-        Args:
-            project_id: Project node ID.
-            issue_id: Issue node ID.
-
-        Returns:
-            The project-item ID, or *None* on failure.
-        """
-        try:
+        # Add to project if configured
+        project_item_id: str | None = None
+        if self._ctx.project_id:
             response = await self.client.graphql(
                 ADD_PROJECT_ITEM,
-                variables={"projectId": project_id, "contentId": issue_id},
+                variables={"projectId": self._ctx.project_id, "contentId": issue_id},
             )
-            item_data = response.get("data", {}).get("addProjectV2ItemById", {}).get("item", {})
-            item_id = item_data.get("id")
-            return item_id if isinstance(item_id, str) else None
-        except Exception as e:
-            logger.warning("Failed to add issue to project: %s", e)
-            return None
+            project_item_data = response.get("data", {}).get("addProjectV2ItemById", {})
+            project_item_id = project_item_data.get("item", {}).get("id")
 
-    async def set_project_field(
-        self,
-        project_id: str,
-        item_id: str,
-        field_id: str,
-        value: FieldValue,
-    ) -> None:
-        """Set a single field value on a project item.
+            # Set project fields if we have the item in the project
+            if project_item_id:
+                if self._ctx.status_field:
+                    await self.client.graphql(
+                        UPDATE_PROJECT_FIELD,
+                        variables={
+                            "projectId": self._ctx.project_id,
+                            "itemId": project_item_id,
+                            "fieldId": self._ctx.status_field.field_id,
+                            "value": self._ctx.status_field.value.model_dump(exclude_none=True),
+                        },
+                    )
+
+                if self._ctx.priority_field:
+                    await self.client.graphql(
+                        UPDATE_PROJECT_FIELD,
+                        variables={
+                            "projectId": self._ctx.project_id,
+                            "itemId": project_item_id,
+                            "fieldId": self._ctx.priority_field.field_id,
+                            "value": self._ctx.priority_field.value.model_dump(exclude_none=True),
+                        },
+                    )
+
+                if self._ctx.iteration_field:
+                    await self.client.graphql(
+                        UPDATE_PROJECT_FIELD,
+                        variables={
+                            "projectId": self._ctx.project_id,
+                            "itemId": project_item_id,
+                            "fieldId": self._ctx.iteration_field.field_id,
+                            "value": self._ctx.iteration_field.value.model_dump(exclude_none=True),
+                        },
+                    )
+
+                # Set size if configured
+                if input.size and self._ctx.size_field_id and self._ctx.size_options:
+                    size_option_id = resolve_option_id(self._ctx.size_options, input.size)
+                    if size_option_id:
+                        await self.client.graphql(
+                            UPDATE_PROJECT_FIELD,
+                            variables={
+                                "projectId": self._ctx.project_id,
+                                "itemId": project_item_id,
+                                "fieldId": self._ctx.size_field_id,
+                                "value": {"single_select_option_id": size_option_id},
+                            },
+                        )
+
+        return GitHubItem(
+            id=issue_id,
+            key=f"#{issue_number}",
+            url=issue_url,
+            title=input.title,
+            body=input.body or "",
+            item_type=input.item_type,
+            parent_id=None,
+            labels=input.labels or [],
+            provider=self,
+            ctx=self._ctx,
+        )
+
+    async def update_item(self, item_id: str, input: UpdateItemInput) -> Item:
+        """Update an existing work item.
 
         Args:
-            project_id: Project node ID.
-            item_id: Project-item ID.
-            field_id: Field node ID.
-            value: The value to set.
-        """
-        # Build the value object
-        value_obj: dict[str, Any] = {}
-        if value.single_select_option_id is not None:
-            value_obj["singleSelectOptionId"] = value.single_select_option_id
-        elif value.iteration_id is not None:
-            value_obj["iterationId"] = value.iteration_id
-        elif value.text is not None:
-            value_obj["text"] = value.text
-        elif value.number is not None:
-            value_obj["number"] = value.number
-
-        value_json = json.dumps(value_obj)
-
-        # Use graphql_raw with -F flags
-        args = [
-            "api",
-            "graphql",
-            "-f",
-            f"query={UPDATE_PROJECT_FIELD}",
-            "-F",
-            f"projectId={project_id}",
-            "-F",
-            f"itemId={item_id}",
-            "-F",
-            f"fieldId={field_id}",
-            "-F",
-            f"value={value_json}",
-        ]
-
-        await self.client.graphql_raw(args)
-
-    async def get_issue_relations(
-        self,
-        issue_ids: list[str],
-    ) -> RelationMap:
-        """Fetch parent and blocked-by relations for the given issues.
-
-        Args:
-            issue_ids: Issue node IDs to query.
+            item_id: Opaque provider ID
+            input: Fields to update
 
         Returns:
-            :class:`RelationMap` with parent and blocked-by data.
+            Updated GitHubItem
         """
-        # Note: IDs come from trusted sources (GitHub API), so inlining them
-        # into the query string is safe from a GraphQL injection perspective.
-        # However, we batch into groups of 50 to avoid query size limits.
+        if not self._ctx:
+            raise ProviderError("Provider not initialized (not in async context)")
 
-        all_nodes: list[dict[str, Any]] = []
-        batch_size = 50
+        # Stub: In a full implementation, would fetch and update the item
+        raise NotImplementedError("update_item not yet implemented")
 
-        for i in range(0, len(issue_ids), batch_size):
-            batch = issue_ids[i : i + batch_size]
-
-            args = [
-                "api",
-                "graphql",
-                "-f",
-                f"query={FETCH_ISSUE_RELATIONS}",
-            ]
-            # Pass each ID as a separate -F flag for array variables
-            for id_ in batch:
-                args.extend(["-F", f"ids[]={id_}"])
-
-            response = await self.client.graphql_raw(args)
-            nodes = response.get("data", {}).get("nodes", [])
-            all_nodes.extend(nodes)
-
-        return RelationMap(
-            parents=build_parent_map(all_nodes),
-            blocked_by=build_blocked_by_map(all_nodes),
-        )
-
-    async def add_sub_issue(self, parent_id: str, child_id: str) -> None:
-        """Create a parent → child sub-issue relationship.
+    async def get_item(self, item_id: str) -> Item:
+        """Fetch a single work item by provider ID.
 
         Args:
-            parent_id: Parent issue node ID.
-            child_id: Child issue node ID.
-        """
-        await self.client.graphql(
-            ADD_SUB_ISSUE,
-            variables={"issueId": parent_id, "subIssueId": child_id},
-        )
+            item_id: Opaque provider ID
 
-    async def add_blocked_by(self, issue_id: str, blocker_id: str) -> None:
-        """Record that *issue_id* is blocked by *blocker_id*.
+        Returns:
+            GitHubItem
+
+        Raises:
+            ProviderError: If not found or fetch fails
+        """
+        if not self._ctx:
+            raise ProviderError("Provider not initialized (not in async context)")
+
+        # Stub: In a full implementation, would fetch the item by ID
+        raise NotImplementedError("get_item not yet implemented")
+
+    async def delete_item(self, item_id: str) -> None:
+        """Delete a work item.
 
         Args:
-            issue_id: The blocked issue's node ID.
-            blocker_id: The blocking issue's node ID.
+            item_id: Opaque provider ID
+
+        Raises:
+            ProviderError: If deletion fails
         """
-        await self.client.graphql(
-            ADD_BLOCKED_BY,
-            variables={"issueId": issue_id, "blockingIssueId": blocker_id},
-        )
+        if not self._ctx:
+            raise ProviderError("Provider not initialized (not in async context)")
+
+        # Stub: In a full implementation, would delete the item
+        raise NotImplementedError("delete_item not yet implemented")
+
+    # ---- Internal relation helpers (called by GitHubItem) ----
+
+    async def _set_item_parent(self, child: GitHubItem, parent: GitHubItem) -> None:
+        """Internal: Set parent via sub-issue API."""
+        # Stub implementation
+        pass
+
+    async def _add_item_child(self, parent: GitHubItem, child: GitHubItem) -> None:
+        """Internal: Add child via sub-issue API."""
+        # Stub implementation
+        pass
+
+    async def _remove_item_child(self, parent: GitHubItem, child: GitHubItem) -> None:
+        """Internal: Remove child via sub-issue API."""
+        # Stub implementation
+        pass
+
+    async def _get_item_children(self, parent: GitHubItem) -> list[GitHubItem]:
+        """Internal: Get children from GitHub."""
+        # Stub implementation
+        return []
+
+    async def _add_item_dependency(self, item: GitHubItem, blocker: GitHubItem) -> None:
+        """Internal: Add blocking dependency via GitHub API."""
+        # Stub implementation
+        pass
+
+    async def _remove_item_dependency(self, item: GitHubItem, blocker: GitHubItem) -> None:
+        """Internal: Remove blocking dependency via GitHub API."""
+        # Stub implementation
+        pass
+
+    async def _get_item_dependencies(self, item: GitHubItem) -> list[GitHubItem]:
+        """Internal: Get dependencies from GitHub."""
+        # Stub implementation
+        return []
