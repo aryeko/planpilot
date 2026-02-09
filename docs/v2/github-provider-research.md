@@ -74,11 +74,24 @@ token = await token_resolver.resolve()
 provider = GitHubProvider(target="owner/repo", token=token, ...)
 ```
 
-**Default resolution order** (convenience for CLI users):
+**Resolution order** (configurable via `planpilot.json`):
 
-1. If `GITHUB_TOKEN` env var is set, use it
-2. Otherwise, try `gh auth token`
-3. Fail with a clear error message
+The config file specifies which resolver to use:
+
+```json
+{
+  "provider": "github",
+  "auth": "gh-cli"
+}
+```
+
+| `auth` value | Resolver | Notes |
+|-------------|----------|-------|
+| `"gh-cli"` (default) | `GhCliTokenResolver` | Shells out to `gh auth token` once |
+| `"env"` | `EnvTokenResolver` | Reads `GITHUB_TOKEN` env var |
+| `"token"` | `StaticTokenResolver` | Reads `token` field from config (not recommended for committed files) |
+
+If `auth` is omitted, defaults to `"gh-cli"`.
 
 ### 2. Provider Implementation (Typed API Client)
 
@@ -308,34 +321,34 @@ This can be automated with a scheduled CI job or Dependabot-like workflow.
 
 ## Token Resolver Integration
 
-The factory wires auth and provider together:
+The factory reads the `auth` setting from config and wires the resolver:
 
 ```python
-# providers/factory.py
-async def create_github_provider(
-    *,
-    target: str,
-    token_resolver: TokenResolver | None = None,
-    board_url: str | None = None,
-    label: str | None = None,
-    field_config: FieldConfig | None = None,
-) -> GitHubProvider:
-    """Create a GitHubProvider with resolved token."""
-    resolver = token_resolver or default_token_resolver()
-    token = await resolver.resolve()
-    return GitHubProvider(
-        target=target,
-        token=token,
-        board_url=board_url,
-        label=label,
-        field_config=field_config,
-    )
+# auth/factory.py
+RESOLVERS: dict[str, type[TokenResolver]] = {
+    "gh-cli": GhCliTokenResolver,
+    "env": EnvTokenResolver,
+    "token": StaticTokenResolver,
+}
 
-def default_token_resolver() -> TokenResolver:
-    """Default: env var first, then gh CLI."""
-    if os.environ.get("GITHUB_TOKEN"):
-        return EnvTokenResolver()
-    return GhCliTokenResolver()
+def create_token_resolver(config: PlanPilotConfig) -> TokenResolver:
+    """Create a token resolver from config."""
+    auth = config.auth or "gh-cli"
+    cls = RESOLVERS.get(auth)
+    if cls is None:
+        raise ConfigError(f"Unknown auth method: {auth!r}")
+    if auth == "token":
+        return cls(token=config.token)
+    return cls()
+```
+
+The SDK wires auth and provider together:
+
+```python
+# sdk.py (inside sync())
+resolver = create_token_resolver(config)
+token = await resolver.resolve()
+provider = GitHubProvider(target=config.target, token=token, ...)
 ```
 
 ## Summary
