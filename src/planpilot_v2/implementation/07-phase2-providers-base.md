@@ -1,8 +1,8 @@
 # Phase 2: Providers Base
 
 **Layer:** L2 (Core)
-**Branch:** `v2/contracts` or `v2/github-provider`
-**Phase:** 0 or 2
+**Branch:** `v2/github-provider`
+**Phase:** 2 (after contracts)
 **Design doc:** [`../docs/modules/providers.md`](../docs/modules/providers.md)
 
 ---
@@ -14,7 +14,7 @@
 | `providers/__init__.py` | Exports |
 | `providers/base.py` | `ProviderContext` base class |
 | `providers/factory.py` | `create_provider()` factory |
-| `providers/dry_run.py` | `DryRunProvider` |
+| `providers/dry_run.py` | `DryRunItem`, `DryRunProvider` |
 
 ---
 
@@ -52,6 +52,29 @@ def create_provider(
 In-memory provider for `sync(dry_run=True)`. No auth, no network.
 
 ```python
+class DryRunItem(Item):
+    """Placeholder item returned by DryRunProvider. Defined in providers/dry_run.py."""
+
+    def __init__(self, *, id: str, title: str, body: str,
+                 item_type: PlanItemType | None) -> None: ...
+
+    @property
+    def id(self) -> str: ...
+    @property
+    def key(self) -> str: return "dry-run"
+    @property
+    def url(self) -> str: return "dry-run"
+    @property
+    def title(self) -> str: ...
+    @property
+    def body(self) -> str: ...
+    @property
+    def item_type(self) -> PlanItemType | None: ...
+
+    async def set_parent(self, parent: Item) -> None: pass   # no-op
+    async def add_dependency(self, blocker: Item) -> None: pass  # no-op
+
+
 class DryRunProvider(Provider):
     """Provider that returns deterministic placeholders. No network calls."""
 

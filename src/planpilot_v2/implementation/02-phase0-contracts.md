@@ -24,7 +24,7 @@
 
 ## Domain Dependency Order
 
-```
+```text
 plan domain          (no dependencies)
 ├── item domain      (uses PlanItemType from plan)
 │   ├── provider domain   (uses Item, inputs from item)

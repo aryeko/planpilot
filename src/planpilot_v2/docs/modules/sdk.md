@@ -121,7 +121,11 @@ The SDK re-exports selected types so callers import from one place:
 ## Programmatic Usage
 
 ```python
-from planpilot import PlanPilot, PlanItemType, load_config
+# Dev (v2 branch):
+from planpilot_v2 import PlanPilot, PlanItemType, load_config
+
+# Ship-time (after rename):
+# from planpilot import PlanPilot, PlanItemType, load_config
 
 config = load_config("planpilot.json")
 pp = await PlanPilot.from_config(config, renderer_name="markdown")
@@ -144,7 +148,7 @@ print(f"Sync map: {result.sync_map.model_dump_json()}")
 
 ## File Structure
 
-```
+```text
 src/planpilot/
 ├── __init__.py            # Re-exports
 ├── sdk.py                 # PlanPilot, load_config(), load_plan()

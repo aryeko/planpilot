@@ -19,7 +19,7 @@
 
 ## Command Structure
 
-```
+```text
 planpilot_v2 [--version]
 planpilot_v2 sync --config <path> (--dry-run | --apply) [--verbose]
 ```
@@ -54,7 +54,7 @@ planpilot_v2 sync --config <path> (--dry-run | --apply) [--verbose]
 
 ## Output Format
 
-```
+```text
 planpilot - sync complete (apply)
 
   Plan ID:   a1b2c3d4e5f6

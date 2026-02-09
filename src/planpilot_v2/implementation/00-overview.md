@@ -72,7 +72,7 @@ from planpilot_v2.engine.engine import SyncEngine
 
 ### Source (`src/planpilot_v2/`)
 
-```
+```text
 src/planpilot_v2/
 ├── __init__.py                         # Re-exports (SDK public API surface)
 ├── __main__.py                         # python -m planpilot_v2 support
@@ -170,7 +170,7 @@ src/planpilot_v2/
 
 ### Tests (`tests/v2/`)
 
-```
+```text
 tests/v2/
 ├── __init__.py
 ├── conftest.py                         # Shared v2 fixtures
@@ -236,7 +236,7 @@ tests/v2/
 
 ### Branch Structure
 
-```
+```text
 main
  └── v2                          (umbrella, created from main)
       ├── v2/contracts           (Phase 0 — foundation types + ABCs + exceptions)
@@ -267,7 +267,7 @@ Feature branches merge into `v2` via PR. When v2 is complete, `v2` merges into `
 
 ### Commit Message Convention
 
-```
+```text
 feat(contracts): add PlanItem and Plan models
 feat(engine): implement discovery phase
 test(plan): add PlanValidator strict mode tests

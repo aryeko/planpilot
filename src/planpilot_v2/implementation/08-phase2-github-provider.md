@@ -81,7 +81,7 @@ class GitHubProviderContext(ProviderContext):
 
 ## create_item() Multi-Step Workflow
 
-```
+```text
 1. Create issue (with metadata in body)
 2a. Ensure issue type (if strategy=issue-type)
 2b. Ensure type label (if strategy=label)

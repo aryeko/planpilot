@@ -4,7 +4,7 @@
 
 ## Dependency Graph
 
-```
+```text
 Phase 0: contracts + test-infra  (MUST be first)
     │
     ├── Phase 1a: plan           ─┐
@@ -65,7 +65,7 @@ Phase 0: contracts + test-infra  (MUST be first)
 httpx = "^0.28"
 
 [tool.poetry.group.dev.dependencies]
-ariadne-codegen = "^0.15"
+ariadne-codegen = "^0.17"
 
 [tool.ariadne-codegen]
 schema_path = "src/planpilot_v2/providers/github/schema.graphql"
