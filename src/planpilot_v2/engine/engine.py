@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import asyncio
+import warnings
 from collections.abc import Awaitable
 from typing import TypeVar
 
@@ -12,7 +13,7 @@ from planpilot_v2.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot_v2.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot_v2.contracts.provider import Provider
 from planpilot_v2.contracts.renderer import BodyRenderer, RenderContext
-from planpilot_v2.contracts.sync import SyncEntry, SyncMap, SyncResult, to_sync_entry
+from planpilot_v2.contracts.sync import SyncMap, SyncResult, to_sync_entry
 from planpilot_v2.engine.utils import compute_parent_blocked_by, parse_metadata_block
 
 T = TypeVar("T")
@@ -38,10 +39,6 @@ class SyncEngine:
         sync_map = SyncMap(plan_id=plan_id, target=self._config.target, board_url=self._config.board_url)
         items_created = {item_type: 0 for item_type in _ITEM_TYPE_ORDER}
 
-        if self._dry_run:
-            self._dry_run_upsert(plan, sync_map, items_created)
-            return SyncResult(sync_map=sync_map, items_created=items_created, dry_run=True)
-
         existing_map = await self._discover(plan_id)
         item_objects: dict[str, Item] = {}
         for item_id, existing_item in existing_map.items():
@@ -56,7 +53,7 @@ class SyncEngine:
             first_sync_error = sync_error_group.exceptions[0]
             raise first_sync_error from None
 
-        return SyncResult(sync_map=sync_map, items_created=items_created, dry_run=False)
+        return SyncResult(sync_map=sync_map, items_created=items_created, dry_run=self._dry_run)
 
     async def _discover(self, plan_id: str) -> dict[str, Item]:
         filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
@@ -73,22 +70,6 @@ class SyncEngine:
             existing_map[item_id] = item
 
         return existing_map
-
-    def _dry_run_upsert(
-        self,
-        plan: Plan,
-        sync_map: SyncMap,
-        items_created: dict[PlanItemType, int],
-    ) -> None:
-        for item_type in _ITEM_TYPE_ORDER:
-            for plan_item in self._items_by_type(plan, item_type):
-                sync_map.entries[plan_item.id] = SyncEntry(
-                    id=f"dry-run-{plan_item.id}",
-                    key="dry-run",
-                    url="dry-run",
-                    item_type=plan_item.type,
-                )
-                items_created[item_type] += 1
 
     async def _upsert(
         self,
@@ -188,17 +169,33 @@ class SyncEngine:
 
     async def _set_relations(self, plan: Plan, item_objects: dict[str, Item]) -> None:
         by_id = {item.id: item for item in plan.items}
+        plan_ids = set(by_id)
         parent_pairs: set[tuple[str, str]] = set()
         dependency_pairs: set[tuple[str, str]] = set()
 
         for plan_item in plan.items:
             if plan_item.id not in item_objects:
                 continue
-            if plan_item.parent_id and plan_item.parent_id in item_objects:
-                parent_pairs.add((plan_item.id, plan_item.parent_id))
+            if plan_item.parent_id:
+                if plan_item.parent_id in item_objects:
+                    parent_pairs.add((plan_item.id, plan_item.parent_id))
+                elif plan_item.parent_id not in plan_ids:
+                    self._handle_unresolved_reference(
+                        source_item_id=plan_item.id,
+                        reference_type="parent_id",
+                        reference_id=plan_item.parent_id,
+                    )
             for dep_id in plan_item.depends_on:
-                if dep_id in item_objects and dep_id != plan_item.id:
+                if dep_id == plan_item.id:
+                    continue
+                if dep_id in item_objects:
                     dependency_pairs.add((plan_item.id, dep_id))
+                elif dep_id not in plan_ids:
+                    self._handle_unresolved_reference(
+                        source_item_id=plan_item.id,
+                        reference_type="depends_on",
+                        reference_id=dep_id,
+                    )
 
         story_rollups = compute_parent_blocked_by(plan.items, PlanItemType.STORY)
         for child_parent, blocker_parent in story_rollups:
@@ -239,8 +236,17 @@ class SyncEngine:
         sync_map: SyncMap,
     ) -> RenderContext:
         parent_ref: str | None = None
-        if plan_item.parent_id and plan_item.parent_id in sync_map.entries:
-            parent_ref = sync_map.entries[plan_item.parent_id].key
+        plan_ids = {item.id for item in plan.items}
+        if plan_item.parent_id:
+            parent_entry = sync_map.entries.get(plan_item.parent_id)
+            if parent_entry is not None:
+                parent_ref = parent_entry.key
+            elif plan_item.parent_id not in plan_ids:
+                self._handle_unresolved_reference(
+                    source_item_id=plan_item.id,
+                    reference_type="parent_id",
+                    reference_id=plan_item.parent_id,
+                )
 
         sub_items: list[tuple[str, str]] = []
         for child in plan.items:
@@ -256,6 +262,12 @@ class SyncEngine:
         for dep_id in sorted(plan_item.depends_on):
             dep_entry = sync_map.entries.get(dep_id)
             if dep_entry is None:
+                if dep_id not in plan_ids:
+                    self._handle_unresolved_reference(
+                        source_item_id=plan_item.id,
+                        reference_type="depends_on",
+                        reference_id=dep_id,
+                    )
                 continue
             dependencies[dep_id] = dep_entry.key
 
@@ -273,3 +285,10 @@ class SyncEngine:
     async def _guarded(self, op: Awaitable[T]) -> T:
         async with self._semaphore:
             return await op
+
+    def _handle_unresolved_reference(self, *, source_item_id: str, reference_type: str, reference_id: str) -> None:
+        message = f"Unresolved {reference_type} reference '{reference_id}' on item '{source_item_id}' during sync."
+        if self._config.validation_mode == "partial":
+            warnings.warn(message, stacklevel=2)
+            return
+        raise SyncError(message)

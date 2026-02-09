@@ -15,11 +15,13 @@ def parse_metadata_block(body: str) -> dict[str, str]:
         start = lines.index(_META_START)
     except ValueError:
         return {}
+    try:
+        end = lines.index(_META_END, start + 1)
+    except ValueError:
+        return {}
 
     metadata: dict[str, str] = {}
-    for line in lines[start + 1 :]:
-        if line == _META_END:
-            break
+    for line in lines[start + 1 : end]:
         if ":" not in line:
             continue
         key, value = line.split(":", 1)

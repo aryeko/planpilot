@@ -16,13 +16,14 @@ from planpilot_v2.engine.engine import SyncEngine
 from planpilot_v2.engine.utils import compute_parent_blocked_by, parse_metadata_block
 
 
-def make_config(tmp_path: Path, *, max_concurrent: int = 1) -> PlanPilotConfig:
+def make_config(tmp_path: Path, *, max_concurrent: int = 1, validation_mode: str = "strict") -> PlanPilotConfig:
     return PlanPilotConfig(
         provider="github",
         target="owner/repo",
         board_url="https://github.com/orgs/owner/projects/1",
         plan_paths=PlanPaths(unified=tmp_path / "plan.json"),
         max_concurrent=max_concurrent,
+        validation_mode=validation_mode,
     )
 
 
@@ -61,6 +62,12 @@ def test_parse_metadata_block_ignores_invalid_lines_and_empty_keys() -> None:
     metadata = parse_metadata_block(body)
 
     assert metadata == {"ITEM_ID": "T1"}
+
+
+def test_parse_metadata_block_requires_end_marker() -> None:
+    body = "\n".join(["PLANPILOT_META_V1", "PLAN_ID:plan-1", "ITEM_ID:E1"])
+
+    assert parse_metadata_block(body) == {}
 
 
 @pytest.mark.parametrize(
@@ -171,6 +178,36 @@ async def test_sync_discovery_ignores_wrong_plan_and_missing_item_id(tmp_path: P
 
 
 @pytest.mark.asyncio
+async def test_sync_discovery_skips_metadata_plan_mismatch(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Mismatched metadata plan",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:other-plan",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "Contains PLAN_ID:plan-1 outside metadata.",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    result = await SyncEngine(provider, renderer, config).sync(plan, "plan-1")
+
+    assert result.items_created[PlanItemType.STORY] == 1
+
+
+@pytest.mark.asyncio
 async def test_sync_creates_in_type_level_order(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
@@ -226,7 +263,7 @@ async def test_sync_enrich_and_relations_use_full_context(tmp_path: Path) -> Non
 
 
 @pytest.mark.asyncio
-async def test_sync_dry_run_skips_provider_calls(tmp_path: Path) -> None:
+async def test_sync_dry_run_runs_pipeline_and_sets_flag(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
     config = make_config(tmp_path)
@@ -235,10 +272,10 @@ async def test_sync_dry_run_skips_provider_calls(tmp_path: Path) -> None:
     result = await SyncEngine(provider, renderer, config, dry_run=True).sync(plan, "plan-4")
 
     assert result.dry_run is True
-    assert provider.search_calls == []
-    assert provider.create_calls == []
-    assert provider.update_calls == []
-    assert result.sync_map.entries["E1"].key == "dry-run"
+    assert len(provider.search_calls) == 1
+    assert len(provider.create_calls) == 1
+    assert len(provider.update_calls) == 1
+    assert result.sync_map.entries["E1"].key == "#1"
     assert result.items_created[PlanItemType.EPIC] == 1
 
 
@@ -291,6 +328,27 @@ async def test_sync_relations_skip_unresolved_rollup_edges(tmp_path: Path) -> No
 
 
 @pytest.mark.asyncio
+async def test_sync_sets_epic_rollup_from_story_dependencies(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic One", sub_item_ids=["S1"]),
+            PlanItem(id="E2", type=PlanItemType.EPIC, title="Epic Two", sub_item_ids=["S2"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story One", parent_id="E1", depends_on=["S2"]),
+            PlanItem(id="S2", type=PlanItemType.STORY, title="Story Two", parent_id="E2"),
+        ]
+    )
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-11")
+
+    epic_one_id = next(item.id for item in provider.items.values() if item.title == "Epic One")
+    epic_two_id = next(item.id for item in provider.items.values() if item.title == "Epic Two")
+    assert provider.dependencies[epic_one_id] == {epic_two_id}
+
+
+@pytest.mark.asyncio
 async def test_sync_enrich_skips_items_without_sync_entries(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
@@ -302,6 +360,54 @@ async def test_sync_enrich_skips_items_without_sync_entries(tmp_path: Path) -> N
     await engine._enrich(plan, "plan-8", sync_map, item_objects={})
 
     assert provider.update_calls == []
+
+
+@pytest.mark.asyncio
+async def test_sync_strict_mode_raises_on_unresolved_parent(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", parent_id="MISSING")])
+
+    with pytest.raises(SyncError, match="Unresolved parent_id"):
+        await SyncEngine(provider, renderer, config).sync(plan, "plan-12")
+
+
+@pytest.mark.asyncio
+async def test_sync_strict_mode_raises_on_unresolved_dependency(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", depends_on=["MISSING"])])
+
+    with pytest.raises(SyncError, match="Unresolved depends_on"):
+        await SyncEngine(provider, renderer, config).sync(plan, "plan-9")
+
+
+@pytest.mark.asyncio
+async def test_sync_ignores_self_dependency(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", depends_on=["E1"])])
+
+    await SyncEngine(provider, renderer, config).sync(plan, "plan-13")
+
+    epic_id = next(item.id for item in provider.items.values() if item.title == "Epic")
+    assert provider.dependencies.get(epic_id) is None
+
+
+@pytest.mark.asyncio
+async def test_sync_partial_mode_warns_on_unresolved_dependency(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path, validation_mode="partial")
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic", depends_on=["MISSING"])])
+
+    with pytest.warns(UserWarning, match="Unresolved depends_on"):
+        result = await SyncEngine(provider, renderer, config).sync(plan, "plan-10")
+
+    assert result.sync_map.entries["E1"].id == "fake-id-1"
 
 
 class PartialFailureProvider(FakeProvider):
