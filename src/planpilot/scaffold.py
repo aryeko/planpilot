@@ -18,7 +18,6 @@ _SPLIT_DEFAULTS = {
     "stories": ".plans/stories.json",
     "tasks": ".plans/tasks.json",
 }
-_UNIFIED_DEFAULT = ".plans/plan.json"
 _SYNC_PATH_DEFAULT = ".plans/sync-map.json"
 
 # Patterns for parsing git remote URLs.
