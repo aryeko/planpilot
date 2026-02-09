@@ -187,12 +187,9 @@ def compute_parent_blocked_by(
 
 ## Phase 5: Result
 
-**Goal:** Persist sync map and return result.
+**Goal:** Build and return the sync result. The engine does **not** persist the sync map to disk — that is the SDK's responsibility.
 
 ```python
-sync_map_json = sync_map.model_dump_json(indent=2)
-Path(config.sync_path).write_text(sync_map_json, encoding="utf-8")
-
 return SyncResult(
     sync_map=sync_map,
     items_created=counters,  # dict[PlanItemType, int]
@@ -203,6 +200,8 @@ return SyncResult(
 **Contract types required:**
 - `SyncMap` — serializable to JSON via Pydantic
 - `SyncResult` — return value with sync_map + items_created counter dict + dry_run flag
+
+**Note:** Sync map persistence (writing to `config.sync_path`) is handled by the SDK after the engine returns. This keeps the engine free of file I/O, consistent with the principle that plan loading is also external to the engine.
 
 ## Internal Utilities
 
@@ -247,7 +246,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Fields/Methods Used |
 |------|-------------------|
-| `PlanPilotConfig` | `.target`, `.board_url`, `.label`, `.sync_path`, `.dry_run`, `.field_config` |
+| `PlanPilotConfig` | `.target`, `.board_url`, `.label`, `.dry_run`, `.field_config` |
 
 ### provider domain
 

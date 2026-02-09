@@ -11,9 +11,10 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 | Contract Domain | Types Used |
 |----------------|-----------|
 | **plan** | `Plan`, `PlanItem`, `PlanItemType` |
+| **config** | `PlanPaths` |
 | **exceptions** | `PlanLoadError`, `PlanValidationError` |
 
-No dependency on provider, renderer, item, sync, or config domains.
+No dependency on provider, renderer, item, or sync domains.
 
 ## Classes
 
@@ -27,8 +28,11 @@ class PlanLoader:
         """Load and parse plan JSON files into a validated Plan model.
 
         Args:
-            plan_paths: Paths configuration — either a single plan file
-                or separate epics/stories/tasks files.
+            plan_paths: PlanPaths configuration from the config domain.
+                Supports two modes:
+                - Multi-file: separate epics/stories/tasks paths set
+                - Single-file (unified): one file with all items, each
+                  having an explicit `type` field
 
         Returns:
             A validated Plan instance with flat items list.
@@ -40,11 +44,12 @@ class PlanLoader:
 ```
 
 **Behavior:**
-1. Verify all files exist
-2. Read and parse JSON
-3. For multi-file input: tag each item with the appropriate `PlanItemType` based on which file it came from
-4. Construct `Plan(items=[...])` via Pydantic (schema validation happens here)
-5. Return validated `Plan`
+1. Determine mode from `PlanPaths` (unified path vs separate epics/stories/tasks paths)
+2. Verify all referenced files exist
+3. Read and parse JSON
+4. For multi-file input: tag each item with the appropriate `PlanItemType` based on which file it came from
+5. Construct `Plan(items=[...])` via Pydantic (schema validation happens here)
+6. Return validated `Plan`
 
 **Error handling:** All file I/O and JSON parse errors are wrapped in `PlanLoadError` with descriptive messages. Pydantic `ValidationError` is also wrapped.
 
@@ -74,7 +79,23 @@ class PlanValidator:
 | Hierarchy depth | Tasks must have a story parent; stories must have an epic parent; epics have no parent |
 | Dependency refs | Every entry in `depends_on` must reference an existing item |
 | No childless stories | Every story must have at least one task |
-| Type-specific fields | If `type=TASK`, `verification` should be present |
+| Type-specific required fields | See per-type matrix below |
+
+**Per-type required fields:**
+
+`id`, `type`, and `title` are required on `PlanItem` at the model level (Pydantic). The validator enforces additional per-type requirements:
+
+| Field | Epic | Story | Task |
+|-------|------|-------|------|
+| `goal` | Required | Required | Optional |
+| `parent_id` | None (must be absent) | Required (epic) | Required (story) |
+| `sub_item_ids` | Required (stories) | Required (tasks) | None |
+| `spec_ref` | Optional | Optional | Optional |
+| `requirements` | Optional | Optional | Required |
+| `acceptance_criteria` | Optional | Required | Optional |
+| `verification` | None | None | Required |
+| `estimate` | None | Optional | Required |
+| `depends_on` | Optional | Optional | Optional |
 
 **Error aggregation:** All errors are collected and raised together in a single `PlanValidationError`, so users see every issue in one pass.
 

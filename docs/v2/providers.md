@@ -11,11 +11,14 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 | Contract Domain | Types Used |
 |----------------|-----------|
 | **item** | `Item`, `CreateItemInput`, `UpdateItemInput`, `ItemSearchFilters` |
-| **provider** | `Provider` ABC, `ProviderContext` |
+| **provider** | `Provider` ABC |
 | **config** | `FieldConfig` |
 | **exceptions** | `ProviderError`, `AuthenticationError`, `ProjectURLError` |
 
 No dependency on plan, renderer, sync, or engine.
+
+**Module-level base class:**
+- `ProviderContext` — Defined in `providers/base.py` (Core layer, not Contracts). A base class that concrete providers subclass to store resolved IDs, field mappings, and other provider-specific state. Opaque to the engine and SDK.
 
 ## Provider Contract (recap)
 
@@ -45,12 +48,12 @@ In v2, `create_item()` handles everything the v1 engine used to orchestrate acro
 
 The engine just says "create this item" and the provider handles all platform-specific setup. This keeps the engine simple and provider-agnostic.
 
-### Key Design: `Item` Has Provider-Bound Methods
+### Key Design: `Item` is an ABC with Provider-Implemented Relation Methods
 
-`Item` is a concrete class with async methods for relations:
+`Item` is an abstract base class defined in the Contracts layer. It carries read-only data fields and declares abstract relation methods. Concrete providers return subclasses (e.g. `GitHubItem`) that implement the relation methods using provider-specific APIs. The engine calls these methods through the `Item` ABC without knowing the concrete implementation.
 
 ```python
-class Item:
+class Item(ABC):
     # Data (read-only)
     id: str
     key: str
@@ -59,12 +62,12 @@ class Item:
     body: str
     item_type: PlanItemType | None
 
-    # Relation methods (provider-bound)
+    # Relation methods (abstract — implemented by provider subclasses)
+    @abstractmethod
     async def set_parent(self, parent: Item) -> None: ...
+    @abstractmethod
     async def add_dependency(self, blocker: Item) -> None: ...
 ```
-
-Providers return `Item` subclasses that implement these methods using provider-specific APIs. The engine calls them without knowing the implementation.
 
 ## ProviderFactory
 
@@ -190,7 +193,7 @@ class GitHubItem(Item):
 
 ### GitHubProviderContext
 
-Extends `ProviderContext` with GitHub-specific resolved state:
+Extends `ProviderContext` (from `providers/base.py`) with GitHub-specific resolved state:
 
 ```python
 class GitHubProviderContext(ProviderContext):
@@ -227,9 +230,10 @@ Utility functions for GitHub-specific transformations:
 |----------|---------|
 | `parse_project_url(url) -> (org, number)` | Extract org and project number from URL |
 | `resolve_option_id(options, name) -> str?` | Case-insensitive option ID lookup |
-| `parse_markers(body) -> dict` | Extract PLAN_ID, ITEM_ID from body (shared with engine) |
 | `build_parent_map(data) -> dict` | Parse sub-issue API response |
 | `build_blocked_by_map(data) -> dict` | Parse blocked-by API response |
+
+**Note:** `parse_markers()` (extracting `PLAN_ID`/`ITEM_ID` from issue bodies) is **not** a provider concern in v2. It is an engine-internal utility. The provider's `search_items()` returns raw `Item` objects; the engine parses body markers during the Discovery phase.
 
 ### Queries
 

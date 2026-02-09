@@ -80,12 +80,14 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `PlanItemType` — Enum: `EPIC`, `STORY`, `TASK`
-- `PlanItem` — Single flat model for all plan entities. The `type` field discriminates between epics, stories, and tasks. All properties live on one class; fields that don't apply to a given type are empty/None:
-  - `id`, `type: PlanItemType`, `title`, `goal`, `motivation`, `spec_ref`, `scope`
-  - `parent_id`, `sub_item_ids`, `depends_on`
-  - `assumptions`, `risks`, `estimate`
-  - `requirements`, `acceptance_criteria`, `success_metrics` — typically stories
-  - `verification` — typically tasks
+- `PlanItem` — Single flat model for all plan entities. The `type` field discriminates between epics, stories, and tasks. All properties live on one class; fields that don't apply to a given type are validated by `PlanValidator`:
+  - **Required (all types):** `id: str`, `type: PlanItemType`, `title: str`
+  - **Optional / type-dependent:** `goal`, `motivation`, `spec_ref`, `scope`
+  - **Hierarchy:** `parent_id`, `sub_item_ids`, `depends_on`
+  - **Detail fields:** `assumptions`, `risks`, `estimate`
+  - **Story/task fields:** `requirements`, `acceptance_criteria`, `success_metrics`
+  - **Task fields:** `verification`
+- `PlanItem` sub-models: `Scope`, `SpecRef`, `Estimate`, `Verification` — nested value objects used by `PlanItem` fields
 - `Plan` — Container: `items: list[PlanItem]`
 
 **Contracts:** None (pure data models)
@@ -97,13 +99,16 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 **Responsibility:** Provider-agnostic work item abstraction. Defines what a work item looks like and how to create/update/search items, independent of any specific provider (GitHub, Jira, etc.).
 
 **Models:**
-- `Item` — Runtime work item with provider-bound operations (Active Record pattern)
 - `CreateItemInput` — Fields required to create a new item
 - `UpdateItemInput` — Fields for updating an existing item
 - `ItemSearchFilters` — Filters for searching items
 - `ItemFields` — Base fields shared by inputs/filters
 
-**Contracts:** None (Item is a concrete class, not an ABC)
+**Contracts:**
+- `Item` ABC — Abstract work item with data fields and abstract relation methods. Concrete providers return subclasses (e.g. `GitHubItem`) that implement the relation methods:
+  - `id`, `key`, `url`, `title`, `body`, `item_type` — read-only data fields
+  - `set_parent(Item) -> None` — abstract; sets parent/child relationship
+  - `add_dependency(Item) -> None` — abstract; sets blocked-by relationship
 
 **Dependencies:**
 - Uses `plan` domain: `CreateItemInput.item_type` and `Item.item_type` reference `PlanItemType`
@@ -114,7 +119,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Models:**
 - `SyncEntry` — Mapping entry for a single item (id, key, url)
-- `SyncMap` — Full sync map: `plan_id`, `target`, `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
+- `SyncMap` — Full sync map: `plan_id`, `target`, `board_url` (optional), `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
 - `SyncResult` — Return value: `sync_map`, `items_created: dict[PlanItemType, int]`, `dry_run`
 
 **Utilities:**
@@ -134,11 +139,16 @@ Organized into six domains, each with clear responsibilities. Domains may depend
   - `provider` — Provider name (e.g. "github")
   - `target` — Target designation (e.g. "owner/repo")
   - `board_url` — Board URL (optional)
-  - `plan_paths` — Paths to plan JSON files (epics, stories, tasks)
+  - `plan_paths: PlanPaths` — Paths to plan JSON files
   - `sync_path` — Path to write sync map
   - `label` — Label to apply to all items
   - `field_config` — Project field preferences
   - `dry_run` — Preview mode flag
+- `PlanPaths` — Paths configuration for plan input files. Supports multi-file mode (separate epics/stories/tasks files) or single-file mode (all items in one file):
+  - `epics: Path | None` — Path to epics JSON file
+  - `stories: Path | None` — Path to stories JSON file
+  - `tasks: Path | None` — Path to tasks JSON file
+  - `unified: Path | None` — Path to single combined plan file
 - `FieldConfig` — Project field preferences (status, priority, iteration, size field)
 
 **Contracts:** None (pure data models)
@@ -148,9 +158,6 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 #### 5. **provider** Domain
 
 **Responsibility:** Contract for external system adapters. Defines what any provider (GitHub, Jira, Linear) must be able to do.
-
-**Models:**
-- `ProviderContext` — Opaque provider context, subclassed by concrete providers to store resolved IDs, field mappings, and other provider-specific state
 
 **Contracts:**
 - `Provider` ABC — Abstract base class defining the provider interface:
@@ -163,6 +170,8 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Dependencies:**
 - Depends on `item` domain: Uses `CreateItemInput`, `Item`, `UpdateItemInput`, `ItemSearchFilters` in method signatures
+
+**Note:** `ProviderContext` is **not** part of the Contracts layer. It is a base class defined in the Core providers module (`providers/base.py`) that concrete providers subclass to store resolved IDs, field mappings, and other provider-specific state (e.g. `GitHubProviderContext`). It is opaque to the engine and SDK.
 
 #### 6. **renderer** Domain
 
@@ -245,6 +254,7 @@ The public API surface. Wires Core modules together.
 - `PlanPilot` class — main facade
 - Exposes provider/renderer factories as convenience functions
 - Handles plan loading, dependency injection, engine construction
+- Handles sync map persistence to disk after engine returns `SyncResult`
 
 **Rules:**
 - Depends on Core modules only
@@ -260,7 +270,7 @@ Thin shell wrapper. Depends only on SDK.
 - Calls SDK with parsed arguments
 
 **Rules:**
-- Depends only on SDK
+- Imports only from the SDK's public API surface. The SDK re-exports any Contracts types needed by callers (e.g. `SyncResult`, `PlanPilotConfig`, `PlanItemType`)
 - Does not import Core modules or Contracts directly
 - Could be deleted and SDK still works
 
@@ -270,10 +280,10 @@ Thin shell wrapper. Depends only on SDK.
 |-------|----------------|-------------------|
 | **Contracts** | Other Contract domains (downward only), stdlib, third-party | Core, SDK, CLI |
 | **Core** | Contracts only | Other Core modules, SDK, CLI |
-| **SDK** | Core only | CLI |
-| **CLI** | SDK only | Core, Contracts |
+| **SDK** | Core, Contracts (re-exports selected types publicly) | CLI |
+| **CLI** | SDK public API (which re-exports selected Contracts types) | Core, Contracts directly |
 
-Strict one-level-down. No exceptions, no bypassing.
+Strict one-level-down. The SDK re-exports Contracts types (e.g. `SyncResult`, `PlanPilotConfig`, `PlanItemType`) so that CLI and external callers access them through the SDK without importing Contracts directly.
 
 ## Module Responsibilities
 
@@ -308,9 +318,9 @@ classDiagram
         +str id
         +PlanItemType type
         +str title
-        +str goal
-        +str motivation
-        +str parent_id
+        +str? goal
+        +str? motivation
+        +str? parent_id
         +list~str~ sub_item_ids
         +list~str~ depends_on
         +list~str~ requirements
@@ -318,10 +328,10 @@ classDiagram
         +list~str~ success_metrics
         +list~str~ assumptions
         +list~str~ risks
-        +Estimate estimate
-        +Verification verification
-        +SpecRef spec_ref
-        +Scope scope
+        +Estimate? estimate
+        +Verification? verification
+        +SpecRef? spec_ref
+        +Scope? scope
     }
 
     class Plan {
@@ -329,14 +339,15 @@ classDiagram
     }
 
     class Item {
+        <<abstract>>
         +str id
         +str key
         +str url
         +str title
         +str body
         +PlanItemType item_type
-        +add_dependency(Item)
-        +set_parent(Item)
+        +set_parent(Item)*
+        +add_dependency(Item)*
     }
 
     class SyncResult {
@@ -401,8 +412,7 @@ classDiagram
         -Provider provider
         -BodyRenderer renderer
         -PlanPilotConfig config
-        +sync() SyncResult
-        +sync(Plan) SyncResult
+        +sync(plan: Plan | None) SyncResult
     }
 
     PlanItem --> PlanItemType : has type
@@ -438,6 +448,9 @@ sequenceDiagram
     CLI->>SDK: PlanPilot(provider, renderer, config)
     CLI->>SDK: sync()
     SDK->>SDK: load_plan(config.plan_paths)
+    SDK->>Provider: __aenter__()
+    Provider-->>SDK: authenticated provider
+
     SDK->>Engine: SyncEngine(provider, renderer, config)
     SDK->>Engine: sync(plan)
 
@@ -459,6 +472,8 @@ sequenceDiagram
     Engine->>Provider: item.set_parent(parent)
 
     Engine-->>SDK: SyncResult
+    SDK->>SDK: persist sync map to disk
+    SDK->>Provider: __aexit__()
     SDK-->>CLI: SyncResult
     CLI-->>User: formatted output
 ```
@@ -468,16 +483,17 @@ sequenceDiagram
 ### Programmatic Usage
 
 ```python
-from planpilot import PlanPilot, create_provider, create_renderer, load_config
+from planpilot import PlanPilot, PlanItemType, create_provider, create_renderer, load_config
 
 # Load config from file
 config = load_config("planpilot.json")
 
 # Construct provider and renderer (by name, via factories)
-provider = create_provider(config.provider, target=config.target, ...)
+provider = create_provider(config.provider, target=config.target)
 renderer = create_renderer("markdown")
 
 # Create SDK instance and sync (loads plan from config.plan_paths)
+# Provider lifecycle (__aenter__/__aexit__) is managed internally by sync()
 pp = PlanPilot(provider=provider, renderer=renderer, config=config)
 result = await pp.sync()
 
@@ -486,9 +502,11 @@ plan = load_plan("epics.json", "stories.json", "tasks.json")
 result = await pp.sync(plan)
 
 # Access results
-print(f"Created {result.epics_created} epics")
+print(f"Created {result.items_created[PlanItemType.EPIC]} epics")
 print(f"Sync map: {result.sync_map.model_dump_json()}")
 ```
+
+**Provider lifecycle:** The `PlanPilot.sync()` method manages the provider's async context manager internally. The caller does **not** need to enter the provider context — `sync()` calls `__aenter__` before engine execution and `__aexit__` after completion (or on error). This keeps the public API simple and ensures proper cleanup.
 
 ### CLI Usage
 
@@ -635,4 +653,18 @@ The SDK is the only place that sees all Core modules and wires them together. Co
 
 ### CLI depends only on SDK
 
-The CLI is pure I/O — argument parsing and output formatting. It never reaches into Core or Contracts directly. It calls the SDK, which handles everything. The CLI could be replaced with a web UI or a script and the SDK would work unchanged.
+The CLI is pure I/O — argument parsing and output formatting. It never reaches into Core or Contracts directly — it imports only from the SDK's public API surface (which re-exports selected Contracts types like `SyncResult` and `PlanItemType`). The CLI could be replaced with a web UI or a script and the SDK would work unchanged.
+
+## Migration and Operational Notes
+
+### Sync map compatibility
+
+v2 sync maps use a flat `entries` dict with `id`/`key`/`url` fields per entry (vs v1's per-type dicts `epics`/`stories`/`tasks` with `issue_number`/`node_id`/`project_item_id`). Existing v1 sync maps are not compatible with v2. A migration utility or fresh sync is required when upgrading.
+
+### Partial failure recovery
+
+The Discovery phase re-detects previously created items via body markers (`PLAN_ID`/`ITEM_ID` embedded in issue bodies). If a sync crashes mid-upsert, re-running will find already-created items during Discovery and skip them, continuing from where it left off. This makes the sync pipeline idempotent and crash-safe.
+
+### Concurrency
+
+Provider implementations are not required to support concurrent calls. The engine processes items sequentially (epics, then stories, then tasks). Future versions may introduce opt-in concurrency for providers that support it.
