@@ -23,7 +23,7 @@
 flowchart TB
     subgraph Contracts["Contracts Layer"]
         PlanDomain["plan domain<br/>PlanItem, PlanItemType<br/>Plan"]
-        ItemDomain["item domain<br/>Item, CreateItemInput<br/>UpdateItemInput, ItemType"]
+        ItemDomain["item domain<br/>Item, CreateItemInput<br/>UpdateItemInput, ItemSearchFilters"]
         SyncDomain["sync domain<br/>SyncEntry, SyncMap<br/>SyncResult"]
         ConfigDomain["config domain<br/>PlanPilotConfig, FieldConfig"]
         ProviderDomain["provider domain<br/>Provider ABC"]
@@ -70,9 +70,9 @@ flowchart TB
 
 #### Contracts
 
-The foundation — pure data types and abstract interfaces. Zero internal dependencies.
+The foundation — pure data types and abstract interfaces. Zero dependencies on other layers.
 
-Organized into six domains, each with clear responsibilities. Domains may depend on other domains within the same layer (see dependency summary below).
+Organized into six domains, each with clear responsibilities. Domains may depend on other domains within the Contracts layer (see dependency summary below).
 
 #### 1. **plan** Domain
 
@@ -106,7 +106,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 **Contracts:**
 - `Item` ABC — Abstract work item with data fields and abstract relation methods. Concrete providers return subclasses (e.g. `GitHubItem`) that implement the relation methods:
-  - `id`, `key`, `url`, `title`, `body`, `item_type` — read-only data fields
+  - `id`, `key`, `url`, `title`, `body`, `item_type` — read-only data fields (`item_type` is `PlanItemType | None`; None for searched items with unrecognized type)
   - `set_parent(Item) -> None` — abstract; sets parent/child relationship
   - `add_dependency(Item) -> None` — abstract; sets blocked-by relationship
 
@@ -118,7 +118,7 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 **Responsibility:** Sync state and results. Tracks what was synced and persists the mapping between plan entities and provider items.
 
 **Models:**
-- `SyncEntry` — Mapping entry for a single item (id, key, url)
+- `SyncEntry` — Mapping entry for a single item (id, key, url, item_type)
 - `SyncMap` — Full sync map: `plan_id`, `target`, `board_url` (optional), `entries: dict[str, SyncEntry]` (flat, keyed by item ID)
 - `SyncResult` — Return value: `sync_map`, `items_created: dict[PlanItemType, int]`, `dry_run`
 
@@ -197,14 +197,10 @@ Organized into six domains, each with clear responsibilities. Domains may depend
 
 ```
 plan domain          (no dependencies)
-    ↑
-item domain          (depends on plan — uses PlanItemType)
-    ↑
-renderer domain      (depends on plan — uses PlanItem)
-
-provider domain      (depends on item — uses Item, inputs)
-
-sync domain          (depends on item — to_sync_entry conversion)
+├── item domain      (depends on plan — uses PlanItemType)
+│   ├── provider domain   (depends on item — uses Item, inputs)
+│   └── sync domain       (depends on item — to_sync_entry conversion)
+└── renderer domain  (depends on plan — uses PlanItem)
 
 config domain        (no dependencies)
 ```
@@ -345,7 +341,7 @@ classDiagram
         +str url
         +str title
         +str body
-        +PlanItemType item_type
+        +PlanItemType? item_type
         +set_parent(Item)*
         +add_dependency(Item)*
     }
@@ -383,7 +379,7 @@ classDiagram
         -Provider provider
         -BodyRenderer renderer
         -PlanPilotConfig config
-        +sync(Plan) SyncResult
+        +sync(Plan, str) SyncResult
     }
 
     class PlanLoader {
@@ -399,12 +395,10 @@ classDiagram
     }
 
     class ProviderFactory {
-        +register(str, type~Provider~)
         +create_provider(str) Provider
     }
 
     class RendererFactory {
-        +register(str, type~BodyRenderer~)
         +create_renderer(str) BodyRenderer
     }
 
@@ -453,7 +447,8 @@ sequenceDiagram
     Provider-->>SDK: authenticated provider
 
     SDK->>Engine: SyncEngine(provider, renderer, config)
-    SDK->>Engine: sync(plan)
+    SDK->>SDK: compute_plan_id(plan)
+    SDK->>Engine: sync(plan, plan_id)
 
     Engine->>Provider: search_items(filters)
     Provider-->>Engine: list[Item]
@@ -517,8 +512,8 @@ print(f"Sync map: {result.sync_map.model_dump_json()}")
 # Config-file driven (recommended)
 planpilot sync --config planpilot.json --apply
 
-# Override individual settings
-planpilot sync --config planpilot.json --apply --dry-run
+# Preview mode
+planpilot sync --config planpilot.json --dry-run
 ```
 
 Example `planpilot.json`:
@@ -575,14 +570,14 @@ class JiraProvider(Provider):
     # ... implement all abstract methods
 ```
 
-2. **Register with factory:**
+2. **Add to factory mapping:**
 
 ```python
-# providers/jira/__init__.py
-from planpilot.providers.factory import register
-from planpilot.providers.jira.provider import JiraProvider
-
-register("jira", JiraProvider)
+# providers/factory.py
+PROVIDERS: dict[str, type[Provider]] = {
+    "github": GitHubProvider,
+    "jira": JiraProvider,
+}
 ```
 
 3. **Use it:**
@@ -617,14 +612,14 @@ class WikiRenderer(BodyRenderer):
         return "\n".join(lines)
 ```
 
-2. **Register with factory:**
+2. **Add to factory mapping:**
 
 ```python
-# renderers/wiki/__init__.py
-from planpilot.renderers.factory import register
-from planpilot.renderers.wiki.renderer import WikiRenderer
-
-register("wiki", WikiRenderer)
+# renderers/factory.py
+RENDERERS: dict[str, type[BodyRenderer]] = {
+    "markdown": MarkdownRenderer,
+    "wiki": WikiRenderer,
+}
 ```
 
 3. **Use it:**

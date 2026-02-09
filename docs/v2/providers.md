@@ -69,44 +69,44 @@ class Item(ABC):
     async def add_dependency(self, blocker: Item) -> None: ...
 ```
 
-## ProviderFactory
+## Provider Factory
 
-Registry + factory for creating providers by name.
+Simple dict-based factory for creating providers by name. No registration mechanism — all known providers are listed in the mapping.
 
 ```python
-class ProviderFactory:
-    _registry: dict[str, type[Provider]] = {}
+# providers/factory.py
+PROVIDERS: dict[str, type[Provider]] = {
+    "github": GitHubProvider,
+}
 
-    @classmethod
-    def register(cls, name: str, provider_cls: type[Provider]) -> None:
-        """Register a provider class by name."""
+def create_provider(
+    name: str,
+    *,
+    target: str,
+    board_url: str | None = None,
+    label: str | None = None,
+    field_config: FieldConfig | None = None,
+    **kwargs: object,
+) -> Provider:
+    """Create a provider instance by name.
 
-    @classmethod
-    def create(
-        cls,
-        name: str,
-        *,
-        target: str,
-        board_url: str | None = None,
-        label: str | None = None,
-        field_config: FieldConfig | None = None,
-        **kwargs: object,
-    ) -> Provider:
-        """Create a provider instance by name.
+    Args:
+        name: Provider name (must exist in PROVIDERS).
+        target: Target designation (e.g. "owner/repo").
+        board_url: Board URL (optional).
+        label: Label name (optional).
+        field_config: Field configuration (optional).
 
-        Args:
-            name: Provider name (must be registered).
-            target: Target designation (e.g. "owner/repo").
-            board_url: Board URL (optional).
-            label: Label name (optional).
-            field_config: Field configuration (optional).
+    Returns:
+        Provider instance (async context manager).
 
-        Returns:
-            Provider instance (async context manager).
-
-        Raises:
-            ValueError: If name is not registered.
-        """
+    Raises:
+        ValueError: If name is not in PROVIDERS.
+    """
+    cls = PROVIDERS.get(name)
+    if cls is None:
+        raise ValueError(f"Unknown provider: {name!r}")
+    return cls(target=target, board_url=board_url, label=label, field_config=field_config, **kwargs)
 ```
 
 ## GitHub Provider
@@ -117,7 +117,7 @@ Concrete implementation of `Provider` for GitHub Issues + Projects v2.
 
 ```
 providers/github/
-├── __init__.py         # Self-registration with ProviderFactory
+├── __init__.py         # Package init
 ├── provider.py         # GitHubProvider (implements Provider ABC)
 ├── item.py             # GitHubItem (implements Item relation methods)
 ├── client.py           # GhClient (async gh CLI wrapper)
@@ -252,16 +252,6 @@ GraphQL constants for all GitHub API operations:
 | `ADD_BLOCKED_BY` | Create blocked-by relationship |
 | `FETCH_ISSUE_RELATIONS` | Batch fetch parents + blocked-by |
 
-### Registration
-
-```python
-# providers/github/__init__.py
-from planpilot.providers.factory import ProviderFactory
-from planpilot.providers.github.provider import GitHubProvider
-
-ProviderFactory.register("github", GitHubProvider)
-```
-
 ## Adding a New Provider
 
 To add a new provider (e.g. Jira):
@@ -270,7 +260,7 @@ To add a new provider (e.g. Jira):
 2. Implement `JiraProvider(Provider)` with all abstract methods
 3. Implement `JiraItem(Item)` with `set_parent()` and `add_dependency()`
 4. Create `JiraClient` for API transport
-5. Register: `ProviderFactory.register("jira", JiraProvider)`
+5. Add to factory mapping in `providers/factory.py`
 
 No changes needed to engine, SDK, CLI, renderers, or any other module.
 
@@ -278,10 +268,10 @@ No changes needed to engine, SDK, CLI, renderers, or any other module.
 
 | v1 | v2 | Rationale |
 |----|-----|-----------|
-| 15+ abstract methods in Provider ABC | 6 methods: `search_items`, `create_item`, `update_item`, `get_item`, `delete_item` + context manager | Dramatically simpler contract |
+| 15+ abstract methods in Provider ABC | 5 CRUD methods + async context manager | Dramatically simpler contract |
 | Engine calls `check_auth()`, `get_repo_context()`, `get_project_context()` | Provider handles all setup in `__aenter__` | Engine doesn't know about auth or context resolution |
 | Engine calls `set_issue_type()`, `add_to_project()`, `set_project_field()` | `create_item()` handles all atomically | Single-call item creation |
 | Engine calls `add_sub_issue()`, `add_blocked_by()` with raw IDs | `Item.set_parent()`, `Item.add_dependency()` handle idempotency | Relation logic moves to provider |
 | Engine calls `get_issue_relations()` for idempotency checks | Item methods handle idempotency internally | Simplifies engine |
 | `RepoContext`, `ProjectContext`, `RelationMap` in shared models | GitHub-specific models in `providers/github/models.py` | Provider-specific types stay in provider |
-| No factory | `ProviderFactory` with registration | Pluggable providers |
+| No factory | Dict-based `create_provider()` factory | Pluggable providers |

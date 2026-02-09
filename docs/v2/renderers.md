@@ -10,7 +10,7 @@ This is a Core (L2) module. It depends only on the Contracts layer.
 
 | Contract Domain | Types Used |
 |----------------|-----------|
-| **plan** | `PlanItem`, `PlanItemType`, `Scope`, `SpecRef`, `Estimate`, `Verification` |
+| **plan** | `PlanItem`, `Scope`, `SpecRef`, `Estimate`, `Verification` |
 | **renderer** | `BodyRenderer` ABC, `RenderContext` |
 
 No dependency on provider, item, sync, config, or engine.
@@ -39,7 +39,7 @@ class BodyRenderer(ABC):
 ```python
 class RenderContext:
     plan_id: str                              # Deterministic plan hash
-    parent_ref: str | None                    # Human-readable ref to parent (e.g. "#42"), None for epics
+    parent_ref: str | None                    # Human-readable ref to parent (e.g. "#42"), None for items without a parent
     sub_items: list[tuple[str, str]]          # (key, title) of child items
     dependencies: dict[str, str]              # {dep_id: issue_ref} for blocked-by links
 ```
@@ -117,6 +117,14 @@ CI checks:
 
 * {item.verification.ci_checks items}
 
+Evidence:
+
+* {item.verification.evidence items}
+
+Manual steps:
+
+* {item.verification.manual_steps items}
+
 ## Spec Reference
 
 * {item.spec_ref formatted}
@@ -144,7 +152,7 @@ Blocked by:
 | ITEM_ID marker | Always | HTML comment |
 | Goal | `item.goal` is non-empty | Plain text |
 | Motivation | `item.motivation` is non-empty | Plain text |
-| Parent | `context.parent_ref` is not None | Bullet with ref (None for top-level epics) |
+| Parent | `context.parent_ref` is not None | Bullet with ref (None for items without a parent) |
 | Scope | `item.scope` has in_scope or out_scope | In/Out bullet lists |
 | Requirements | `item.requirements` is non-empty | Bullet list |
 | Acceptance Criteria | `item.acceptance_criteria` is non-empty | Bullet list |
@@ -163,49 +171,36 @@ Internal to the renderers module (not Contracts):
 
 | Helper | Signature | Purpose |
 |--------|-----------|---------|
-| `bullets` | `(items: list[str]) -> str` | Render bullet list, "* (none)" if empty |
+| `bullets` | `(items: list[str]) -> str` | Render bullet list from non-empty list |
 | `scope_block` | `(scope: Scope) -> str` | Render In/Out scope block |
-| `spec_ref_block` | `(spec_ref: SpecRef or str) -> str` | Format spec reference with link/section/quote |
+| `spec_ref_block` | `(spec_ref: SpecRef | str) -> str` | Format spec reference with link/section/quote |
 
 ## RendererFactory
 
-Registry + factory for creating renderers by name.
+Simple dict-based factory for creating renderers by name. No registration mechanism — all known renderers are listed in the mapping.
 
 ```python
-class RendererFactory:
-    _registry: dict[str, type[BodyRenderer]] = {}
+# renderers/factory.py
+RENDERERS: dict[str, type[BodyRenderer]] = {
+    "markdown": MarkdownRenderer,
+}
 
-    @classmethod
-    def register(cls, name: str, renderer_cls: type[BodyRenderer]) -> None:
-        """Register a renderer class by name."""
+def create_renderer(name: str, **kwargs: object) -> BodyRenderer:
+    """Create a renderer instance by name.
 
-    @classmethod
-    def create(cls, name: str, **kwargs: object) -> BodyRenderer:
-        """Create a renderer instance by name.
+    Args:
+        name: Renderer name (must exist in RENDERERS).
 
-        Args:
-            name: Renderer name (must be registered).
+    Returns:
+        BodyRenderer instance.
 
-        Returns:
-            BodyRenderer instance.
-
-        Raises:
-            ValueError: If name is not registered.
-        """
-```
-
-### Registration
-
-Concrete renderers self-register on import:
-
-```python
-# renderers/markdown.py
-from planpilot.renderers.factory import RendererFactory
-
-class MarkdownRenderer(BodyRenderer):
-    ...
-
-RendererFactory.register("markdown", MarkdownRenderer)
+    Raises:
+        ValueError: If name is not in RENDERERS.
+    """
+    cls = RENDERERS.get(name)
+    if cls is None:
+        raise ValueError(f"Unknown renderer: {name!r}")
+    return cls(**kwargs)
 ```
 
 ## File Structure
@@ -213,7 +208,7 @@ RendererFactory.register("markdown", MarkdownRenderer)
 ```
 renderers/
 ├── __init__.py
-├── factory.py          # RendererFactory
+├── factory.py          # create_renderer factory
 ├── markdown.py         # MarkdownRenderer + helpers
 └── (future: wiki.py)   # WikiRenderer for Jira
 ```
@@ -225,5 +220,5 @@ renderers/
 | Three methods: `render_epic()`, `render_story()`, `render_task()` | Single `render(item, context)` | Decoupled from entity types |
 | Separate `render_checklist()`, `render_deps_block()` | Integrated into `render()` via RenderContext | Single responsibility |
 | `components.py` shared helpers | Same helpers, internal to renderers module | No change in approach |
-| No factory | `RendererFactory` with registration | Pluggable renderers |
+| No factory | Dict-based `create_renderer()` factory | Pluggable renderers |
 | `BodyRenderer` was a Protocol in rendering/base.py | `BodyRenderer` is an ABC in Contracts | Moved to Contracts layer |

@@ -29,10 +29,10 @@ class SyncEngine:
         config: PlanPilotConfig,
     ) -> None: ...
 
-    async def sync(self, plan: Plan) -> SyncResult: ...
+    async def sync(self, plan: Plan, plan_id: str) -> SyncResult: ...
 ```
 
-The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, and config. The `Plan` is passed to `sync()` — the engine does not load plans itself (that's the SDK's job).
+The engine receives a fully constructed `Provider` (already authenticated via `__aenter__`), a `BodyRenderer`, and config. The `Plan` and its deterministic `plan_id` are passed to `sync()` — the SDK handles plan loading and hash computation (via `PlanHasher`). This avoids cross-Core module imports.
 
 ### Sync Pipeline
 
@@ -78,7 +78,7 @@ existing_map: dict[str, Item]
 
 **Goal:** For each PlanItem (epic, story, task) in the plan, create it if it doesn't exist.
 
-**Processing order:** Items sorted by type: epics first, then stories, then tasks (parent before child so parent refs are available). The engine groups `plan.items` by `item.type`.
+**Processing order:** Items are topologically sorted so that parents are created before children. The engine sorts by type level (epics → stories → tasks) and then by `parent_id` within each level, ensuring a parent item is always created before any item that references it.
 
 **Contract calls per item:**
 
@@ -100,7 +100,7 @@ input = CreateItemInput(
     body=body,
     item_type=plan_item.type,             # PlanItemType enum
     labels=[config.label],
-    size=plan_item.estimate.tshirt,       # if available
+    size=plan_item.estimate.tshirt if plan_item.estimate else None,
 )
 item: Item = await provider.create_item(input)
 
@@ -110,7 +110,7 @@ sync_map.entries[plan_item.id] = entry
 ```
 
 **Contract types required:**
-- `RenderContext` — needs `plan_id: str`, `parent_ref: str`, `sub_items: list[tuple[str, str]]`, `dependencies: dict[str, str]`
+- `RenderContext` — needs `plan_id: str`, `parent_ref: str | None`, `sub_items: list[tuple[str, str]]`, `dependencies: dict[str, str]`
 - `BodyRenderer.render(PlanItem, RenderContext) -> str`
 - `CreateItemInput` — needs `title: str`, `body: str`, `item_type: PlanItemType`, `labels: list[str]`, `size: str | None`
 - `Provider.create_item(CreateItemInput) -> Item`
@@ -157,17 +157,18 @@ await provider.update_item(
 **Contract calls:**
 
 ```python
-# Parent/child: tasks under stories, stories under epics
+# Parent/child: set parent for items with parent_id
 await item.set_parent(parent_item)
 
-# Blocked-by: direct task deps + roll-ups
+# Blocked-by: direct deps + parent-level roll-ups
 await item.add_dependency(blocker_item)
 ```
 
 **Internal logic:**
 
-1. **Direct dependencies:** For each item, set `add_dependency` for each item in `depends_on`.
-2. **Parent roll-up:** If a child in parent A depends on a child in parent B, then parent A is blocked by parent B (e.g. story-level roll-up from task deps, epic-level roll-up from story deps).
+1. **Direct dependencies:** For each item with `depends_on`, call `add_dependency` for each referenced item.
+2. **Parent hierarchy:** For each item with `parent_id`, call `set_parent` with the parent item.
+3. **Parent roll-up:** If a child in parent A depends on a child in parent B (and A != B), then parent A is blocked by parent B. This rolls up recursively through the hierarchy (e.g. task deps roll up to story level, story deps roll up to epic level).
 
 Roll-up is computed by engine-internal utilities:
 
@@ -237,7 +238,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Fields/Methods Used |
 |------|-------------------|
-| `SyncEntry` | `.id`, `.key`, `.url` |
+| `SyncEntry` | `.id`, `.key`, `.url`, `.item_type` |
 | `SyncMap` | `.plan_id`, `.target`, `.board_url`, `.entries` |
 | `SyncResult` | `.sync_map`, `.items_created`, `.dry_run` |
 | `to_sync_entry()` | `(Item) -> SyncEntry` |
@@ -246,7 +247,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | Type | Fields/Methods Used |
 |------|-------------------|
-| `PlanPilotConfig` | `.target`, `.board_url`, `.label`, `.dry_run`, `.field_config` |
+| `PlanPilotConfig` | `.target`, `.board_url`, `.label`, `.dry_run` |
 
 ### provider domain
 
@@ -271,7 +272,7 @@ Complete list of all Contract types the engine requires, organized by domain:
 
 | v1 | v2 | Rationale |
 |----|-----|-----------|
-| Engine calls `load_plan()`, `validate_plan()`, `compute_plan_id()` | SDK handles plan loading; engine receives `Plan` | Engine is pure orchestration, not I/O |
+| Engine calls `load_plan()`, `validate_plan()`, `compute_plan_id()` | SDK handles plan loading and hashing; engine receives `Plan` + `plan_id` | Engine is pure orchestration, no I/O or cross-Core imports |
 | Engine calls `renderer.render_epic()`, `render_story()`, `render_task()` | Single `renderer.render(item, context)` | Decouples renderer from entity types |
 | Engine knows about `RepoContext`, `ProjectContext`, field resolution | Provider handles all setup in `__aenter__`; engine just calls CRUD | Engine doesn't know about provider internals |
 | Engine calls `provider.set_issue_type()`, `add_to_project()`, `set_project_field()` | `Provider.create_item()` handles all of this atomically | Simpler engine, smarter provider |

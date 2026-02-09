@@ -72,13 +72,11 @@ class PlanValidator:
 | Rule | Description |
 |------|------------|
 | No duplicate IDs | All item IDs must be globally unique |
-| At least one epic | Plan must contain at least one item of type EPIC |
 | Valid type | Every item must have a valid `PlanItemType` |
-| Parent ref | Every item's `parent_id` must reference an existing item of the correct parent type (task→story, story→epic) |
-| Sub-item consistency | `parent.sub_item_ids` must match children whose `parent_id` points back |
-| Hierarchy depth | Tasks must have a story parent; stories must have an epic parent; epics have no parent |
+| Parent ref | If `parent_id` is set, it must reference an existing item of the correct parent type (task→story, story→epic) |
+| Sub-item consistency | If item A lists B in `sub_item_ids`, then B's `parent_id` must point to A. If B's `parent_id` points to A, then A must list B in `sub_item_ids` |
+| Hierarchy type | If `parent_id` is set, it must follow type hierarchy: task→story, story→epic, epic→epic |
 | Dependency refs | Every entry in `depends_on` must reference an existing item |
-| No childless stories | Every story must have at least one task |
 | Type-specific required fields | See per-type matrix below |
 
 **Per-type required fields:**
@@ -87,14 +85,14 @@ class PlanValidator:
 
 | Field | Epic | Story | Task |
 |-------|------|-------|------|
-| `goal` | Required | Required | Optional |
-| `parent_id` | None (must be absent) | Required (epic) | Required (story) |
-| `sub_item_ids` | Required (stories) | Required (tasks) | None |
+| `goal` | Required | Required | Required |
+| `parent_id` | Optional | Optional | Optional |
+| `sub_item_ids` | Optional | Optional | Optional |
 | `spec_ref` | Optional | Optional | Optional |
-| `requirements` | Optional | Optional | Required |
-| `acceptance_criteria` | Optional | Required | Optional |
-| `verification` | None | None | Required |
-| `estimate` | None | Optional | Required |
+| `requirements` | Required | Required | Required |
+| `acceptance_criteria` | Required | Required | Required |
+| `verification` | Optional | Optional | Optional |
+| `estimate` | Optional | Optional | Optional |
 | `depends_on` | Optional | Optional | Optional |
 
 **Error aggregation:** All errors are collected and raised together in a single `PlanValidationError`, so users see every issue in one pass.
@@ -130,7 +128,7 @@ The plan module confirms these plan domain types are sufficient:
 | Type | Fields Used by Plan Module |
 |------|--------------------------|
 | `Plan` | `.items: list[PlanItem]` |
-| `PlanItem` | `.id`, `.type`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.verification` |
+| `PlanItem` | `.id`, `.type`, `.parent_id`, `.sub_item_ids`, `.depends_on`, `.goal`, `.requirements`, `.acceptance_criteria`, `.verification` |
 | `PlanItemType` | `EPIC`, `STORY`, `TASK` — used for hierarchy and type-specific validation |
 
 All fields live on the flat `PlanItem` class. Entity type is determined by `item.type`. The validator uses the type to enforce hierarchy rules (e.g. tasks must parent to stories).
