@@ -23,6 +23,58 @@ Full implementation details for the GitHub provider. For the provider contract a
 
 All operations are GraphQL. Discovery uses the GraphQL `search` query and must fail fast on result-cap limits/truncation.
 
+## Core Classes
+
+### GitHubProvider
+
+```python
+class GitHubProvider(Provider):
+    def __init__(self, *, target: str, token: str, board_url: str,
+                 label: str, field_config: FieldConfig | None) -> None: ...
+```
+
+**`__aenter__` setup:**
+1. Initialize generated GraphQL client with token
+2. Resolve repo context (repo ID, issue type IDs, resolve/create label)
+3. Resolve project context (parse `board_url`, resolve owner type, fetch fields)
+4. Discovery and relation capability checks
+5. Resolve create-type policy from `FieldConfig`
+6. Store in `GitHubProviderContext`
+
+### GitHubItem
+
+```python
+class GitHubItem(Item):
+    async def set_parent(self, parent: Item) -> None:
+        """Idempotent. Raises ProviderCapabilityError if unavailable."""
+
+    async def add_dependency(self, blocker: Item) -> None:
+        """Idempotent. Raises ProviderCapabilityError if unavailable."""
+```
+
+### GitHubProviderContext
+
+```python
+class GitHubProviderContext(ProviderContext):
+    repo_id: str
+    label_id: str
+    issue_type_ids: dict[str, str]
+    project_owner_type: str              # "org" | "user"
+    project_id: str | None
+    project_item_ids: dict[str, str]
+    status_field: ResolvedField | None
+    priority_field: ResolvedField | None
+    iteration_field: ResolvedField | None
+    size_field_id: str | None
+    size_options: list[dict[str, str]]
+    supports_sub_issues: bool
+    supports_blocked_by: bool
+    supports_discovery_filters: bool
+    supports_issue_type: bool
+    create_type_strategy: str            # "issue-type" | "label"
+    create_type_map: dict[str, str]
+```
+
 ## Authentication (Token Resolution)
 
 Token resolution is orthogonal to the provider. The provider receives a resolved token.

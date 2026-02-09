@@ -1,15 +1,6 @@
 # PlanPilot v2 Architecture
 
-A complete redesign focused on SDK-first development with clean layered architecture.
-
-## Design Goals
-
-- **SDK-first** — The CLI is a thin wrapper around a fully-functional SDK. Programmatic integration without touching the CLI.
-- **Clean layered architecture** — Strict downward-only dependencies: Contracts -> Core -> SDK -> CLI.
-- **Adapter pattern** — Providers and renderers are pluggable adapters. The engine knows nothing about concrete implementations.
-- **SOLID principles** — Single responsibility, dependency inversion, open/closed via adapters.
-- **Async-first** — All I/O operations are async.
-- **Launch scope** — v2 is GitHub-first. Contracts remain provider-agnostic.
+A complete redesign focused on SDK-first development with clean layered architecture. See [Architecture](./design/architecture.md) for design principles and layer rules.
 
 ## Documentation
 

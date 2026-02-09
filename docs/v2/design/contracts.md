@@ -19,6 +19,8 @@ exceptions           (no dependencies)
 
 ## Plan Domain
 
+<!-- NOTE: PlanItem fields also appear in the UML class diagram in architecture.md — keep both in sync -->
+
 **Responsibility:** The input structure — plan entities that users define in JSON files.
 
 ```mermaid
@@ -87,11 +89,10 @@ classDiagram
 
 **`PlanItem`** is a single flat model for all plan entities. The `type` field discriminates epics, stories, and tasks. Fields that don't apply to a given type are validated by `PlanValidator`:
 
-- **Required (all types):** `id`, `type`, `title`
+- **Required (all types):** `id`, `type`, `title`, `goal`, `requirements`, `acceptance_criteria`
 - **Hierarchy:** `parent_id` (canonical), `sub_item_ids` (optional consistency projection), `depends_on`
-- **Optional / type-dependent:** `goal`, `motivation`, `spec_ref`, `scope`, `assumptions`, `risks`, `estimate`
-- **Story/task fields:** `requirements`, `acceptance_criteria`, `success_metrics`
-- **Task fields:** `verification`
+- **Optional (all types):** `motivation`, `spec_ref`, `scope`, `assumptions`, `risks`, `estimate`, `success_metrics`
+- **Task-only:** `verification`
 
 **Dependencies:** None
 

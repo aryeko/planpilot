@@ -67,7 +67,7 @@ Pure data types and abstract interfaces. Six domains with clear responsibilities
 
 ### Core
 
-Four peer modules containing all business logic. Each depends only on Contracts, never on each other.
+Five peer modules containing all business logic. Each depends only on Contracts, never on each other.
 
 | Module | Responsibility | Spec |
 |--------|---------------|------|
@@ -75,7 +75,7 @@ Four peer modules containing all business logic. Each depends only on Contracts,
 | `plan/` | Load, validate, hash plan files | [plan.md](../modules/plan.md) |
 | `providers/` | Concrete provider adapters + factory | [providers.md](../modules/providers.md) |
 | `renderers/` | Concrete renderer implementations + factory | [renderers.md](../modules/renderers.md) |
-| `auth/` | Token resolution strategies + factory | [github-provider.md](../modules/github-provider.md) |
+| `auth/` | Token resolution strategies + factory | [github-provider.md](../modules/github-provider.md) (Auth section) |
 
 **Rules:** No imports between Core modules. Engine receives Provider and Renderer via dependency injection. Factories are Core utilities, not SDK concerns.
 
