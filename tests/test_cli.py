@@ -131,7 +131,7 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
     result, _ = _make_sync_result(dry_run=True, sync_path=config.sync_path)
 
     class _FakeSDK:
-        async def sync(self, *, dry_run: bool) -> SyncResult:
+        async def sync(self, *, dry_run: bool, progress: object = None) -> SyncResult:
             assert dry_run is True
             return result
 

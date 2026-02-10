@@ -12,6 +12,7 @@ from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
 from planpilot.contracts.plan import Plan
+from planpilot.contracts.progress import SyncProgress
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
 from planpilot.contracts.sync import SyncMap, SyncResult
@@ -126,7 +127,13 @@ class PlanPilot:
             raise ConfigError(str(exc)) from exc
         return cls(provider=None, renderer=renderer, config=config)
 
-    async def sync(self, plan: Plan | None = None, *, dry_run: bool = False) -> SyncResult:
+    async def sync(
+        self,
+        plan: Plan | None = None,
+        *,
+        dry_run: bool = False,
+        progress: SyncProgress | None = None,
+    ) -> SyncResult:
         loaded_plan = plan if plan is not None else PlanLoader().load(self._config.plan_paths)
         PlanValidator().validate(loaded_plan, mode=self._config.validation_mode)
         plan_id = PlanHasher().compute_plan_id(loaded_plan)
@@ -134,15 +141,15 @@ class PlanPilot:
         try:
             if dry_run:
                 provider: Provider = DryRunProvider()
-                result = await SyncEngine(provider, self._renderer, self._config, dry_run=True).sync(
+                result = await SyncEngine(provider, self._renderer, self._config, dry_run=True, progress=progress).sync(
                     loaded_plan, plan_id
                 )
             else:
                 provider = await self._resolve_apply_provider()
                 async with provider:
-                    result = await SyncEngine(provider, self._renderer, self._config, dry_run=False).sync(
-                        loaded_plan, plan_id
-                    )
+                    result = await SyncEngine(
+                        provider, self._renderer, self._config, dry_run=False, progress=progress
+                    ).sync(loaded_plan, plan_id)
         except* ProviderError as provider_errors:
             raise provider_errors.exceptions[0] from None
 

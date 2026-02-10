@@ -15,6 +15,7 @@ from planpilot.contracts.exceptions import (
 )
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType, Scope, SpecRef, Verification
+from planpilot.contracts.progress import NullSyncProgress, SyncProgress
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer, RenderContext
 from planpilot.contracts.sync import SyncEntry, SyncMap, SyncResult, to_sync_entry
@@ -29,6 +30,7 @@ __all__ = [
     "FieldConfig",
     "Item",
     "ItemSearchFilters",
+    "NullSyncProgress",
     "Plan",
     "PlanItem",
     "PlanItemType",
@@ -47,6 +49,7 @@ __all__ = [
     "SyncEntry",
     "SyncError",
     "SyncMap",
+    "SyncProgress",
     "SyncResult",
     "UpdateItemInput",
     "Verification",

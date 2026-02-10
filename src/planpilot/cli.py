@@ -61,7 +61,15 @@ def build_parser() -> argparse.ArgumentParser:
 async def _run_sync(args: argparse.Namespace) -> SyncResult:
     config = load_config(args.config)
     pp = await PlanPilot.from_config(config)
-    result = await pp.sync(dry_run=args.dry_run)
+
+    if not args.verbose:
+        from planpilot.progress import RichSyncProgress
+
+        with RichSyncProgress() as progress:
+            result = await pp.sync(dry_run=args.dry_run, progress=progress)
+    else:
+        result = await pp.sync(dry_run=args.dry_run)
+
     print(_format_summary(result, config))
     return result
 
