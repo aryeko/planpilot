@@ -134,7 +134,8 @@ class GitHubProvider(Provider):
         for label in filters.labels:
             query_parts.append(f"label:{label}")
         if filters.body_contains:
-            query_parts.append(f'"{filters.body_contains}" in:body')
+            escaped_body_contains = filters.body_contains.replace('"', '\\"')
+            query_parts.append(f'"{escaped_body_contains}" in:body')
         query = " ".join(query_parts)
 
         nodes = await self._search_issue_nodes(query)
@@ -213,7 +214,10 @@ class GitHubProvider(Provider):
 
     async def delete_item(self, item_id: str) -> None:  # pragma: no cover
         client = self._require_client()
-        await client.delete_issue(issue_id=item_id)
+        try:
+            await client.delete_issue(issue_id=item_id)
+        except GraphQLClientError as exc:
+            raise ProviderError(f"Failed to delete issue {item_id}: {exc}") from exc
 
     async def add_sub_issue(self, *, child_issue_id: str, parent_issue_id: str) -> None:  # pragma: no cover
         if not self.context.supports_sub_issues:

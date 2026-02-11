@@ -9,7 +9,7 @@ from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.contracts.sync import SyncMap
+from planpilot.contracts.sync import SyncEntry, SyncMap
 from planpilot.engine.engine import SyncEngine
 from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
 from tests.fakes.provider import FakeItem, FakeProvider
@@ -361,6 +361,75 @@ async def test_sync_enrich_skips_items_without_sync_entries(tmp_path: Path) -> N
     await engine._enrich(plan, "plan-8", sync_map, item_objects={})
 
     assert provider.update_calls == []
+
+
+@pytest.mark.asyncio
+async def test_enrich_updates_when_item_type_changes_even_if_title_and_body_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-type",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.EPIC,
+            labels=[config.label],
+        )
+    )
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    sync_map = SyncMap(plan_id="plan-type", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.EPIC)
+
+    await engine._enrich(plan, "plan-type", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].item_type == PlanItemType.STORY
+
+
+@pytest.mark.asyncio
+async def test_set_relations_keeps_existing_pairs_when_touched_by_update(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic One", sub_item_ids=["S1"]),
+            PlanItem(id="E2", type=PlanItemType.EPIC, title="Epic Two", sub_item_ids=["S2"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story One", parent_id="E1", depends_on=["S2"]),
+            PlanItem(id="S2", type=PlanItemType.STORY, title="Story Two", parent_id="E2"),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Unrelated new task"),
+        ]
+    )
+
+    item_objects: dict[str, Item] = {}
+    for plan_item in plan.items:
+        item_objects[plan_item.id] = await provider.create_item(
+            CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
+        )
+
+    await engine._set_relations(
+        plan,
+        item_objects=item_objects,
+        created_ids={"T1"},
+        updated_ids={"E1"},
+    )
+
+    epic_one_id = item_objects["E1"].id
+    epic_two_id = item_objects["E2"].id
+    assert provider.dependencies[epic_one_id] == {epic_two_id}
 
 
 @pytest.mark.asyncio

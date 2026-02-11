@@ -243,6 +243,32 @@ async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.
 
 
 @pytest.mark.asyncio
+async def test_search_items_escapes_double_quotes_in_body_contains(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
+
+    captured: dict[str, str] = {}
+
+    async def fake_search(query: str) -> list[IssueCore]:
+        captured["query"] = query
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="")]
+
+    monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
+
+    await provider.search_items(ItemSearchFilters(labels=["planpilot"], body_contains='PLAN_ID:"abc"'))
+
+    assert '"PLAN_ID:\\"abc\\"" in:body' in captured["query"]
+
+
+@pytest.mark.asyncio
 async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -432,6 +458,26 @@ async def test_delete_item_calls_delete_issue() -> None:
     await provider.delete_item("I-delete")
 
     assert client.deleted == ["I-delete"]
+
+
+@pytest.mark.asyncio
+async def test_delete_item_wraps_graphql_errors_as_provider_error() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        async def delete_issue(self, *, issue_id: str) -> None:
+            raise GraphQLClientGraphQLError("cannot delete")
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    with pytest.raises(ProviderError, match="Failed to delete issue I-delete"):
+        await provider.delete_item("I-delete")
 
 
 @pytest.mark.asyncio
