@@ -61,6 +61,12 @@ def build_parser() -> argparse.ArgumentParser:
     mode = clean_parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Preview mode")
     mode.add_argument("--apply", action="store_true", help="Apply mode")
+    clean_parser.add_argument(
+        "--all",
+        action="store_true",
+        default=False,
+        help="Delete all planpilot-managed issues (by label), not just the current plan version",
+    )
     clean_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
 
     return parser
@@ -151,16 +157,17 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
 
 async def _run_clean(args: argparse.Namespace) -> CleanResult:
     config = load_config(args.config)
+    all_plans: bool = getattr(args, "all", False)
 
     if not args.verbose:
         from planpilot.progress import RichSyncProgress
 
         with RichSyncProgress() as progress:
             pp = await PlanPilot.from_config(config, progress=progress)
-            result = await pp.clean(dry_run=args.dry_run)
+            result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
     else:
         pp = await PlanPilot.from_config(config)
-        result = await pp.clean(dry_run=args.dry_run)
+        result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
 
     print(_format_clean_summary(result))
     return result

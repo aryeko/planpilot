@@ -959,12 +959,14 @@ async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_p
         apply=False,
         verbose=False,
     )
+    # no --all flag → getattr fallback to False
     config = _make_config(tmp_path)
     result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=2, dry_run=True)
 
     class _FakeSDK:
-        async def clean(self, *, dry_run: bool) -> CleanResult:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
             assert dry_run is True
+            assert all_plans is False
             return result
 
     async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
@@ -977,6 +979,54 @@ async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_p
     actual = await _run_clean(args)
 
     assert actual == result
+
+
+@pytest.mark.asyncio
+async def test_run_clean_all_flag_passes_through(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=False,
+        apply=True,
+        verbose=False,
+    )
+    # simulate argparse --all
+    setattr(args, "all", True)  # noqa: B010
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=5, dry_run=False)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
+            assert dry_run is False
+            assert all_plans is True
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+def test_build_parser_clean_all_flag() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", "--apply", "--all"])
+
+    assert args.command == "clean"
+    assert args.all is True
+
+
+def test_build_parser_clean_defaults_all_false() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", "--apply"])
+
+    assert args.all is False
 
 
 def test_main_routes_to_clean(monkeypatch: pytest.MonkeyPatch) -> None:
