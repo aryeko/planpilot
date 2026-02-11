@@ -131,12 +131,34 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
     result, _ = _make_sync_result(dry_run=True, sync_path=config.sync_path)
 
     class _FakeSDK:
-        async def sync(self, *, dry_run: bool, progress: object = None) -> SyncResult:
+        async def sync(self, *, dry_run: bool) -> SyncResult:
             assert dry_run is True
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig):
+    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
         assert input_config == config
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_sync(args)
+
+    assert actual == result
+
+
+@pytest.mark.asyncio
+async def test_run_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = _make_args(dry_run=True)
+    args.verbose = True
+    config = _make_config(tmp_path)
+    result, _ = _make_sync_result(dry_run=True, sync_path=config.sync_path)
+
+    class _FakeSDK:
+        async def sync(self, *, dry_run: bool) -> SyncResult:
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)

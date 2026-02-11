@@ -1,4 +1,9 @@
-"""Progress reporting protocol for the sync pipeline."""
+"""Progress reporting protocol for the sync pipeline.
+
+This is engine-level instrumentation — not a provider contract.
+The engine emits phase lifecycle events; consumers (e.g. the CLI's Rich
+progress bar) implement ``SyncProgress`` to render feedback.
+"""
 
 from __future__ import annotations
 
@@ -24,7 +29,12 @@ class SyncProgress(ABC):
 
     @abstractmethod
     def phase_done(self, phase: str) -> None:
-        """The *phase* has finished."""
+        """The *phase* has finished successfully."""
+        ...  # pragma: no cover
+
+    @abstractmethod
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        """The *phase* was interrupted by *error*."""
         ...  # pragma: no cover
 
 
@@ -38,4 +48,7 @@ class NullSyncProgress(SyncProgress):
         pass
 
     def phase_done(self, phase: str) -> None:
+        pass
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
         pass

@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.progress import TaskID as RichTaskID
 
-from planpilot.contracts.progress import SyncProgress
+from planpilot.engine.progress import SyncProgress
 
 
 class RichSyncProgress(SyncProgress):
@@ -81,3 +81,10 @@ class RichSyncProgress(SyncProgress):
         else:
             # Indeterminate phase — mark finished by setting total = completed.
             self._progress.update(task_id, total=1, completed=1)
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        task_id = self._task_ids.get(phase)
+        if task_id is None:
+            return
+        # Override the spinner's finished_text with a red ✗ for this task.
+        self._progress.update(task_id, description=f"[red]✗[/red] {phase:>10}")

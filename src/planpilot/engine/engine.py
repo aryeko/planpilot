@@ -11,10 +11,10 @@ from planpilot.contracts.config import PlanPilotConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.contracts.progress import NullSyncProgress, SyncProgress
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer, RenderContext
 from planpilot.contracts.sync import SyncMap, SyncResult, to_sync_entry
+from planpilot.engine.progress import NullSyncProgress, SyncProgress
 from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
 
 T = TypeVar("T")
@@ -60,21 +60,25 @@ class SyncEngine:
 
     async def _discover(self, plan_id: str) -> dict[str, Item]:
         self._progress.phase_start("Discover")
-        filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
-        existing_items = await self._provider.search_items(filters)
+        try:
+            filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
+            existing_items = await self._provider.search_items(filters)
 
-        existing_map: dict[str, Item] = {}
-        for item in existing_items:
-            metadata = parse_metadata_block(item.body)
-            if metadata.get("PLAN_ID") != plan_id:
-                continue
-            item_id = metadata.get("ITEM_ID")
-            if not item_id:
-                continue
-            existing_map[item_id] = item
+            existing_map: dict[str, Item] = {}
+            for item in existing_items:
+                metadata = parse_metadata_block(item.body)
+                if metadata.get("PLAN_ID") != plan_id:
+                    continue
+                item_id = metadata.get("ITEM_ID")
+                if not item_id:
+                    continue
+                existing_map[item_id] = item
 
-        self._progress.phase_done("Discover")
-        return existing_map
+            self._progress.phase_done("Discover")
+            return existing_map
+        except BaseException as exc:
+            self._progress.phase_error("Discover", exc)
+            raise
 
     async def _upsert(
         self,
@@ -86,22 +90,26 @@ class SyncEngine:
         items_created: dict[PlanItemType, int],
     ) -> None:
         self._progress.phase_start("Create", total=len(plan.items))
-        for item_type in _ITEM_TYPE_ORDER:
-            level_items = self._items_by_type(plan, item_type)
-            async with asyncio.TaskGroup() as tg:
-                for plan_item in level_items:
-                    tg.create_task(
-                        self._upsert_item(
-                            plan_item,
-                            plan,
-                            plan_id,
-                            existing_map,
-                            sync_map,
-                            item_objects,
-                            items_created,
+        try:
+            for item_type in _ITEM_TYPE_ORDER:
+                level_items = self._items_by_type(plan, item_type)
+                async with asyncio.TaskGroup() as tg:
+                    for plan_item in level_items:
+                        tg.create_task(
+                            self._upsert_item(
+                                plan_item,
+                                plan,
+                                plan_id,
+                                existing_map,
+                                sync_map,
+                                item_objects,
+                                items_created,
+                            )
                         )
-                    )
-        self._progress.phase_done("Create")
+            self._progress.phase_done("Create")
+        except BaseException as exc:
+            self._progress.phase_error("Create", exc)
+            raise
 
     async def _upsert_item(
         self,
@@ -148,10 +156,14 @@ class SyncEngine:
         item_objects: dict[str, Item],
     ) -> None:
         self._progress.phase_start("Enrich", total=len(plan.items))
-        async with asyncio.TaskGroup() as tg:
-            for plan_item in plan.items:
-                tg.create_task(self._enrich_item(plan, plan_item, plan_id, sync_map, item_objects))
-        self._progress.phase_done("Enrich")
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for plan_item in plan.items:
+                    tg.create_task(self._enrich_item(plan, plan_item, plan_id, sync_map, item_objects))
+            self._progress.phase_done("Enrich")
+        except BaseException as exc:
+            self._progress.phase_error("Enrich", exc)
+            raise
 
     async def _enrich_item(
         self,
@@ -239,17 +251,21 @@ class SyncEngine:
 
         total_relations = len(parent_pairs) + len(dependency_pairs)
         self._progress.phase_start("Relations", total=total_relations)
-        async with asyncio.TaskGroup() as tg:
-            for child_id, parent_id in parent_pairs:
-                child = item_objects[child_id]
-                parent = item_objects[parent_id]
-                tg.create_task(self._set_parent_guarded(child, parent))
+        try:
+            async with asyncio.TaskGroup() as tg:
+                for child_id, parent_id in parent_pairs:
+                    child = item_objects[child_id]
+                    parent = item_objects[parent_id]
+                    tg.create_task(self._set_parent_guarded(child, parent))
 
-            for blocked_id, blocker_id in dependency_pairs:
-                blocked = item_objects[blocked_id]
-                blocker = item_objects[blocker_id]
-                tg.create_task(self._add_dependency_guarded(blocked, blocker))
-        self._progress.phase_done("Relations")
+                for blocked_id, blocker_id in dependency_pairs:
+                    blocked = item_objects[blocked_id]
+                    blocker = item_objects[blocker_id]
+                    tg.create_task(self._add_dependency_guarded(blocked, blocker))
+            self._progress.phase_done("Relations")
+        except BaseException as exc:
+            self._progress.phase_error("Relations", exc)
+            raise
 
     def _build_context(
         self,

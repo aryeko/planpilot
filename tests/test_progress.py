@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from planpilot.contracts.progress import NullSyncProgress, SyncProgress
+from planpilot.engine.progress import NullSyncProgress, SyncProgress
 from planpilot.progress import RichSyncProgress
 
 
@@ -18,6 +18,11 @@ class TestNullSyncProgress:
         progress.phase_start("Discover", total=5)
         progress.item_done("Discover")
         progress.phase_done("Discover")
+
+    def test_phase_error_is_noop(self) -> None:
+        progress = NullSyncProgress()
+        progress.phase_start("Create", total=3)
+        progress.phase_error("Create", RuntimeError("boom"))
 
 
 class TestRichSyncProgress:
@@ -54,6 +59,17 @@ class TestRichSyncProgress:
         with RichSyncProgress() as progress:
             # Should not raise even when phase was never started.
             progress.item_done("Unknown")
+
+    def test_phase_error_marks_failure(self) -> None:
+        with RichSyncProgress() as progress:
+            progress.phase_start("Create", total=3)
+            progress.item_done("Create")
+            progress.phase_error("Create", RuntimeError("boom"))
+
+    def test_phase_error_with_unknown_phase_is_noop(self) -> None:
+        with RichSyncProgress() as progress:
+            # Should not raise even when phase was never started.
+            progress.phase_error("Unknown", RuntimeError("boom"))
 
     def test_multiple_phases_sequentially(self) -> None:
         with RichSyncProgress() as progress:
