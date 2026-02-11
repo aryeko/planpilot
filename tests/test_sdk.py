@@ -7,7 +7,7 @@ import pytest
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput, Item
+from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
@@ -106,6 +106,17 @@ class RetryDeleteProvider(FakeProvider):
             self.delete_calls.append(item_id)
             raise ProviderError("parent has sub-issues")
         await super().delete_item(item_id)
+
+
+class AlwaysFailDeleteProvider(FakeProvider):
+    async def delete_item(self, item_id: str) -> None:
+        self.delete_calls.append(item_id)
+        raise ProviderError("delete failed")
+
+
+class FailingSearchProvider(FakeProvider):
+    async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
+        raise ProviderError("search failed")
 
 
 @pytest.mark.asyncio
@@ -414,6 +425,59 @@ async def test_clean_retries_parent_deletion_after_children(tmp_path: Path) -> N
     assert provider.retry_attempts == 1
     assert provider.delete_calls == [parent.id, child.id, parent.id]
     assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_skips_metadata_plan_mismatch_even_if_body_contains_plan_id(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Mismatched metadata plan",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:other-plan",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    f"Contains PLAN_ID:{plan_id} outside metadata.",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 0
+    assert provider.delete_calls == []
+
+
+@pytest.mark.asyncio
+async def test_clean_unwraps_provider_error_from_search(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    sdk = PlanPilot(provider=FailingSearchProvider(), renderer=FakeRenderer(), config=config)
+
+    with pytest.raises(ProviderError, match="search failed"):
+        await sdk.clean()
+
+
+@pytest.mark.asyncio
+async def test_clean_raises_when_delete_retry_fails_twice(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = AlwaysFailDeleteProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    item = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+
+    with pytest.raises(ProviderError, match="delete failed"):
+        await sdk.clean(dry_run=False)
+
+    assert provider.delete_calls == [item.id, item.id]
 
 
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:

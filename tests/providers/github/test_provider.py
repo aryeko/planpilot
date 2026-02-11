@@ -1,9 +1,10 @@
 import pytest
 
 from planpilot.contracts.config import FieldConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError
+from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError
 from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import PlanItemType
+from planpilot.providers.github.github_gql.exceptions import GraphQLClientGraphQLError
 from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
 from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
 from planpilot.providers.github.provider import GitHubProvider
@@ -406,3 +407,99 @@ def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
     strategy, mapping = provider._resolve_create_type_policy("user")
     assert strategy == "label"
     assert mapping["EPIC"] == "Epic"
+
+
+@pytest.mark.asyncio
+async def test_delete_item_calls_delete_issue() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        def __init__(self) -> None:
+            self.deleted: list[str] = []
+
+        async def delete_issue(self, *, issue_id: str) -> None:
+            self.deleted.append(issue_id)
+
+    client = _Client()
+    provider._client = client  # type: ignore[assignment]
+
+    await provider.delete_item("I-delete")
+
+    assert client.deleted == ["I-delete"]
+
+
+@pytest.mark.asyncio
+async def test_delete_item_requires_initialized_client() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    with pytest.raises(ProviderError, match="Provider is not initialized"):
+        await provider.delete_item("I1")
+
+
+@pytest.mark.asyncio
+async def test_add_sub_issue_duplicate_error_is_ignored() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_sub_issues=True,
+    )
+
+    class _Client:
+        async def add_sub_issue(self, *, parent_id: str, child_id: str) -> None:
+            raise GraphQLClientGraphQLError("Duplicate sub-issues")
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    await provider.add_sub_issue(child_issue_id="I-child", parent_issue_id="I-parent")
+
+
+@pytest.mark.asyncio
+async def test_add_blocked_by_duplicate_error_is_ignored() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_blocked_by=True,
+    )
+
+    class _Client:
+        async def add_blocked_by(self, *, blocked_id: str, blocker_id: str) -> None:
+            raise GraphQLClientGraphQLError("This relation already exists")
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    await provider.add_blocked_by(blocked_issue_id="I-blocked", blocker_issue_id="I-blocker")
+
+
+def test_is_duplicate_relation_error_returns_false_for_other_messages() -> None:
+    err = GraphQLClientGraphQLError("Some unrelated GraphQL failure")
+    assert GitHubProvider._is_duplicate_relation_error(err) is False
