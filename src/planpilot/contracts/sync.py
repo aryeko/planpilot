@@ -28,5 +28,11 @@ class SyncResult(BaseModel):
     dry_run: bool = False
 
 
+class CleanResult(BaseModel):
+    plan_id: str
+    items_deleted: int
+    dry_run: bool = False
+
+
 def to_sync_entry(item: Item) -> SyncEntry:
     return SyncEntry(id=item.id, key=item.key, url=item.url, item_type=item.item_type)

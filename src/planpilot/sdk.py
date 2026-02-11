@@ -11,12 +11,14 @@ from pydantic import ValidationError
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
+from planpilot.contracts.item import ItemSearchFilters
 from planpilot.contracts.plan import Plan
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
-from planpilot.contracts.sync import SyncMap, SyncResult
+from planpilot.contracts.sync import CleanResult, SyncMap, SyncResult
 from planpilot.engine import SyncEngine
 from planpilot.engine.progress import SyncProgress
+from planpilot.engine.utils import parse_metadata_block
 from planpilot.plan import PlanHasher, PlanLoader, PlanValidator
 from planpilot.providers.dry_run import DryRunProvider
 from planpilot.providers.factory import create_provider
@@ -157,6 +159,49 @@ class PlanPilot:
 
         self._persist_sync_map(result.sync_map, dry_run=dry_run)
         return result
+
+    async def clean(self, *, dry_run: bool = False) -> CleanResult:
+        """Discover and delete all issues belonging to a plan.
+
+        Args:
+            dry_run: If True, preview what would be deleted without making changes.
+
+        Returns:
+            CleanResult with plan_id, items_deleted count, and dry_run flag.
+        """
+        loaded_plan = PlanLoader().load(self._config.plan_paths)
+        plan_id = PlanHasher().compute_plan_id(loaded_plan)
+
+        try:
+            if dry_run:
+                provider: Provider = DryRunProvider()
+                items_deleted = await self._discover_and_delete_items(provider, plan_id, dry_run=True)
+            else:
+                provider = await self._resolve_apply_provider()
+                async with provider:
+                    items_deleted = await self._discover_and_delete_items(provider, plan_id, dry_run=False)
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        return CleanResult(plan_id=plan_id, items_deleted=items_deleted, dry_run=dry_run)
+
+    async def _discover_and_delete_items(self, provider: Provider, plan_id: str, *, dry_run: bool) -> int:
+        """Discover issues by plan_id and delete them."""
+        filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
+        existing_items = await provider.search_items(filters)
+
+        items_to_delete = []
+        for item in existing_items:
+            metadata = parse_metadata_block(item.body)
+            if metadata.get("PLAN_ID") != plan_id:
+                continue
+            items_to_delete.append(item)
+
+        if not dry_run:
+            for item in items_to_delete:
+                await provider.delete_item(item.id)
+
+        return len(items_to_delete)
 
     async def _resolve_apply_provider(self) -> Provider:
         if self._provider is not None:

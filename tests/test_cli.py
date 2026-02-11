@@ -13,6 +13,7 @@ import pytest
 
 from planpilot import (
     AuthenticationError,
+    CleanResult,
     ConfigError,
     PlanItemType,
     PlanLoadError,
@@ -24,7 +25,7 @@ from planpilot import (
     SyncMap,
     SyncResult,
 )
-from planpilot.cli import _format_summary, _run_init, _run_sync, build_parser, main
+from planpilot.cli import _format_clean_summary, _format_summary, _run_clean, _run_init, _run_sync, build_parser, main
 from planpilot.contracts.config import PlanPaths
 
 
@@ -885,3 +886,102 @@ def test_init_interactive_unified_path_ctrl_c(monkeypatch: pytest.MonkeyPatch, t
     exit_code = _run_init(args)
 
     assert exit_code == 2
+
+
+# ---------------------------------------------------------------------------
+# clean subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_build_parser_clean_requires_mode_and_config() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["clean", "--config", "planpilot.json"])
+
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("mode", ["--dry-run", "--apply"])
+def test_build_parser_clean_accepts_required_arguments(mode: str) -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", mode])
+
+    assert args.command == "clean"
+    assert args.config == "planpilot.json"
+    assert args.verbose is False
+
+
+def test_format_clean_summary_apply_mode() -> None:
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=3, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "planpilot - clean complete (apply)" in output
+    assert "Plan ID:    a1b2c3d4e5f6" in output
+    assert "Deleted:    3 issues" in output
+    assert "[dry-run]" not in output
+
+
+def test_format_clean_summary_dry_run_mode() -> None:
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=3, dry_run=True)
+
+    output = _format_clean_summary(result)
+
+    assert "planpilot - clean complete (dry-run)" in output
+    assert "Deleted:    3 issues" in output
+    assert "[dry-run] No issues were deleted" in output
+
+
+def test_format_clean_summary_single_item() -> None:
+    result = CleanResult(plan_id="xyz789", items_deleted=1, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "Deleted:    1 issue" in output
+
+
+def test_format_clean_summary_zero_items() -> None:
+    result = CleanResult(plan_id="xyz789", items_deleted=0, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "Deleted:    0 issues" in output
+
+
+@pytest.mark.asyncio
+async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=True,
+        apply=False,
+        verbose=False,
+    )
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=2, dry_run=True)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool) -> CleanResult:
+            assert dry_run is True
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+        assert input_config == config
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+def test_main_routes_to_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("planpilot.cli.asyncio.run", lambda _: None)
+
+    exit_code = main(["clean", "--config", "planpilot.json", "--dry-run"])
+
+    assert exit_code == 0

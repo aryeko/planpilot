@@ -11,6 +11,7 @@ from pathlib import Path
 
 from planpilot import (
     AuthenticationError,
+    CleanResult,
     ConfigError,
     PlanItemType,
     PlanLoadError,
@@ -54,6 +55,13 @@ def build_parser() -> argparse.ArgumentParser:
         "--output", "-o", default="planpilot.json", help="Output file path (default: planpilot.json)"
     )
     init_parser.add_argument("--defaults", action="store_true", help="Use defaults without prompting")
+
+    clean_parser = subparsers.add_parser("clean", help="Delete all issues belonging to a plan")
+    clean_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    mode = clean_parser.add_mutually_exclusive_group(required=True)
+    mode.add_argument("--dry-run", action="store_true", help="Preview mode")
+    mode.add_argument("--apply", action="store_true", help="Apply mode")
+    clean_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
 
     return parser
 
@@ -138,6 +146,42 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
         lines.append("  [dry-run] No changes were made")
 
     lines.append("")
+    return "\n".join(lines)
+
+
+async def _run_clean(args: argparse.Namespace) -> CleanResult:
+    config = load_config(args.config)
+
+    if not args.verbose:
+        from planpilot.progress import RichSyncProgress
+
+        with RichSyncProgress() as progress:
+            pp = await PlanPilot.from_config(config, progress=progress)
+            result = await pp.clean(dry_run=args.dry_run)
+    else:
+        pp = await PlanPilot.from_config(config)
+        result = await pp.clean(dry_run=args.dry_run)
+
+    print(_format_clean_summary(result))
+    return result
+
+
+def _format_clean_summary(result: CleanResult) -> str:
+    mode = "dry-run" if result.dry_run else "apply"
+
+    lines = [
+        "",
+        f"planpilot - clean complete ({mode})",
+        "",
+        f"  Plan ID:    {result.plan_id}",
+        f"  Deleted:    {result.items_deleted} issue{'s' if result.items_deleted != 1 else ''}",
+        "",
+    ]
+
+    if result.dry_run:
+        lines.append("  [dry-run] No issues were deleted")
+        lines.append("")
+
     return "\n".join(lines)
 
 
@@ -345,7 +389,10 @@ def main(argv: list[str] | None = None) -> int:
         logging.basicConfig(level=logging.DEBUG, format="%(name)s %(message)s", stream=sys.stderr)
 
     try:
-        asyncio.run(_run_sync(args))
+        if args.command == "sync":
+            asyncio.run(_run_sync(args))
+        elif args.command == "clean":
+            asyncio.run(_run_clean(args))
         return 0
     except (ConfigError, PlanLoadError, PlanValidationError) as exc:
         print(f"error: {exc}", file=sys.stderr)

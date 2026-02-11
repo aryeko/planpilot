@@ -726,3 +726,76 @@ def test_e2e_init_interactive_overwrite_accepted_then_sync(
     assert sync_exit == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
+
+
+# ---------------------------------------------------------------------------
+# clean subcommand E2E tests
+# ---------------------------------------------------------------------------
+
+
+def test_cli_clean_dry_run_happy_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test clean command in dry-run mode discovers issues to be deleted."""
+    split_dir = FIXTURES_ROOT / "split"
+    config_path = _write_config(
+        tmp_path,
+        provider="dry-run",
+        auth="token",
+        token="offline-token",
+        plan_paths={
+            "epics": str(split_dir / "epics.json"),
+            "stories": str(split_dir / "stories.json"),
+            "tasks": str(split_dir / "tasks.json"),
+        },
+    )
+
+    # First sync to create items
+    sync_exit = main(["sync", "--config", str(config_path), "--apply"])
+    assert sync_exit == 0
+    _ = capsys.readouterr()
+
+    # Verify sync-map was created
+    sync_map_path = tmp_path / "sync-map.json"
+    assert sync_map_path.exists()
+    sync_map = json.loads(sync_map_path.read_text())
+    assert len(sync_map["entries"]) == 3
+
+    # Now clean in dry-run mode
+    # Note: clean will discover from the plan file + search_items, not from sync-map
+    # For dry-run provider without persistence, the discovery won't find items from previous run
+    # So we just verify the command completes and formats output correctly
+    clean_exit = main(["clean", "--config", str(config_path), "--dry-run"])
+
+    assert clean_exit == 0
+    captured = capsys.readouterr()
+    assert "planpilot - clean complete (dry-run)" in captured.out
+    assert "[dry-run] No issues were deleted" in captured.out
+
+
+def test_cli_clean_apply_happy_path(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
+    """Test clean command in apply mode processes discovered issues."""
+    split_dir = FIXTURES_ROOT / "split"
+    config_path = _write_config(
+        tmp_path,
+        provider="dry-run",
+        auth="token",
+        token="offline-token",
+        plan_paths={
+            "epics": str(split_dir / "epics.json"),
+            "stories": str(split_dir / "stories.json"),
+            "tasks": str(split_dir / "tasks.json"),
+        },
+    )
+
+    # First sync to create items
+    sync_exit = main(["sync", "--config", str(config_path), "--apply"])
+    assert sync_exit == 0
+    _ = capsys.readouterr()
+
+    # Now clean in apply mode
+    # Note: Like dry-run test, dry-run provider doesn't persist across invocations
+    # This test verifies the command completes and formats output correctly
+    clean_exit = main(["clean", "--config", str(config_path), "--apply"])
+
+    assert clean_exit == 0
+    captured = capsys.readouterr()
+    assert "planpilot - clean complete (apply)" in captured.out

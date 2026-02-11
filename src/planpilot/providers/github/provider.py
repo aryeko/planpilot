@@ -213,7 +213,7 @@ class GitHubProvider(Provider):
 
     async def delete_item(self, item_id: str) -> None:  # pragma: no cover
         client = self._require_client()
-        await client.close_issue(issue_id=item_id)
+        await client.delete_issue(issue_id=item_id)
 
     async def add_sub_issue(self, *, child_issue_id: str, parent_issue_id: str) -> None:  # pragma: no cover
         if not self.context.supports_sub_issues:
