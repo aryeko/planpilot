@@ -159,15 +159,8 @@ async def _run_clean(args: argparse.Namespace) -> CleanResult:
     config = load_config(args.config)
     all_plans: bool = getattr(args, "all", False)
 
-    if not args.verbose:
-        from planpilot.progress import RichSyncProgress
-
-        with RichSyncProgress() as progress:
-            pp = await PlanPilot.from_config(config, progress=progress)
-            result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
-    else:
-        pp = await PlanPilot.from_config(config)
-        result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
+    pp = await PlanPilot.from_config(config)
+    result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
 
     print(_format_clean_summary(result))
     return result

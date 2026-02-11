@@ -11,7 +11,7 @@ from pydantic import ValidationError
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
-from planpilot.contracts.item import ItemSearchFilters
+from planpilot.contracts.item import Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
@@ -219,8 +219,20 @@ class PlanPilot:
             items_to_delete.append(item)
 
         if not dry_run:
-            for item in items_to_delete:
-                await provider.delete_item(item.id)
+            remaining = list(items_to_delete)
+            for attempt in range(2):
+                failed: list[Item] = []
+                for item in remaining:
+                    try:
+                        await provider.delete_item(item.id)
+                    except ProviderError:
+                        if attempt == 0:
+                            failed.append(item)
+                        else:
+                            raise
+                remaining = failed
+                if not remaining:
+                    break
 
         return len(items_to_delete)
 

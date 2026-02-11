@@ -9,6 +9,7 @@ from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer
@@ -50,6 +51,61 @@ def _make_config(tmp_path: Path, *, plan_path: Path | None = None) -> PlanPilotC
         plan_paths=PlanPaths(unified=plan_path or tmp_path / "plan.json"),
         sync_path=tmp_path / "sync-map.json",
     )
+
+
+def _write_plan_and_get_id(tmp_path: Path) -> tuple[PlanPilotConfig, str]:
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+    config = _make_config(tmp_path, plan_path=plan_path)
+    return config, PlanHasher().compute_plan_id(plan)
+
+
+def _metadata_body(plan_id: str, item_id: str, *, with_metadata: bool = True) -> str:
+    if not with_metadata:
+        return "# Title"
+    return "\n".join(
+        [
+            "PLANPILOT_META_V1",
+            f"PLAN_ID:{plan_id}",
+            f"ITEM_ID:{item_id}",
+            "END_PLANPILOT_META",
+            "",
+            "# Title",
+        ]
+    )
+
+
+async def _create_clean_item(
+    provider: FakeProvider,
+    config: PlanPilotConfig,
+    *,
+    plan_id: str,
+    item_id: str,
+    with_metadata: bool = True,
+) -> Item:
+    return await provider.create_item(
+        CreateItemInput(
+            title=f"Item {item_id}",
+            body=_metadata_body(plan_id, item_id, with_metadata=with_metadata),
+            item_type=PlanItemType.TASK,
+            labels=[config.label],
+        )
+    )
+
+
+class RetryDeleteProvider(FakeProvider):
+    def __init__(self, *, retry_item_id: str) -> None:
+        super().__init__()
+        self._retry_item_id = retry_item_id
+        self.retry_attempts = 0
+
+    async def delete_item(self, item_id: str) -> None:
+        if item_id == self._retry_item_id and self.retry_attempts == 0:
+            self.retry_attempts += 1
+            self.delete_calls.append(item_id)
+            raise ProviderError("parent has sub-issues")
+        await super().delete_item(item_id)
 
 
 @pytest.mark.asyncio
@@ -240,6 +296,124 @@ async def test_sync_persist_write_error_is_wrapped_as_sync_error(
 
     with pytest.raises(SyncError, match="failed to persist sync map"):
         await sdk.sync(sample_plan)
+
+
+@pytest.mark.asyncio
+async def test_clean_dry_run_discovers_but_does_not_delete(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="T1")
+
+    result = await sdk.clean(dry_run=True)
+
+    assert result.items_deleted == 3
+    assert result.dry_run is True
+    assert provider.delete_calls == []
+    assert len(provider.items) == 3
+
+
+@pytest.mark.asyncio
+async def test_clean_apply_discovers_and_deletes(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="T1")
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 3
+    assert len(provider.delete_calls) == 3
+    assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_filters_by_plan_id(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    matching_a = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    matching_b = await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    other = await _create_clean_item(provider, config, plan_id="other-plan-id", item_id="X1")
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 2
+    assert set(provider.delete_calls) == {matching_a.id, matching_b.id}
+    assert list(provider.items) == [other.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_ignores_plan_id(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    await _create_clean_item(provider, config, plan_id="plan-b", item_id="E2")
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 2
+    assert len(provider.delete_calls) == 2
+    assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_skips_items_without_metadata(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    with_metadata = await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    without_metadata = await _create_clean_item(
+        provider, config, plan_id="plan-a", item_id="NO_META", with_metadata=False
+    )
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 1
+    assert provider.delete_calls == [with_metadata.id]
+    assert list(provider.items) == [without_metadata.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_returns_zero_when_no_matches(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 0
+    assert provider.delete_calls == []
+
+
+@pytest.mark.asyncio
+async def test_clean_retries_parent_deletion_after_children(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    setup_provider = FakeProvider()
+    parent = await _create_clean_item(setup_provider, config, plan_id=plan_id, item_id="E1")
+    child = await _create_clean_item(setup_provider, config, plan_id=plan_id, item_id="S1")
+
+    provider = RetryDeleteProvider(retry_item_id=parent.id)
+    provider.items = dict(setup_provider.items)
+    provider._next_number = setup_provider._next_number
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 2
+    assert provider.retry_attempts == 1
+    assert provider.delete_calls == [parent.id, child.id, parent.id]
+    assert provider.items == {}
 
 
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:

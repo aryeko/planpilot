@@ -136,8 +136,9 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
             assert dry_run is True
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
         assert input_config == config
+        assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -159,7 +160,9 @@ async def test_run_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, 
         async def sync(self, *, dry_run: bool) -> SyncResult:
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert kwargs == {}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -969,8 +972,9 @@ async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_p
             assert all_plans is False
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
         assert input_config == config
+        assert kwargs == {}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -1001,7 +1005,9 @@ async def test_run_clean_all_flag_passes_through(monkeypatch: pytest.MonkeyPatch
             assert all_plans is True
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert kwargs == {}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
