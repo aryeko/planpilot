@@ -44,14 +44,18 @@ class SyncEngine:
 
         existing_map = await self._discover(plan_id)
         item_objects: dict[str, Item] = {}
+        plan_type_by_id = {item.id: item.type for item in plan.items}
         for item_id, existing_item in existing_map.items():
-            sync_map.entries[item_id] = to_sync_entry(existing_item)
+            entry = to_sync_entry(existing_item)
+            entry.item_type = plan_type_by_id.get(item_id, entry.item_type)
+            sync_map.entries[item_id] = entry
             item_objects[item_id] = existing_item
 
         try:
-            await self._upsert(plan, plan_id, existing_map, sync_map, item_objects, items_created)
+            created_ids: set[str] = set()
+            await self._upsert(plan, plan_id, existing_map, sync_map, item_objects, items_created, created_ids)
             await self._enrich(plan, plan_id, sync_map, item_objects)
-            await self._set_relations(plan, item_objects)
+            await self._set_relations(plan, item_objects, created_ids)
         except* (SyncError, ProviderError) as error_group:
             first_error = error_group.exceptions[0]
             raise first_error from error_group
@@ -88,6 +92,7 @@ class SyncEngine:
         sync_map: SyncMap,
         item_objects: dict[str, Item],
         items_created: dict[PlanItemType, int],
+        created_ids: set[str],
     ) -> None:
         self._progress.phase_start("Create", total=len(plan.items))
         try:
@@ -104,6 +109,7 @@ class SyncEngine:
                                 sync_map,
                                 item_objects,
                                 items_created,
+                                created_ids,
                             )
                         )
             self._progress.phase_done("Create")
@@ -120,10 +126,13 @@ class SyncEngine:
         sync_map: SyncMap,
         item_objects: dict[str, Item],
         items_created: dict[PlanItemType, int],
+        created_ids: set[str],
     ) -> None:
         if plan_item.id in existing_map:
             existing = existing_map[plan_item.id]
-            sync_map.entries[plan_item.id] = to_sync_entry(existing)
+            entry = to_sync_entry(existing)
+            entry.item_type = plan_item.type
+            sync_map.entries[plan_item.id] = entry
             item_objects[plan_item.id] = existing
             self._progress.item_done("Create")
             return
@@ -146,6 +155,7 @@ class SyncEngine:
         sync_map.entries[plan_item.id] = to_sync_entry(created_item)
         item_objects[plan_item.id] = created_item
         items_created[plan_item.type] += 1
+        created_ids.add(plan_item.id)
         self._progress.item_done("Create")
 
     async def _enrich(
@@ -180,6 +190,16 @@ class SyncEngine:
 
         context = self._build_context(plan, plan_item, plan_id, sync_map)
         body = self._renderer.render(plan_item, context)
+
+        existing_item = item_objects.get(plan_item.id)
+        if (
+            existing_item is not None
+            and existing_item.title == plan_item.title
+            and existing_item.body.strip() == body.strip()
+        ):
+            self._progress.item_done("Enrich")
+            return
+
         update_input = UpdateItemInput(
             title=plan_item.title,
             body=body,
@@ -192,7 +212,7 @@ class SyncEngine:
         item_objects[plan_item.id] = updated_item
         self._progress.item_done("Enrich")
 
-    async def _set_relations(self, plan: Plan, item_objects: dict[str, Item]) -> None:
+    async def _set_relations(self, plan: Plan, item_objects: dict[str, Item], created_ids: set[str]) -> None:
         by_id = {item.id: item for item in plan.items}
         plan_ids = set(by_id)
         parent_pairs: set[tuple[str, str]] = set()
@@ -248,6 +268,11 @@ class SyncEngine:
         for child_parent, blocker_parent in compute_parent_blocked_by(plan.items, PlanItemType.EPIC):
             if child_parent in item_objects and blocker_parent in item_objects and child_parent != blocker_parent:
                 dependency_pairs.add((child_parent, blocker_parent))
+
+        # Skip relation pairs where both sides already existed — relationships are already set.
+        if created_ids:
+            parent_pairs = {(c, p) for c, p in parent_pairs if c in created_ids or p in created_ids}
+            dependency_pairs = {(b, k) for b, k in dependency_pairs if b in created_ids or k in created_ids}
 
         total_relations = len(parent_pairs) + len(dependency_pairs)
         self._progress.phase_start("Relations", total=total_relations)

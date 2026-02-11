@@ -134,7 +134,7 @@ class GitHubProvider(Provider):
         for label in filters.labels:
             query_parts.append(f"label:{label}")
         if filters.body_contains:
-            query_parts.append(f"{filters.body_contains} in:body")
+            query_parts.append(f'"{filters.body_contains}" in:body')
         query = " ".join(query_parts)
 
         nodes = await self._search_issue_nodes(query)
@@ -222,6 +222,9 @@ class GitHubProvider(Provider):
         try:
             await client.add_sub_issue(parent_id=parent_issue_id, child_id=child_issue_id)
         except GraphQLClientError as exc:
+            if self._is_duplicate_relation_error(exc):
+                _LOG.debug("Sub-issue relationship already exists: %s -> %s", child_issue_id, parent_issue_id)
+                return
             raise ProviderError(f"Failed to add sub-issue: {exc}") from exc
 
     async def add_blocked_by(self, *, blocked_issue_id: str, blocker_issue_id: str) -> None:  # pragma: no cover
@@ -231,7 +234,25 @@ class GitHubProvider(Provider):
         try:
             await client.add_blocked_by(blocked_id=blocked_issue_id, blocker_id=blocker_issue_id)
         except GraphQLClientError as exc:
+            if self._is_duplicate_relation_error(exc):
+                _LOG.debug("Blocked-by relationship already exists: %s -> %s", blocked_issue_id, blocker_issue_id)
+                return
             raise ProviderError(f"Failed to add blocked-by relation: {exc}") from exc
+
+    # ------------------------------------------------------------------
+    # Relation error helpers
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def _is_duplicate_relation_error(exc: GraphQLClientError) -> bool:
+        """Check if a GraphQL error indicates a relation that already exists."""
+        msg = str(exc).lower()
+        return (
+            "duplicate sub-issues" in msg
+            or "may only have one parent" in msg
+            or "already exists" in msg
+            or "has already been taken" in msg
+        )
 
     # ------------------------------------------------------------------
     # Transport

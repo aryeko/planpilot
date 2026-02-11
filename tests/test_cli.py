@@ -233,11 +233,9 @@ def test_format_summary_apply_mode_shows_existing_counts(tmp_path: Path) -> None
     assert "Plan ID:   a1b2c3d4e5f6" in output
     assert "Target:    owner/repo" in output
     assert "Board:     https://github.com/orgs/owner/projects/1" in output
-    assert "Created:   1 epic(s), 0 story(s), 0 task(s)" in output
-    assert "Existing:  0 epic(s), 1 story(s), 1 task(s)" in output
-    assert "Epic   E1" in output
-    assert "Story  S1" in output
-    assert "Task   T1" in output
+    assert "Items:     3 total (1 epic, 1 story, 1 task)" in output
+    assert "Created:   1 (1 epic)" in output
+    assert "Matched:   2 (1 story, 1 task)" in output
     assert "Sync map:  " in output
     assert str(config.sync_path) in output
 
@@ -408,8 +406,9 @@ def test_format_summary_no_existing_items(tmp_path: Path) -> None:
 
     output = _format_summary(result, config)
 
-    assert "Created:   1 epic(s)" in output
-    assert "Existing:" not in output
+    assert "Items:     1 total (1 epic)" in output
+    assert "Created:   1 (1 epic)" in output
+    assert "Matched:" not in output
 
 
 # ---------------------------------------------------------------------------

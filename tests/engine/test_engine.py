@@ -274,7 +274,8 @@ async def test_sync_dry_run_runs_pipeline_and_sets_flag(tmp_path: Path) -> None:
     assert result.dry_run is True
     assert len(provider.search_calls) == 1
     assert len(provider.create_calls) == 1
-    assert len(provider.update_calls) == 1
+    # Single item with no children - body unchanged after create, enrich skipped
+    assert len(provider.update_calls) == 0
     assert result.sync_map.entries["E1"].key == "#1"
     assert result.items_created[PlanItemType.EPIC] == 1
 
@@ -434,7 +435,7 @@ async def test_set_relations_skips_items_missing_from_item_objects(tmp_path: Pat
     engine = SyncEngine(provider, renderer, config)
     plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
 
-    await engine._set_relations(plan, item_objects={})
+    await engine._set_relations(plan, item_objects={}, created_ids={"E1"})
 
     assert provider.parents == {}
     assert provider.dependencies == {}
@@ -452,7 +453,7 @@ async def test_set_relations_strict_raises_for_external_parent_reference(tmp_pat
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="EXT-1")])
 
     with pytest.raises(SyncError, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
 
 @pytest.mark.asyncio
@@ -467,7 +468,7 @@ async def test_set_relations_strict_raises_for_self_parent_reference(tmp_path: P
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
 
     with pytest.raises(SyncError, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
 
 @pytest.mark.asyncio
@@ -482,7 +483,7 @@ async def test_set_relations_partial_warns_for_self_parent_reference(tmp_path: P
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
 
     with pytest.warns(UserWarning, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
     assert existing.id not in provider.parents
 
@@ -509,7 +510,7 @@ async def test_set_relations_skips_story_rollup_without_story_parents(tmp_path: 
             CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
         )
 
-    await engine._set_relations(plan, item_objects)
+    await engine._set_relations(plan, item_objects, created_ids=set(item_objects))
 
     epic_ids = {item.id for item in provider.items.values() if item.item_type == PlanItemType.EPIC}
     for item_id in epic_ids:

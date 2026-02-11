@@ -62,7 +62,7 @@ def test_cli_dry_run_happy_path_split_input(tmp_path: Path, capsys: pytest.Captu
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in captured.out
     assert (tmp_path / "sync-map.json").exists() is False
     assert (tmp_path / "sync-map.json.dry-run").exists() is True
 
@@ -89,7 +89,7 @@ def test_cli_apply_happy_path_split_input_with_dry_run_provider(
     assert exit_code == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (apply)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in captured.out
     assert (tmp_path / "sync-map.json").exists() is True
     assert (tmp_path / "sync-map.json.dry-run").exists() is False
 
@@ -109,7 +109,7 @@ def test_cli_unified_input_happy_path_dry_run_and_apply(tmp_path: Path, capsys: 
 
     assert dry_run_exit == 0
     assert "planpilot - sync complete (dry-run)" in dry_run_out.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in dry_run_out.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in dry_run_out.out
     assert (tmp_path / "sync-map.json.dry-run").exists() is True
 
     apply_exit = main(["sync", "--config", str(config_path), "--apply"])
@@ -117,7 +117,7 @@ def test_cli_unified_input_happy_path_dry_run_and_apply(tmp_path: Path, capsys: 
 
     assert apply_exit == 0
     assert "planpilot - sync complete (apply)" in apply_out.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in apply_out.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in apply_out.out
     assert (tmp_path / "sync-map.json").exists() is True
 
 
@@ -150,9 +150,9 @@ def test_cli_apply_rerun_is_idempotent_with_persistent_dry_run_provider(
 
     assert first_exit == 0
     assert second_exit == 0
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in first_out.out
-    assert "Created:   0 epic(s), 0 story(s), 0 task(s)" in second_out.out
-    assert "Existing:  1 epic(s), 1 story(s), 1 task(s)" in second_out.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in first_out.out
+    assert "all items up to date" in second_out.out
+    assert "Matched:   3 (1 epic, 1 story, 1 task)" in second_out.out
     assert first_map["entries"] == second_map["entries"]
 
 
@@ -188,8 +188,8 @@ def test_cli_apply_update_variant_reuses_mapping_without_duplication(
 
     assert first_exit == 0
     assert second_exit == 0
-    assert "Created:   0 epic(s), 0 story(s), 0 task(s)" in second_out.out
-    assert "Existing:  1 epic(s), 1 story(s), 1 task(s)" in second_out.out
+    assert "all items up to date" in second_out.out
+    assert "Matched:   3 (1 epic, 1 story, 1 task)" in second_out.out
     assert first_map["entries"] == second_map["entries"]
     assert any(
         operation.name == "update_item" and operation.payload.get("title") == "Offline unified story UPDATED"
@@ -256,7 +256,7 @@ def test_cli_apply_with_dry_run_provider_records_pipeline_operations(
     names = [operation.name for operation in provider.operations]
     assert names[0] == "search_items"
     assert names.count("create_item") == 3
-    assert names.count("update_item") == 3
+    assert names.count("update_item") >= 2  # items whose body changed during enrich
     assert names.count("set_parent") == 2
     create_sequences = [operation.sequence for operation in provider.operations if operation.name == "create_item"]
     update_sequences = [operation.sequence for operation in provider.operations if operation.name == "update_item"]
@@ -291,13 +291,11 @@ def test_cli_summary_contract_apply_output_order(
     output = capsys.readouterr().out
     header_index = output.index("planpilot - sync complete (apply)")
     plan_index = output.index("Plan ID:")
+    items_index = output.index("Items:")
     created_index = output.index("Created:")
-    epic_index = output.index("Epic")
-    story_index = output.index("Story")
-    task_index = output.index("Task")
     sync_map_index = output.index("Sync map:")
 
-    assert header_index < plan_index < created_index < epic_index < story_index < task_index < sync_map_index
+    assert header_index < plan_index < items_index < created_index < sync_map_index
 
 
 def test_cli_sync_map_contract_for_dry_run_and_apply(
@@ -479,7 +477,7 @@ def test_e2e_init_defaults_then_dry_run_sync(
     assert sync_exit == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in captured.out
     assert (tmp_path / "sync-map.json.dry-run").exists()
 
 
@@ -604,7 +602,7 @@ def test_e2e_init_interactive_then_dry_run_sync(
     assert sync_exit == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:   3 (1 epic, 1 story, 1 task)" in captured.out
 
 
 def test_e2e_init_interactive_with_advanced_options(

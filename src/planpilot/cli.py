@@ -80,15 +80,29 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
     created_epics = result.items_created.get(PlanItemType.EPIC, 0)
     created_stories = result.items_created.get(PlanItemType.STORY, 0)
     created_tasks = result.items_created.get(PlanItemType.TASK, 0)
+    total_created = created_epics + created_stories + created_tasks
 
     total_by_type = {PlanItemType.EPIC: 0, PlanItemType.STORY: 0, PlanItemType.TASK: 0}
     for entry in result.sync_map.entries.values():
         if entry.item_type in total_by_type:
             total_by_type[entry.item_type] += 1
 
-    existing_epics = total_by_type[PlanItemType.EPIC] - created_epics
-    existing_stories = total_by_type[PlanItemType.STORY] - created_stories
-    existing_tasks = total_by_type[PlanItemType.TASK] - created_tasks
+    total_items = len(result.sync_map.entries)
+    total_matched = total_items - total_created
+
+    matched_epics = total_by_type[PlanItemType.EPIC] - created_epics
+    matched_stories = total_by_type[PlanItemType.STORY] - created_stories
+    matched_tasks = total_by_type[PlanItemType.TASK] - created_tasks
+
+    def _type_breakdown(epics: int, stories: int, tasks: int) -> str:
+        parts: list[str] = []
+        if epics:
+            parts.append(f"{epics} epic{'s' if epics != 1 else ''}")
+        if stories:
+            parts.append(f"{stories} stor{'ies' if stories != 1 else 'y'}")
+        if tasks:
+            parts.append(f"{tasks} task{'s' if tasks != 1 else ''}")
+        return ", ".join(parts) if parts else "none"
 
     lines = [
         "",
@@ -98,25 +112,22 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
         f"  Target:    {result.sync_map.target}",
         f"  Board:     {result.sync_map.board_url}",
         "",
-        f"  Created:   {created_epics} epic(s), {created_stories} story(s), {created_tasks} task(s)",
+        "  Items:     {} total ({})".format(
+            total_items,
+            _type_breakdown(
+                total_by_type[PlanItemType.EPIC],
+                total_by_type[PlanItemType.STORY],
+                total_by_type[PlanItemType.TASK],
+            ),
+        ),
     ]
 
-    if any(count > 0 for count in (existing_epics, existing_stories, existing_tasks)):
-        lines.append(f"  Existing:  {existing_epics} epic(s), {existing_stories} story(s), {existing_tasks} task(s)")
-
-    lines.append("")
-
-    label_map = {
-        PlanItemType.EPIC: "Epic",
-        PlanItemType.STORY: "Story",
-        PlanItemType.TASK: "Task",
-    }
-    for item_type in (PlanItemType.EPIC, PlanItemType.STORY, PlanItemType.TASK):
-        for item_id in sorted(result.sync_map.entries):
-            entry = result.sync_map.entries[item_id]
-            if entry.item_type != item_type:
-                continue
-            lines.append(f"  {label_map[item_type]:<5}  {item_id:<6}  {entry.key:<6}  {entry.url}")
+    if total_created > 0:
+        lines.append(f"  Created:   {total_created} ({_type_breakdown(created_epics, created_stories, created_tasks)})")
+    if total_matched > 0:
+        lines.append(f"  Matched:   {total_matched} ({_type_breakdown(matched_epics, matched_stories, matched_tasks)})")
+    if total_created == 0:
+        lines.append("  Status:    all items up to date")
 
     lines.append("")
     sync_map_path = f"{config.sync_path}.dry-run" if result.dry_run else str(config.sync_path)

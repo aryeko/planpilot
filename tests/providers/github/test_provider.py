@@ -238,7 +238,7 @@ async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.
     assert len(items) == 1
     assert "label:planpilot" in captured["query"]
     assert "label:foo" in captured["query"]
-    assert "PLAN_ID:abc in:body" in captured["query"]
+    assert '"PLAN_ID:abc" in:body' in captured["query"]
 
 
 @pytest.mark.asyncio
