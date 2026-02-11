@@ -2,6 +2,25 @@
 
 <!-- version list -->
 
+## v2.1.0 (2026-02-11)
+
+### Documentation
+
+- Add progress bar screenshot ([#72](https://github.com/aryeko/planpilot/pull/72),
+  [`a539435`](https://github.com/aryeko/planpilot/commit/a5394350142976063526d0779ba912e1dec7bea7))
+
+### Features
+
+- Add Rich progress bar to sync CLI ([#72](https://github.com/aryeko/planpilot/pull/72),
+  [`a539435`](https://github.com/aryeko/planpilot/commit/a5394350142976063526d0779ba912e1dec7bea7))
+
+### Refactoring
+
+- Decouple SyncProgress from SDK, add phase_error
+  ([#72](https://github.com/aryeko/planpilot/pull/72),
+  [`a539435`](https://github.com/aryeko/planpilot/commit/a5394350142976063526d0779ba912e1dec7bea7))
+
+
 ## v2.0.1 (2026-02-09)
 
 ### Bug Fixes
