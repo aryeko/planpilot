@@ -16,6 +16,7 @@ from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
 from planpilot.contracts.sync import SyncMap, SyncResult
 from planpilot.engine import SyncEngine
+from planpilot.engine.progress import SyncProgress
 from planpilot.plan import PlanHasher, PlanLoader, PlanValidator
 from planpilot.providers.dry_run import DryRunProvider
 from planpilot.providers.factory import create_provider
@@ -108,10 +109,12 @@ class PlanPilot:
         provider: Provider | None,
         renderer: BodyRenderer,
         config: PlanPilotConfig,
+        progress: SyncProgress | None = None,
     ) -> None:
         self._provider = provider
         self._renderer = renderer
         self._config = config
+        self._progress = progress
 
     @classmethod
     async def from_config(
@@ -119,14 +122,20 @@ class PlanPilot:
         config: PlanPilotConfig,
         *,
         renderer_name: str = "markdown",
+        progress: SyncProgress | None = None,
     ) -> PlanPilot:
         try:
             renderer = create_renderer(renderer_name)
         except ValueError as exc:
             raise ConfigError(str(exc)) from exc
-        return cls(provider=None, renderer=renderer, config=config)
+        return cls(provider=None, renderer=renderer, config=config, progress=progress)
 
-    async def sync(self, plan: Plan | None = None, *, dry_run: bool = False) -> SyncResult:
+    async def sync(
+        self,
+        plan: Plan | None = None,
+        *,
+        dry_run: bool = False,
+    ) -> SyncResult:
         loaded_plan = plan if plan is not None else PlanLoader().load(self._config.plan_paths)
         PlanValidator().validate(loaded_plan, mode=self._config.validation_mode)
         plan_id = PlanHasher().compute_plan_id(loaded_plan)
@@ -134,15 +143,15 @@ class PlanPilot:
         try:
             if dry_run:
                 provider: Provider = DryRunProvider()
-                result = await SyncEngine(provider, self._renderer, self._config, dry_run=True).sync(
-                    loaded_plan, plan_id
-                )
+                result = await SyncEngine(
+                    provider, self._renderer, self._config, dry_run=True, progress=self._progress
+                ).sync(loaded_plan, plan_id)
             else:
                 provider = await self._resolve_apply_provider()
                 async with provider:
-                    result = await SyncEngine(provider, self._renderer, self._config, dry_run=False).sync(
-                        loaded_plan, plan_id
-                    )
+                    result = await SyncEngine(
+                        provider, self._renderer, self._config, dry_run=False, progress=self._progress
+                    ).sync(loaded_plan, plan_id)
         except* ProviderError as provider_errors:
             raise provider_errors.exceptions[0] from None
 
