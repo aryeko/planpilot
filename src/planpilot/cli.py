@@ -161,7 +161,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     sync_parser = subparsers.add_parser("sync", help="Sync plan to provider")
-    sync_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    sync_parser.add_argument("--config", default="./planpilot.json", help="Path to planpilot.json")
     mode = sync_parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Preview mode")
     mode.add_argument("--apply", action="store_true", help="Apply mode")
@@ -177,7 +177,7 @@ def build_parser() -> argparse.ArgumentParser:
     map_subparsers = map_parser.add_subparsers(dest="map_command", required=True)
 
     map_sync_parser = map_subparsers.add_parser("sync", help="Reconcile local sync map from remote metadata")
-    map_sync_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    map_sync_parser.add_argument("--config", default="./planpilot.json", help="Path to planpilot.json")
     map_sync_parser.add_argument(
         "--plan-id",
         default=None,

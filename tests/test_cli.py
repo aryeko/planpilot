@@ -99,11 +99,11 @@ def test_build_parser_requires_subcommand() -> None:
     assert exc.value.code == 2
 
 
-def test_build_parser_sync_requires_mode_and_config() -> None:
+def test_build_parser_sync_requires_mode() -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit) as exc:
-        parser.parse_args(["sync", "--config", "planpilot.json"])
+        parser.parse_args(["sync"])
 
     assert exc.value.code == 2
 
@@ -112,10 +112,10 @@ def test_build_parser_sync_requires_mode_and_config() -> None:
 def test_build_parser_sync_accepts_required_arguments(mode: str) -> None:
     parser = build_parser()
 
-    args = parser.parse_args(["sync", "--config", "planpilot.json", mode])
+    args = parser.parse_args(["sync", mode])
 
     assert args.command == "sync"
-    assert args.config == "planpilot.json"
+    assert args.config == "./planpilot.json"
     assert args.verbose is False
 
 

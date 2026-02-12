@@ -47,6 +47,14 @@ def test_build_parser_map_sync_accepts_arguments() -> None:
     assert args.dry_run is True
 
 
+def test_build_parser_map_sync_defaults_config_path() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["map", "sync", "--dry-run"])
+
+    assert args.config == "./planpilot.json"
+
+
 def test_resolve_selected_plan_id_prefers_explicit_value() -> None:
     selected = _resolve_selected_plan_id(explicit_plan_id="abc123", candidate_plan_ids=["x", "y"])
     assert selected == "abc123"

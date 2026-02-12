@@ -182,7 +182,7 @@ planpilot sync --config ./planpilot.json --apply
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config` | — | Path to `planpilot.json` |
+| `--config` | `./planpilot.json` | Path to `planpilot.json` |
 | `--dry-run` | — | Preview mode (no provider mutations) |
 | `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
@@ -191,7 +191,7 @@ planpilot sync --config ./planpilot.json --apply
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config` | — | Path to `planpilot.json` |
+| `--config` | `./planpilot.json` | Path to `planpilot.json` |
 | `--dry-run` | — | Preview local sync-map reconciliation |
 | `--apply` | — | Persist reconciled local sync-map |
 | `--plan-id` | auto | Explicit remote plan ID to reconcile |

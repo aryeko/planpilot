@@ -19,7 +19,7 @@ v2 uses a subcommand pattern to allow future expansion.
 
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `--config` | `str` | Yes | — | Path to `planpilot.json` config file |
+| `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
 | `--dry-run` | flag | One of | — | Preview mode — uses `DryRunProvider` (no auth/network, no provider mutations) |
 | `--apply` | flag | these | — | Apply mode — create/update items in provider |
 | `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
@@ -89,7 +89,7 @@ Reconcile local `sync-map.json` entries from provider metadata without mutating 
 
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `--config` | `str` | Yes | — | Path to `planpilot.json` config file |
+| `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
 | `--dry-run` | flag | One of | — | Preview reconciliation only (no writes) |
 | `--apply` | flag | these | — | Persist reconciled sync-map locally |
 | `--plan-id` | `str` | No | auto | Explicit remote plan ID to reconcile |
