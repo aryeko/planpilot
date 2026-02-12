@@ -193,13 +193,26 @@ class SyncEngine:
 
         context = self._build_context(plan, plan_item, plan_id, sync_map)
         body = self._renderer.render(plan_item, context)
+        desired_labels = [self._config.label]
+        desired_size = plan_item.estimate.tshirt if plan_item.estimate is not None else None
 
         existing_item = item_objects.get(plan_item.id)
+        labels_match = True
+        size_match = True
+        if existing_item is not None:
+            existing_labels = getattr(existing_item, "labels", None)
+            existing_size = getattr(existing_item, "size", None)
+            if existing_labels is not None:
+                labels_match = set(existing_labels) == set(desired_labels)
+            if existing_size is not None:
+                size_match = existing_size == desired_size
         if (
             existing_item is not None
             and existing_item.title == plan_item.title
             and existing_item.body.strip() == body.strip()
             and existing_item.item_type == plan_item.type
+            and labels_match
+            and size_match
         ):
             self._progress.item_done("Enrich")
             return
@@ -208,8 +221,8 @@ class SyncEngine:
             title=plan_item.title,
             body=body,
             item_type=plan_item.type,
-            labels=[self._config.label],
-            size=plan_item.estimate.tshirt if plan_item.estimate is not None else None,
+            labels=desired_labels,
+            size=desired_size,
         )
 
         updated_item = await self._guarded(self._provider.update_item(entry.id, update_input))

@@ -8,7 +8,7 @@ import pytest
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType
 from planpilot.contracts.sync import SyncEntry, SyncMap
 from planpilot.engine.engine import SyncEngine
 from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
@@ -395,6 +395,84 @@ async def test_enrich_updates_when_item_type_changes_even_if_title_and_body_matc
 
     assert len(provider.update_calls) == 1
     assert provider.update_calls[0][1].item_type == PlanItemType.STORY
+
+
+@pytest.mark.asyncio
+async def test_enrich_updates_when_labels_drift_even_if_title_body_and_type_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-labels",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=["wrong-label"],
+        )
+    )
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    sync_map = SyncMap(plan_id="plan-labels", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.STORY)
+
+    await engine._enrich(plan, "plan-labels", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].labels == [config.label]
+
+
+@pytest.mark.asyncio
+async def test_enrich_updates_when_size_drift_even_if_title_body_and_type_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-size",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+            size="S",
+        )
+    )
+    plan = Plan(
+        items=[
+            PlanItem(
+                id="S1",
+                type=PlanItemType.STORY,
+                title="Story",
+                estimate=Estimate(tshirt="M"),
+            )
+        ]
+    )
+    sync_map = SyncMap(plan_id="plan-size", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.STORY)
+
+    await engine._enrich(plan, "plan-size", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].size == "M"
 
 
 @pytest.mark.asyncio

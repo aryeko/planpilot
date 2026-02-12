@@ -1,10 +1,10 @@
 import pytest
 
+import planpilot.providers.github.provider as github_provider
 from planpilot.contracts.config import FieldConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError
 from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import PlanItemType
-from planpilot.providers.github.github_gql.exceptions import GraphQLClientGraphQLError
 from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
 from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
 from planpilot.providers.github.provider import GitHubProvider
@@ -461,7 +461,7 @@ async def test_delete_item_calls_delete_issue() -> None:
 
 
 @pytest.mark.asyncio
-async def test_delete_item_wraps_graphql_errors_as_provider_error() -> None:
+async def test_delete_item_wraps_graphql_errors_as_provider_error(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
         token="token",
@@ -470,9 +470,14 @@ async def test_delete_item_wraps_graphql_errors_as_provider_error() -> None:
         field_config=FieldConfig(),
     )
 
+    class _FakeGraphQLError(Exception):
+        pass
+
+    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+
     class _Client:
         async def delete_issue(self, *, issue_id: str) -> None:
-            raise GraphQLClientGraphQLError("cannot delete")
+            raise _FakeGraphQLError("cannot delete")
 
     provider._client = _Client()  # type: ignore[assignment]
 
@@ -495,7 +500,7 @@ async def test_delete_item_requires_initialized_client() -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_sub_issue_duplicate_error_is_ignored() -> None:
+async def test_add_sub_issue_duplicate_error_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
         token="token",
@@ -511,9 +516,14 @@ async def test_add_sub_issue_duplicate_error_is_ignored() -> None:
         supports_sub_issues=True,
     )
 
+    class _FakeGraphQLError(Exception):
+        pass
+
+    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+
     class _Client:
         async def add_sub_issue(self, *, parent_id: str, child_id: str) -> None:
-            raise GraphQLClientGraphQLError("Duplicate sub-issues")
+            raise _FakeGraphQLError("Duplicate sub-issues")
 
     provider._client = _Client()  # type: ignore[assignment]
 
@@ -521,7 +531,7 @@ async def test_add_sub_issue_duplicate_error_is_ignored() -> None:
 
 
 @pytest.mark.asyncio
-async def test_add_blocked_by_duplicate_error_is_ignored() -> None:
+async def test_add_blocked_by_duplicate_error_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
         token="token",
@@ -537,9 +547,14 @@ async def test_add_blocked_by_duplicate_error_is_ignored() -> None:
         supports_blocked_by=True,
     )
 
+    class _FakeGraphQLError(Exception):
+        pass
+
+    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+
     class _Client:
         async def add_blocked_by(self, *, blocked_id: str, blocker_id: str) -> None:
-            raise GraphQLClientGraphQLError("This relation already exists")
+            raise _FakeGraphQLError("This relation already exists")
 
     provider._client = _Client()  # type: ignore[assignment]
 
@@ -547,5 +562,5 @@ async def test_add_blocked_by_duplicate_error_is_ignored() -> None:
 
 
 def test_is_duplicate_relation_error_returns_false_for_other_messages() -> None:
-    err = GraphQLClientGraphQLError("Some unrelated GraphQL failure")
+    err = Exception("Some unrelated GraphQL failure")
     assert GitHubProvider._is_duplicate_relation_error(err) is False

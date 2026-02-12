@@ -20,6 +20,7 @@ class FakeItem(Item):
     _item_type: PlanItemType | None
     _provider: FakeProvider
     _labels: list[str]
+    _size: str | None = None
 
     @property
     def id(self) -> str:
@@ -44,6 +45,14 @@ class FakeItem(Item):
     @property
     def item_type(self) -> PlanItemType | None:
         return self._item_type
+
+    @property
+    def labels(self) -> list[str]:
+        return list(self._labels)
+
+    @property
+    def size(self) -> str | None:
+        return self._size
 
     async def set_parent(self, parent: Item) -> None:
         self._provider.parents[self.id] = parent.id
@@ -96,6 +105,7 @@ class FakeProvider(Provider):
             _item_type=input.item_type,
             _provider=self,
             _labels=list(input.labels),
+            _size=input.size,
         )
         self.items[item.id] = item
         return item
@@ -113,6 +123,8 @@ class FakeProvider(Provider):
             item._item_type = input.item_type
         if input.labels is not None:
             item._labels = list(input.labels)
+        if input.size is not None:
+            item._size = input.size
         return item
 
     async def get_item(self, item_id: str) -> Item:

@@ -506,7 +506,7 @@ async def test_clean_unwraps_provider_error_from_search(tmp_path: Path) -> None:
 
 
 @pytest.mark.asyncio
-async def test_clean_raises_when_delete_retry_fails_twice(tmp_path: Path) -> None:
+async def test_clean_raises_on_single_item_delete_failure(tmp_path: Path) -> None:
     config, plan_id = _write_plan_and_get_id(tmp_path)
     provider = AlwaysFailDeleteProvider()
     sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)

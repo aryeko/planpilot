@@ -586,6 +586,8 @@ class GitHubProvider(Provider):
     # ------------------------------------------------------------------
 
     def _item_from_issue_core(self, issue: IssueCore) -> GitHubItem:
+        labels_nodes = issue.labels.nodes if issue.labels is not None and issue.labels.nodes is not None else []
+        labels = [node.name for node in labels_nodes if node and node.name]
         return GitHubItem(
             provider=self,
             issue_id=issue.id,
@@ -594,6 +596,7 @@ class GitHubProvider(Provider):
             body=issue.body,
             item_type=None,
             url=issue.url,
+            labels=labels,
         )
 
     def _split_target(self) -> tuple[str, str]:  # pragma: no cover
