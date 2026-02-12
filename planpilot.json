@@ -1,0 +1,23 @@
+{
+  "provider": "github",
+  "target": "aryeko/planpilot",
+  "board_url": "https://github.com/users/aryeko/projects/1",
+  "plan_paths": {
+    "epics": ".plans/epics.json",
+    "stories": ".plans/stories.json",
+    "tasks": ".plans/tasks.json"
+  },
+  "auth": "gh-cli",
+  "sync_path": ".plans/sync-map.json",
+  "validation_mode": "strict",
+  "label": "planpilot",
+  "max_concurrent": 4,
+  "field_config": {
+    "status": "Backlog",
+    "priority": "P1",
+    "iteration": "active",
+    "size_field": "Size",
+    "size_from_tshirt": true,
+    "create_type_strategy": "label"
+  }
+}

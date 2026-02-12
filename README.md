@@ -182,10 +182,23 @@ planpilot sync --config ./planpilot.json --apply
 
 | Flag | Default | Description |
 |------|---------|-------------|
-| `--config` | — | Path to `planpilot.json` |
+| `--config` | `./planpilot.json` | Path to `planpilot.json` |
 | `--dry-run` | — | Preview mode (no provider mutations) |
 | `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
+
+### `planpilot map sync`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | `./planpilot.json` | Path to `planpilot.json` |
+| `--dry-run` | — | Preview local sync-map reconciliation |
+| `--apply` | — | Persist reconciled local sync-map |
+| `--plan-id` | auto | Explicit remote plan ID to reconcile |
+| `--verbose` | off | Enable verbose logging |
+
+`map sync` reconciles local artifacts from provider metadata only; it does not mutate provider items.
+In apply mode it writes both the local sync-map and local plan files.
 
 Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
