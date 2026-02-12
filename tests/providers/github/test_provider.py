@@ -1,6 +1,5 @@
 import pytest
 
-import planpilot.providers.github.provider as github_provider
 from planpilot.contracts.config import FieldConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError
 from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
@@ -8,6 +7,12 @@ from planpilot.contracts.plan import PlanItemType
 from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
 from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
 from planpilot.providers.github.provider import GitHubProvider
+
+
+def _provider_module() -> object:
+    import sys
+
+    return sys.modules[GitHubProvider.__module__]
 
 
 def _make_issue_core(
@@ -473,7 +478,7 @@ async def test_delete_item_wraps_graphql_errors_as_provider_error(monkeypatch: p
     class _FakeGraphQLError(Exception):
         pass
 
-    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+    monkeypatch.setattr(_provider_module(), "GraphQLClientError", _FakeGraphQLError)
 
     class _Client:
         async def delete_issue(self, *, issue_id: str) -> None:
@@ -519,7 +524,7 @@ async def test_add_sub_issue_duplicate_error_is_ignored(monkeypatch: pytest.Monk
     class _FakeGraphQLError(Exception):
         pass
 
-    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+    monkeypatch.setattr(_provider_module(), "GraphQLClientError", _FakeGraphQLError)
 
     class _Client:
         async def add_sub_issue(self, *, parent_id: str, child_id: str) -> None:
@@ -550,7 +555,7 @@ async def test_add_blocked_by_duplicate_error_is_ignored(monkeypatch: pytest.Mon
     class _FakeGraphQLError(Exception):
         pass
 
-    monkeypatch.setattr(github_provider, "GraphQLClientError", _FakeGraphQLError)
+    monkeypatch.setattr(_provider_module(), "GraphQLClientError", _FakeGraphQLError)
 
     class _Client:
         async def add_blocked_by(self, *, blocked_id: str, blocker_id: str) -> None:
