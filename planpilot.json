@@ -1,0 +1,12 @@
+{
+  "provider": "github",
+  "target": "aryeko/planpilot",
+  "board_url": "https://github.com/users/aryeko/projects/1",
+  "plan_paths": {
+    "unified": ".plans/plan.json"
+  },
+  "max_concurrent": 4,
+  "field_config": {
+    "create_type_strategy": "label"
+  }
+}
