@@ -175,7 +175,7 @@ def build_parser() -> argparse.ArgumentParser:
     init_parser.add_argument("--defaults", action="store_true", help="Use defaults without prompting")
 
     clean_parser = subparsers.add_parser("clean", help="Delete all issues belonging to a plan")
-    clean_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    clean_parser.add_argument("--config", default="./planpilot.json", help="Path to planpilot.json")
     clean_mode = clean_parser.add_mutually_exclusive_group(required=True)
     clean_mode.add_argument("--dry-run", action="store_true", help="Preview mode")
     clean_mode.add_argument("--apply", action="store_true", help="Apply mode")

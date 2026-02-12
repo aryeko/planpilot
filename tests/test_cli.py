@@ -1158,11 +1158,11 @@ def test_init_interactive_unified_path_ctrl_c(monkeypatch: pytest.MonkeyPatch, t
 # ---------------------------------------------------------------------------
 
 
-def test_build_parser_clean_requires_mode_and_config() -> None:
+def test_build_parser_clean_requires_mode() -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit) as exc:
-        parser.parse_args(["clean", "--config", "planpilot.json"])
+        parser.parse_args(["clean"])
 
     assert exc.value.code == 2
 
@@ -1176,6 +1176,15 @@ def test_build_parser_clean_accepts_required_arguments(mode: str) -> None:
     assert args.command == "clean"
     assert args.config == "planpilot.json"
     assert args.verbose is False
+
+
+def test_build_parser_clean_defaults_config_path() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--dry-run"])
+
+    assert args.command == "clean"
+    assert args.config == "./planpilot.json"
 
 
 def test_format_clean_summary_apply_mode() -> None:
