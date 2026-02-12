@@ -320,6 +320,7 @@ def _format_map_sync_summary(result: MapSyncResult, config: PlanPilotConfig) -> 
         f"  Target:       {result.sync_map.target}",
         f"  Board:        {result.sync_map.board_url}",
         "",
+        f"  Plan items:   {result.plan_items_synced}",
         f"  Entries:      {len(result.sync_map.entries)}",
         f"  Added:        {len(result.added)} ({_fmt_ids(result.added)})",
         f"  Updated:      {len(result.updated)} ({_fmt_ids(result.updated)})",
@@ -371,6 +372,7 @@ def _run_init_defaults(output: Path) -> int:
             target=target,
             board_url=board_url,
             plan_paths=plan_paths,
+            include_defaults=True,
         )
     except ConfigError as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -491,6 +493,8 @@ def _run_init_interactive(output: Path) -> int:
         # --- 8. Advanced options ---
         adv_validation_mode = "strict"
         adv_max_concurrent = 1
+        adv_label = "planpilot"
+        adv_field_config: dict[str, object] | None = None
         show_advanced = questionary.confirm("Configure advanced options?", default=False).ask()
         if show_advanced is None:
             raise KeyboardInterrupt
@@ -505,6 +509,37 @@ def _run_init_interactive(output: Path) -> int:
             if mc is None:
                 raise KeyboardInterrupt
             adv_max_concurrent = int(mc)
+            label = questionary.text("Discovery label:", default="planpilot").ask()
+            if label is None:
+                raise KeyboardInterrupt
+            adv_label = label.strip() or "planpilot"
+            configure_fields = questionary.confirm("Configure field defaults?", default=False).ask()
+            if configure_fields is None:
+                raise KeyboardInterrupt
+            if configure_fields:
+                status = questionary.text("Default status:", default="Backlog").ask()
+                priority = questionary.text("Default priority:", default="P1").ask()
+                iteration = questionary.text("Default iteration:", default="active").ask()
+                size_field = questionary.text("Size field name:", default="Size").ask()
+                size_from_tshirt = questionary.confirm("Map t-shirt estimate to size field?", default=True).ask()
+                if None in {status, priority, iteration, size_field, size_from_tshirt}:
+                    raise KeyboardInterrupt
+                strategy_default = "label" if owner_type == "user" else "issue-type"
+                strategy = questionary.select(
+                    "Create type strategy:",
+                    choices=["issue-type", "label"],
+                    default=strategy_default,
+                ).ask()
+                if strategy is None:
+                    raise KeyboardInterrupt
+                adv_field_config = {
+                    "status": status.strip() or "Backlog",
+                    "priority": priority.strip() or "P1",
+                    "iteration": iteration.strip() or "active",
+                    "size_field": size_field.strip() or "Size",
+                    "size_from_tshirt": bool(size_from_tshirt),
+                    "create_type_strategy": strategy,
+                }
 
         # --- Build and write config ---
         config = scaffold_config(
@@ -516,7 +551,10 @@ def _run_init_interactive(output: Path) -> int:
             plan_paths=plan_paths,
             sync_path=sync_path,
             validation_mode=adv_validation_mode,
+            label=adv_label,
             max_concurrent=adv_max_concurrent,
+            field_config=adv_field_config,
+            include_defaults=True,
         )
         write_config(config, output)
 

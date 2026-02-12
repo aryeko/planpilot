@@ -197,7 +197,8 @@ planpilot sync --config ./planpilot.json --apply
 | `--plan-id` | auto | Explicit remote plan ID to reconcile |
 | `--verbose` | off | Enable verbose logging |
 
-`map sync` reconciles the local sync-map from provider metadata only; it does not mutate provider items.
+`map sync` reconciles local artifacts from provider metadata only; it does not mutate provider items.
+In apply mode it writes both the local sync-map and local plan files.
 
 Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 

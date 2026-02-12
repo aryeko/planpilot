@@ -111,7 +111,7 @@ async def test_map_sync_apply_reconciles_added_updated_removed(tmp_path: Path, s
 
 
 @pytest.mark.asyncio
-async def test_map_sync_ignores_discovered_items_not_in_local_plan(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_map_sync_includes_discovered_items_not_in_local_plan(tmp_path: Path, sample_plan: Plan) -> None:
     provider = FakeProvider()
     config = _make_config(tmp_path)
     _write_plan(config, sample_plan)
@@ -130,7 +130,7 @@ async def test_map_sync_ignores_discovered_items_not_in_local_plan(tmp_path: Pat
 
     result = await sdk.map_sync(plan_id=plan_id, dry_run=True)
 
-    assert "EXTERNAL" not in result.sync_map.entries
+    assert "EXTERNAL" in result.sync_map.entries
 
 
 @pytest.mark.asyncio

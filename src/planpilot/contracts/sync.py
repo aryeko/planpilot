@@ -34,6 +34,7 @@ class MapSyncResult(BaseModel):
     removed: list[str] = Field(default_factory=list)
     updated: list[str] = Field(default_factory=list)
     candidate_plan_ids: list[str] = Field(default_factory=list)
+    plan_items_synced: int = 0
     dry_run: bool = False
 
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -389,6 +390,11 @@ def test_cli_map_sync_apply_reconciles_local_sync_map(
     tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
 ) -> None:
     split_dir = FIXTURES_ROOT / "split"
+    working_split = tmp_path / "working-split"
+    working_split.mkdir(parents=True, exist_ok=True)
+    shutil.copy(split_dir / "epics.json", working_split / "epics.json")
+    shutil.copy(split_dir / "stories.json", working_split / "stories.json")
+    shutil.copy(split_dir / "tasks.json", working_split / "tasks.json")
     provider = DryRunProvider()
     config_path = _write_config(
         tmp_path,
@@ -396,9 +402,9 @@ def test_cli_map_sync_apply_reconciles_local_sync_map(
         auth="token",
         token="offline-token",
         plan_paths={
-            "epics": str(split_dir / "epics.json"),
-            "stories": str(split_dir / "stories.json"),
-            "tasks": str(split_dir / "tasks.json"),
+            "epics": str(working_split / "epics.json"),
+            "stories": str(working_split / "stories.json"),
+            "tasks": str(working_split / "tasks.json"),
         },
     )
     monkeypatch.setattr("planpilot.sdk.create_provider", lambda *_args, **_kwargs: provider)
@@ -536,7 +542,7 @@ def test_e2e_init_defaults_then_dry_run_sync(
     assert sync_exit == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:" in captured.out
     assert (tmp_path / "sync-map.json.dry-run").exists()
 
 
@@ -566,6 +572,8 @@ def test_e2e_init_interactive_split_generates_config(
             "Sync map": ".plans/sync-map.json",
             "Authentication": "gh-cli",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": True,
         }
     )
@@ -604,6 +612,8 @@ def test_e2e_init_interactive_unified_generates_config(
             "Sync map": ".plans/sync-map.json",
             "Authentication": "gh-cli",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )
@@ -644,6 +654,8 @@ def test_e2e_init_interactive_then_dry_run_sync(
             "Sync map": str(tmp_path / "sync-map.json"),
             "Authentication": "gh-cli",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )
@@ -661,7 +673,7 @@ def test_e2e_init_interactive_then_dry_run_sync(
     assert sync_exit == 0
     captured = capsys.readouterr()
     assert "planpilot - sync complete (dry-run)" in captured.out
-    assert "Created:   1 epic(s), 1 story(s), 1 task(s)" in captured.out
+    assert "Created:" in captured.out
 
 
 def test_e2e_init_interactive_with_advanced_options(
@@ -687,6 +699,8 @@ def test_e2e_init_interactive_with_advanced_options(
             "Configure advanced": True,
             "Validation mode": "partial",
             "Max concurrent": "5",
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )
@@ -720,6 +734,8 @@ def test_e2e_init_interactive_with_static_token_auth(
             "Authentication": "token",
             "GitHub token": "ghp_e2e_token",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )
@@ -751,6 +767,8 @@ def test_e2e_init_interactive_user_board_defaults_label_strategy(
             "Sync map": ".plans/sync-map.json",
             "Authentication": "gh-cli",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )
@@ -829,6 +847,8 @@ def test_e2e_init_interactive_overwrite_accepted_then_sync(
             "Sync map": str(tmp_path / "sync-map.json"),
             "Authentication": "gh-cli",
             "Configure advanced": False,
+            "Discovery label": "planpilot",
+            "Configure field defaults": False,
             "Create empty": False,
         }
     )

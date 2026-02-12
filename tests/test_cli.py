@@ -479,6 +479,8 @@ _SPLIT_ANSWERS: dict[str, Any] = {
     "Sync map": ".plans/sync-map.json",
     "Authentication": "gh-cli",
     "Configure advanced": False,
+    "Discovery label": "planpilot",
+    "Configure field defaults": False,
     "Create empty": True,
     "already exists": True,
 }

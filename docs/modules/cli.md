@@ -104,7 +104,10 @@ Plan ID selection rules:
   - multiple candidates without TTY: fail and require `--plan-id`
   - zero candidates: fail with remediation guidance
 
-`map sync` never creates/updates/deletes provider items. In apply mode, it writes only the local sync-map file.
+`map sync` never creates/updates/deletes provider items. In apply mode, it writes local artifacts only:
+
+- reconciled `sync-map.json`
+- local plan files at configured `plan_paths` (bootstrapped from remote metadata/body)
 
 ### `init` Subcommand
 
@@ -120,6 +123,8 @@ Interactively generate a `planpilot.json` config file.
 **Defaults mode** (`--defaults`): auto-detects the git remote for `target`, scans for existing plan files, and writes a config with sensible defaults. No user interaction required.
 
 Both modes refuse to overwrite an existing file unless the user confirms (interactive) or a different `--output` path is specified (defaults).
+
+`init` emits explicit defaults for important runtime fields (for example `sync_path`, `label`, `validation_mode`, and `max_concurrent`) so generated configs are predictable.
 
 The `init` command calls the SDK scaffold functions (`detect_target`, `detect_plan_paths`, `scaffold_config`) which are also available programmatically.
 

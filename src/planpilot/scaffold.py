@@ -105,6 +105,7 @@ def scaffold_config(
     label: str = "planpilot",
     max_concurrent: int = 1,
     field_config: dict[str, Any] | None = None,
+    include_defaults: bool = False,
 ) -> dict[str, Any]:
     """Build and validate a planpilot config dict.
 
@@ -124,18 +125,18 @@ def scaffold_config(
         "plan_paths": plan_paths,
     }
 
-    # Only include non-default values to keep the output minimal.
-    if auth != "gh-cli":
+    # Optionally include defaults for explicit, user-facing init output.
+    if include_defaults or auth != "gh-cli":
         raw["auth"] = auth
     if token is not None:
         raw["token"] = token
-    if sync_path != _SYNC_PATH_DEFAULT:
+    if include_defaults or sync_path != _SYNC_PATH_DEFAULT:
         raw["sync_path"] = sync_path
-    if validation_mode != "strict":
+    if include_defaults or validation_mode != "strict":
         raw["validation_mode"] = validation_mode
-    if label != "planpilot":
+    if include_defaults or label != "planpilot":
         raw["label"] = label
-    if max_concurrent != 1:
+    if include_defaults or max_concurrent != 1:
         raw["max_concurrent"] = max_concurrent
     resolved_field_config = dict(field_config or {})
     if provider == "github":
