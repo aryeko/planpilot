@@ -10,6 +10,7 @@ The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles arg
 planpilot [--version]
 planpilot sync --config <path> (--dry-run | --apply) [--verbose]
 planpilot init [--output <path>] [--defaults]
+planpilot map sync --config <path> (--dry-run | --apply) [--plan-id <id>] [--verbose]
 ```
 
 v2 uses a subcommand pattern to allow future expansion.
@@ -81,6 +82,29 @@ This summary is human-oriented and not a stable machine contract. Automation sho
 ### Error Output
 
 All errors go to stderr with user-friendly messages from `PlanPilotError` subclasses.
+
+### `map sync` Subcommand
+
+Reconcile local `sync-map.json` entries from provider metadata without mutating provider items.
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `--config` | `str` | Yes | — | Path to `planpilot.json` config file |
+| `--dry-run` | flag | One of | — | Preview reconciliation only (no writes) |
+| `--apply` | flag | these | — | Persist reconciled sync-map locally |
+| `--plan-id` | `str` | No | auto | Explicit remote plan ID to reconcile |
+| `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
+
+Plan ID selection rules:
+
+- When `--plan-id` is provided, it is used directly.
+- When omitted, `map sync` discovers remote plan IDs from metadata:
+  - one candidate: auto-select
+  - multiple candidates with interactive TTY: prompt to select
+  - multiple candidates without TTY: fail and require `--plan-id`
+  - zero candidates: fail with remediation guidance
+
+`map sync` never creates/updates/deletes provider items. In apply mode, it writes only the local sync-map file.
 
 ### `init` Subcommand
 

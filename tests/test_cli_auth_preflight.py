@@ -121,6 +121,18 @@ def test_validate_github_auth_for_init_returns_none_on_unknown_owner_type(monkey
     assert _validate_github_auth_for_init(token="tok", target="owner/repo") is None
 
 
+def test_validate_github_auth_for_init_returns_none_on_owner_lookup_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeClient(
+        user_response=_FakeResponse(status_code=200, headers={"x-oauth-scopes": "repo, project"}),
+        repo_response=_FakeResponse(status_code=200),
+        graphql_response=_FakeResponse(status_code=200, headers={"content-type": "application/json"}, payload={}),
+        owner_response=_FakeResponse(status_code=404),
+    )
+    monkeypatch.setattr("planpilot.cli.httpx.Client", lambda **_kw: fake)
+
+    assert _validate_github_auth_for_init(token="tok", target="owner/repo") is None
+
+
 def test_validate_github_auth_for_init_raises_on_auth_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeClient(
         user_response=_FakeResponse(status_code=401),

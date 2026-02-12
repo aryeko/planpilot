@@ -187,6 +187,18 @@ planpilot sync --config ./planpilot.json --apply
 | `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
 
+### `planpilot map sync`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | — | Path to `planpilot.json` |
+| `--dry-run` | — | Preview local sync-map reconciliation |
+| `--apply` | — | Persist reconciled local sync-map |
+| `--plan-id` | auto | Explicit remote plan ID to reconcile |
+| `--verbose` | off | Enable verbose logging |
+
+`map sync` reconciles the local sync-map from provider metadata only; it does not mutate provider items.
+
 Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas

@@ -14,6 +14,7 @@ import httpx
 from planpilot import (
     AuthenticationError,
     ConfigError,
+    MapSyncResult,
     PlanItemType,
     PlanLoadError,
     PlanPilot,
@@ -48,10 +49,12 @@ def _validate_target(value: str) -> bool | str:
 
 
 def _resolve_init_token(*, auth: str, target: str, static_token: str | None) -> str:
+    from planpilot.auth.base import TokenResolver
     from planpilot.auth.resolvers.env import EnvTokenResolver
     from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
     from planpilot.auth.resolvers.static import StaticTokenResolver
 
+    resolver: TokenResolver
     if auth == "gh-cli":
         hostname = "github.com"
         resolver = GhCliTokenResolver(hostname=hostname)
@@ -170,6 +173,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     init_parser.add_argument("--defaults", action="store_true", help="Use defaults without prompting")
 
+    map_parser = subparsers.add_parser("map", help="Sync-map operations")
+    map_subparsers = map_parser.add_subparsers(dest="map_command", required=True)
+
+    map_sync_parser = map_subparsers.add_parser("sync", help="Reconcile local sync map from remote metadata")
+    map_sync_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    map_sync_parser.add_argument(
+        "--plan-id",
+        default=None,
+        help="Remote plan ID to reconcile (required for non-interactive mode if multiple IDs found)",
+    )
+    map_mode = map_sync_parser.add_mutually_exclusive_group(required=True)
+    map_mode.add_argument("--dry-run", action="store_true", help="Preview mode")
+    map_mode.add_argument("--apply", action="store_true", help="Apply mode")
+    map_sync_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+
     return parser
 
 
@@ -188,6 +206,46 @@ async def _run_sync(args: argparse.Namespace) -> SyncResult:
 
     print(_format_summary(result, config))
     return result
+
+
+async def _run_map_sync(args: argparse.Namespace) -> MapSyncResult:
+    config = load_config(args.config)
+    pp = await PlanPilot.from_config(config)
+    candidate_plan_ids = await pp.discover_remote_plan_ids()
+    selected_plan_id = _resolve_selected_plan_id(
+        explicit_plan_id=args.plan_id,
+        candidate_plan_ids=candidate_plan_ids,
+    )
+    result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
+    result = result.model_copy(update={"candidate_plan_ids": candidate_plan_ids})
+    print(_format_map_sync_summary(result, config))
+    return result
+
+
+def _resolve_selected_plan_id(*, explicit_plan_id: str | None, candidate_plan_ids: list[str]) -> str:
+    if explicit_plan_id is not None and explicit_plan_id.strip():
+        return explicit_plan_id.strip()
+
+    if not candidate_plan_ids:
+        raise ConfigError(
+            "No remote PLAN_ID values were discovered; run sync first or pass --plan-id to target a known plan ID"
+        )
+    if len(candidate_plan_ids) == 1:
+        return candidate_plan_ids[0]
+    if not sys.stdin.isatty():
+        raise ConfigError("Multiple remote PLAN_ID values found; rerun with --plan-id in non-interactive mode")
+
+    try:
+        import questionary
+    except ImportError as exc:  # pragma: no cover
+        raise ConfigError(
+            "questionary is required for interactive plan-id selection (install questionary or pass --plan-id)"
+        ) from exc
+
+    selected = questionary.select("Select remote PLAN_ID to reconcile:", choices=candidate_plan_ids).ask()
+    if selected is None:
+        raise ConfigError("Aborted plan-id selection")
+    return str(selected)
 
 
 def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
@@ -241,6 +299,37 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
         lines.append("")
         lines.append("  [dry-run] No changes were made")
 
+    lines.append("")
+    return "\n".join(lines)
+
+
+def _format_map_sync_summary(result: MapSyncResult, config: PlanPilotConfig) -> str:
+    mode = "dry-run" if result.dry_run else "apply"
+
+    def _fmt_ids(values: list[str]) -> str:
+        if not values:
+            return "none"
+        return ", ".join(values)
+
+    lines = [
+        "",
+        f"planpilot - map sync complete ({mode})",
+        "",
+        f"  Plan ID:      {result.sync_map.plan_id}",
+        f"  Candidates:   {len(result.candidate_plan_ids)} discovered",
+        f"  Target:       {result.sync_map.target}",
+        f"  Board:        {result.sync_map.board_url}",
+        "",
+        f"  Entries:      {len(result.sync_map.entries)}",
+        f"  Added:        {len(result.added)} ({_fmt_ids(result.added)})",
+        f"  Updated:      {len(result.updated)} ({_fmt_ids(result.updated)})",
+        f"  Removed:      {len(result.removed)} ({_fmt_ids(result.removed)})",
+        "",
+        f"  Sync map:     {config.sync_path}",
+    ]
+    if result.dry_run:
+        lines.append("")
+        lines.append("  [dry-run] No changes were made")
     lines.append("")
     return "\n".join(lines)
 
@@ -463,6 +552,27 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return _run_init(args)
+    if args.command == "map":
+        if args.map_command != "sync":
+            print(f"error: unsupported map command: {args.map_command}", file=sys.stderr)
+            return 2
+        if args.verbose:
+            logging.basicConfig(level=logging.DEBUG, format="%(name)s %(message)s", stream=sys.stderr)
+        try:
+            asyncio.run(_run_map_sync(args))
+            return 0
+        except (ConfigError, PlanLoadError, PlanValidationError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 3
+        except (AuthenticationError, ProviderError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 4
+        except SyncError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 5
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format="%(name)s %(message)s", stream=sys.stderr)

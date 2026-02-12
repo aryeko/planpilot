@@ -381,6 +381,56 @@ def test_cli_exit_code_mappings_in_process(
 
 
 # ---------------------------------------------------------------------------
+# map sync subcommand E2E tests
+# ---------------------------------------------------------------------------
+
+
+def test_cli_map_sync_apply_reconciles_local_sync_map(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    split_dir = FIXTURES_ROOT / "split"
+    provider = DryRunProvider()
+    config_path = _write_config(
+        tmp_path,
+        provider="dry-run",
+        auth="token",
+        token="offline-token",
+        plan_paths={
+            "epics": str(split_dir / "epics.json"),
+            "stories": str(split_dir / "stories.json"),
+            "tasks": str(split_dir / "tasks.json"),
+        },
+    )
+    monkeypatch.setattr("planpilot.sdk.create_provider", lambda *_args, **_kwargs: provider)
+
+    sync_exit = main(["sync", "--config", str(config_path), "--apply"])
+    _ = capsys.readouterr()
+    assert sync_exit == 0
+
+    sync_map_path = tmp_path / "sync-map.json"
+    original_map = _load_json(sync_map_path)
+    entries = original_map["entries"]
+    assert isinstance(entries, dict)
+    plan_id = str(original_map["plan_id"])
+    entries.pop("S1", None)
+    entries["STALE"] = {"id": "stale", "key": "#999", "url": "https://stale.example", "item_type": "TASK"}
+    sync_map_path.write_text(json.dumps(original_map), encoding="utf-8")
+
+    map_exit = main(["map", "sync", "--config", str(config_path), "--apply", "--plan-id", plan_id])
+    captured = capsys.readouterr()
+
+    assert map_exit == 0
+    assert "planpilot - map sync complete (apply)" in captured.out
+    assert "Added:        1 (S1)" in captured.out
+    assert "Removed:      1 (STALE)" in captured.out
+
+    reconciled = _load_json(sync_map_path)
+    reconciled_entries = reconciled["entries"]
+    assert isinstance(reconciled_entries, dict)
+    assert sorted(reconciled_entries.keys()) == ["E1", "S1", "T1"]
+
+
+# ---------------------------------------------------------------------------
 # planpilot init — e2e tests
 # ---------------------------------------------------------------------------
 

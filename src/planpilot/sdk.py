@@ -11,12 +11,14 @@ from pydantic import ValidationError
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
+from planpilot.contracts.item import ItemSearchFilters
 from planpilot.contracts.plan import Plan
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
-from planpilot.contracts.sync import SyncMap, SyncResult
+from planpilot.contracts.sync import MapSyncResult, SyncMap, SyncResult, to_sync_entry
 from planpilot.engine import SyncEngine
 from planpilot.engine.progress import SyncProgress
+from planpilot.engine.utils import parse_metadata_block
 from planpilot.plan import PlanHasher, PlanLoader, PlanValidator
 from planpilot.providers.dry_run import DryRunProvider
 from planpilot.providers.factory import create_provider
@@ -158,6 +160,75 @@ class PlanPilot:
         self._persist_sync_map(result.sync_map, dry_run=dry_run)
         return result
 
+    async def discover_remote_plan_ids(self) -> list[str]:
+        """Discover unique PLAN_ID values from provider metadata."""
+        provider = await self._resolve_apply_provider()
+        try:
+            async with provider:
+                items = await provider.search_items(ItemSearchFilters(labels=[self._config.label]))
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        plan_ids = {
+            metadata["PLAN_ID"]
+            for item in items
+            for metadata in [parse_metadata_block(item.body)]
+            if metadata.get("PLAN_ID")
+        }
+        return sorted(plan_ids)
+
+    async def map_sync(self, *, plan_id: str, dry_run: bool = False) -> MapSyncResult:
+        """Reconcile local sync-map from provider discovery for selected plan."""
+        loaded_plan = PlanLoader().load(self._config.plan_paths)
+        PlanValidator().validate(loaded_plan, mode=self._config.validation_mode)
+        current = self._load_sync_map(plan_id=plan_id)
+        plan_item_ids = {item.id for item in loaded_plan.items}
+
+        provider = await self._resolve_apply_provider()
+        try:
+            async with provider:
+                discovered_items = await provider.search_items(
+                    ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
+                )
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        desired_entries = {}
+        for item in discovered_items:
+            metadata = parse_metadata_block(item.body)
+            if metadata.get("PLAN_ID") != plan_id:
+                continue
+            item_id = metadata.get("ITEM_ID")
+            if not item_id or item_id not in plan_item_ids:
+                continue
+            desired_entries[item_id] = to_sync_entry(item)
+
+        current_entries = current.entries
+        added = sorted(item_id for item_id in desired_entries if item_id not in current_entries)
+        removed = sorted(item_id for item_id in current_entries if item_id not in desired_entries)
+        updated = sorted(
+            item_id
+            for item_id in desired_entries
+            if item_id in current_entries and current_entries[item_id] != desired_entries[item_id]
+        )
+
+        reconciled = SyncMap(
+            plan_id=plan_id,
+            target=self._config.target,
+            board_url=self._config.board_url,
+            entries=desired_entries,
+        )
+        result = MapSyncResult(
+            sync_map=reconciled,
+            added=added,
+            removed=removed,
+            updated=updated,
+            dry_run=dry_run,
+        )
+        if not dry_run:
+            self._persist_sync_map(reconciled, dry_run=False)
+        return result
+
     async def _resolve_apply_provider(self) -> Provider:
         if self._provider is not None:
             return self._provider
@@ -188,3 +259,14 @@ class PlanPilot:
         if not dry_run:
             return self._config.sync_path
         return Path(f"{self._config.sync_path}.dry-run")
+
+    def _load_sync_map(self, *, plan_id: str) -> SyncMap:
+        path = self._config.sync_path
+        if not path.exists():
+            return SyncMap(plan_id=plan_id, target=self._config.target, board_url=self._config.board_url, entries={})
+        try:
+            payload: Any = json.loads(path.read_text(encoding="utf-8"))
+            parsed = SyncMap.model_validate(payload)
+        except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            raise ConfigError(f"invalid sync map file: {path}") from exc
+        return parsed

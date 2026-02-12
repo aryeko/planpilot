@@ -16,7 +16,7 @@ from planpilot.contracts.exceptions import (
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer, RenderContext
-from planpilot.contracts.sync import SyncEntry, SyncMap, SyncResult
+from planpilot.contracts.sync import MapSyncResult, SyncEntry, SyncMap, SyncResult
 from planpilot.providers import create_provider
 from planpilot.renderers import create_renderer
 from planpilot.scaffold import create_plan_stubs, detect_plan_paths, detect_target, scaffold_config, write_config
@@ -27,6 +27,7 @@ __all__ = [
     "BodyRenderer",
     "ConfigError",
     "FieldConfig",
+    "MapSyncResult",
     "Plan",
     "PlanItem",
     "PlanItemType",
