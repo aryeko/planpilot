@@ -128,3 +128,12 @@ class FakeProvider(Provider):
         del self.items[item_id]
         self.parents.pop(item_id, None)
         self.dependencies.pop(item_id, None)
+
+    def set_item_identity(self, item_id: str, *, key: str | None = None, url: str | None = None) -> None:
+        item = self.items.get(item_id)
+        if item is None:
+            raise ProviderError(f"Item not found: {item_id}")
+        if key is not None:
+            item._key = key
+        if url is not None:
+            item._url = url

@@ -10,6 +10,7 @@ The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles arg
 planpilot [--version]
 planpilot sync --config <path> (--dry-run | --apply) [--verbose]
 planpilot init [--output <path>] [--defaults]
+planpilot map sync --config <path> (--dry-run | --apply) [--plan-id <id>] [--verbose]
 ```
 
 v2 uses a subcommand pattern to allow future expansion.
@@ -18,7 +19,7 @@ v2 uses a subcommand pattern to allow future expansion.
 
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
-| `--config` | `str` | Yes | — | Path to `planpilot.json` config file |
+| `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
 | `--dry-run` | flag | One of | — | Preview mode — uses `DryRunProvider` (no auth/network, no provider mutations) |
 | `--apply` | flag | these | — | Apply mode — create/update items in provider |
 | `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
@@ -82,6 +83,32 @@ This summary is human-oriented and not a stable machine contract. Automation sho
 
 All errors go to stderr with user-friendly messages from `PlanPilotError` subclasses.
 
+### `map sync` Subcommand
+
+Reconcile local `sync-map.json` entries from provider metadata without mutating provider items.
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
+| `--dry-run` | flag | One of | — | Preview reconciliation only (no writes) |
+| `--apply` | flag | these | — | Persist reconciled sync-map locally |
+| `--plan-id` | `str` | No | auto | Explicit remote plan ID to reconcile |
+| `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
+
+Plan ID selection rules:
+
+- When `--plan-id` is provided, it is used directly.
+- When omitted, `map sync` discovers remote plan IDs from metadata:
+  - one candidate: auto-select
+  - multiple candidates with interactive TTY: prompt to select
+  - multiple candidates without TTY: fail and require `--plan-id`
+  - zero candidates: fail with remediation guidance
+
+`map sync` never creates/updates/deletes provider items. In apply mode, it writes local artifacts only:
+
+- reconciled `sync-map.json`
+- local plan files at configured `plan_paths` (bootstrapped from remote metadata/body)
+
 ### `init` Subcommand
 
 Interactively generate a `planpilot.json` config file.
@@ -96,6 +123,8 @@ Interactively generate a `planpilot.json` config file.
 **Defaults mode** (`--defaults`): auto-detects the git remote for `target`, scans for existing plan files, and writes a config with sensible defaults. No user interaction required.
 
 Both modes refuse to overwrite an existing file unless the user confirms (interactive) or a different `--output` path is specified (defaults).
+
+`init` emits explicit defaults for important runtime fields (for example `sync_path`, `label`, `validation_mode`, and `max_concurrent`) so generated configs are predictable.
 
 The `init` command calls the SDK scaffold functions (`detect_target`, `detect_plan_paths`, `scaffold_config`) which are also available programmatically.
 

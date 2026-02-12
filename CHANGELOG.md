@@ -2,6 +2,46 @@
 
 <!-- version list -->
 
+## v2.2.0 (2026-02-12)
+
+### Bug Fixes
+
+- Address PR bot feedback on init and map-sync coverage
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+- Validate init auth and project context up front
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+### Features
+
+- Add initial planpilot configuration file ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+- Add map sync reconcile workflow with plan-id discovery
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+- Bootstrap local plans via map sync and expand init defaults
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+- Enhance init validation, UX, and map sync reconciliation
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+- Enhance planpilot configuration and CLI defaults
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+### Testing
+
+- Raise scaffold and sdk map-sync branch coverage
+  ([#74](https://github.com/aryeko/planpilot/pull/74),
+  [`e5b7f13`](https://github.com/aryeko/planpilot/commit/e5b7f1310dc5ada185cf7116cb37fbbef5237b7b))
+
+
 ## v2.1.0 (2026-02-11)
 
 ### Documentation

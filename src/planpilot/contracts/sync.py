@@ -34,5 +34,15 @@ class CleanResult(BaseModel):
     dry_run: bool = False
 
 
+class MapSyncResult(BaseModel):
+    sync_map: SyncMap
+    added: list[str] = Field(default_factory=list)
+    removed: list[str] = Field(default_factory=list)
+    updated: list[str] = Field(default_factory=list)
+    candidate_plan_ids: list[str] = Field(default_factory=list)
+    plan_items_synced: int = 0
+    dry_run: bool = False
+
+
 def to_sync_entry(item: Item) -> SyncEntry:
     return SyncEntry(id=item.id, key=item.key, url=item.url, item_type=item.item_type)

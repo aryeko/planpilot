@@ -9,10 +9,13 @@ import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+import httpx
+
 from planpilot import (
     AuthenticationError,
     CleanResult,
     ConfigError,
+    MapSyncResult,
     PlanItemType,
     PlanLoadError,
     PlanPilot,
@@ -28,6 +31,121 @@ from planpilot import (
     scaffold_config,
     write_config,
 )
+from planpilot.contracts.exceptions import ProjectURLError
+from planpilot.providers.github.mapper import parse_project_url
+
+_REQUIRED_CLASSIC_SCOPES = {"repo", "project"}
+
+
+def _owner_from_target(target: str) -> str:
+    return target.split("/", 1)[0].strip()
+
+
+def _validate_target(value: str) -> bool | str:
+    candidate = value.strip()
+    parts = candidate.split("/")
+    if len(parts) != 2 or not parts[0] or not parts[1]:
+        return "Use target format owner/repo"
+    return True
+
+
+def _resolve_init_token(*, auth: str, target: str, static_token: str | None) -> str:
+    from planpilot.auth.base import TokenResolver
+    from planpilot.auth.resolvers.env import EnvTokenResolver
+    from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
+    from planpilot.auth.resolvers.static import StaticTokenResolver
+
+    resolver: TokenResolver
+    if auth == "gh-cli":
+        hostname = "github.com"
+        resolver = GhCliTokenResolver(hostname=hostname)
+    elif auth == "env":
+        resolver = EnvTokenResolver()
+    elif auth == "token":
+        resolver = StaticTokenResolver(token=static_token or "")
+    else:  # defensive, should be unreachable due to prompt choices
+        raise AuthenticationError(f"Unsupported auth mode: {auth}")
+    return asyncio.run(resolver.resolve())
+
+
+def _github_headers(token: str) -> dict[str, str]:
+    return {
+        "Authorization": f"Bearer {token}",
+        "Accept": "application/vnd.github+json",
+        "User-Agent": "planpilot-init",
+    }
+
+
+def _check_classic_scopes(*, scopes_header: str | None) -> None:
+    if scopes_header is None:
+        return
+    scopes = {s.strip() for s in scopes_header.split(",") if s.strip()}
+    missing = _REQUIRED_CLASSIC_SCOPES - scopes
+    if missing:
+        needed = ", ".join(sorted(missing))
+        raise AuthenticationError(f"Token is missing required GitHub scopes: {needed}")
+
+
+def _validate_github_auth_for_init(*, token: str, target: str) -> str | None:
+    owner, repo = target.split("/", 1)
+    with httpx.Client(timeout=10.0) as client:
+        user_resp = client.get("https://api.github.com/user", headers=_github_headers(token))
+        if user_resp.status_code != 200:
+            raise AuthenticationError("GitHub authentication failed; verify your token/gh login and network access")
+        _check_classic_scopes(scopes_header=user_resp.headers.get("x-oauth-scopes"))
+
+        repo_resp = client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=_github_headers(token))
+        if repo_resp.status_code != 200:
+            raise AuthenticationError(
+                f"Cannot access target repository '{target}'; verify repo scope/permissions and repo visibility"
+            )
+
+        viewer_projects_query = {"query": "query { viewer { projectsV2(first: 1) { nodes { id } } } }"}
+        projects_resp = client.post(
+            "https://api.github.com/graphql",
+            headers=_github_headers(token),
+            json=viewer_projects_query,
+        )
+        payload = (
+            projects_resp.json() if projects_resp.headers.get("content-type", "").startswith("application/json") else {}
+        )
+        if projects_resp.status_code != 200 or payload.get("errors"):
+            raise AuthenticationError(
+                "Token does not have sufficient project permissions; ensure project access is granted"
+            )
+
+        owner_resp = client.get(f"https://api.github.com/users/{owner}", headers=_github_headers(token))
+        if owner_resp.status_code != 200:
+            return None
+        owner_payload = owner_resp.json()
+        owner_type = owner_payload.get("type")
+        if owner_type == "Organization":
+            return "org"
+        if owner_type == "User":
+            return "user"
+        return None
+
+
+def _default_board_url_for_target(target: str) -> str:
+    owner = target.split("/")[0] if "/" in target else "OWNER"
+    return f"https://github.com/orgs/{owner}/projects/1"
+
+
+def _default_board_url_with_owner_type(target: str, owner_type: str | None) -> str:
+    owner = _owner_from_target(target) if "/" in target else "OWNER"
+    segment = "users" if owner_type == "user" else "orgs"
+    return f"https://github.com/{segment}/{owner}/projects/1"
+
+
+def _validate_board_url(value: str) -> bool | str:
+    candidate = value.strip()
+    if not candidate:
+        return "Board URL is required"
+    try:
+        parse_project_url(candidate)
+    except ProjectURLError:
+        return "Use a full GitHub Projects URL (orgs|users)/<owner>/projects/<number>"
+    return True
 
 
 def _package_version() -> str:
@@ -44,7 +162,7 @@ def build_parser() -> argparse.ArgumentParser:
     subparsers = parser.add_subparsers(dest="command", required=True)
 
     sync_parser = subparsers.add_parser("sync", help="Sync plan to provider")
-    sync_parser.add_argument("--config", required=True, help="Path to planpilot.json")
+    sync_parser.add_argument("--config", default="./planpilot.json", help="Path to planpilot.json")
     mode = sync_parser.add_mutually_exclusive_group(required=True)
     mode.add_argument("--dry-run", action="store_true", help="Preview mode")
     mode.add_argument("--apply", action="store_true", help="Apply mode")
@@ -58,9 +176,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     clean_parser = subparsers.add_parser("clean", help="Delete all issues belonging to a plan")
     clean_parser.add_argument("--config", required=True, help="Path to planpilot.json")
-    mode = clean_parser.add_mutually_exclusive_group(required=True)
-    mode.add_argument("--dry-run", action="store_true", help="Preview mode")
-    mode.add_argument("--apply", action="store_true", help="Apply mode")
+    clean_mode = clean_parser.add_mutually_exclusive_group(required=True)
+    clean_mode.add_argument("--dry-run", action="store_true", help="Preview mode")
+    clean_mode.add_argument("--apply", action="store_true", help="Apply mode")
     clean_parser.add_argument(
         "--all",
         action="store_true",
@@ -68,6 +186,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Delete all planpilot-managed issues (by label), not just the current plan version",
     )
     clean_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
+
+    map_parser = subparsers.add_parser("map", help="Sync-map operations")
+    map_subparsers = map_parser.add_subparsers(dest="map_command", required=True)
+
+    map_sync_parser = map_subparsers.add_parser("sync", help="Reconcile local sync map from remote metadata")
+    map_sync_parser.add_argument("--config", default="./planpilot.json", help="Path to planpilot.json")
+    map_sync_parser.add_argument(
+        "--plan-id",
+        default=None,
+        help="Remote plan ID to reconcile (required for non-interactive mode if multiple IDs found)",
+    )
+    map_mode = map_sync_parser.add_mutually_exclusive_group(required=True)
+    map_mode.add_argument("--dry-run", action="store_true", help="Preview mode")
+    map_mode.add_argument("--apply", action="store_true", help="Apply mode")
+    map_sync_parser.add_argument("--verbose", "-v", action="store_true", help="Enable debug logging")
 
     return parser
 
@@ -87,6 +220,46 @@ async def _run_sync(args: argparse.Namespace) -> SyncResult:
 
     print(_format_summary(result, config))
     return result
+
+
+async def _run_map_sync(args: argparse.Namespace) -> MapSyncResult:
+    config = load_config(args.config)
+    pp = await PlanPilot.from_config(config)
+    candidate_plan_ids = await pp.discover_remote_plan_ids()
+    selected_plan_id = _resolve_selected_plan_id(
+        explicit_plan_id=args.plan_id,
+        candidate_plan_ids=candidate_plan_ids,
+    )
+    result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
+    result = result.model_copy(update={"candidate_plan_ids": candidate_plan_ids})
+    print(_format_map_sync_summary(result, config))
+    return result
+
+
+def _resolve_selected_plan_id(*, explicit_plan_id: str | None, candidate_plan_ids: list[str]) -> str:
+    if explicit_plan_id is not None and explicit_plan_id.strip():
+        return explicit_plan_id.strip()
+
+    if not candidate_plan_ids:
+        raise ConfigError(
+            "No remote PLAN_ID values were discovered; run sync first or pass --plan-id to target a known plan ID"
+        )
+    if len(candidate_plan_ids) == 1:
+        return candidate_plan_ids[0]
+    if not sys.stdin.isatty():
+        raise ConfigError("Multiple remote PLAN_ID values found; rerun with --plan-id in non-interactive mode")
+
+    try:
+        import questionary
+    except ImportError as exc:  # pragma: no cover
+        raise ConfigError(
+            "questionary is required for interactive plan-id selection (install questionary or pass --plan-id)"
+        ) from exc
+
+    selected = questionary.select("Select remote PLAN_ID to reconcile:", choices=candidate_plan_ids).ask()
+    if selected is None:
+        raise ConfigError("Aborted plan-id selection")
+    return str(selected)
 
 
 def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
@@ -185,6 +358,38 @@ def _format_clean_summary(result: CleanResult) -> str:
     return "\n".join(lines)
 
 
+def _format_map_sync_summary(result: MapSyncResult, config: PlanPilotConfig) -> str:
+    mode = "dry-run" if result.dry_run else "apply"
+
+    def _fmt_ids(values: list[str]) -> str:
+        if not values:
+            return "none"
+        return ", ".join(values)
+
+    lines = [
+        "",
+        f"planpilot - map sync complete ({mode})",
+        "",
+        f"  Plan ID:      {result.sync_map.plan_id}",
+        f"  Candidates:   {len(result.candidate_plan_ids)} discovered",
+        f"  Target:       {result.sync_map.target}",
+        f"  Board:        {result.sync_map.board_url}",
+        "",
+        f"  Plan items:   {result.plan_items_synced}",
+        f"  Entries:      {len(result.sync_map.entries)}",
+        f"  Added:        {len(result.added)} ({_fmt_ids(result.added)})",
+        f"  Updated:      {len(result.updated)} ({_fmt_ids(result.updated)})",
+        f"  Removed:      {len(result.removed)} ({_fmt_ids(result.removed)})",
+        "",
+        f"  Sync map:     {config.sync_path}",
+    ]
+    if result.dry_run:
+        lines.append("")
+        lines.append("  [dry-run] No changes were made")
+    lines.append("")
+    return "\n".join(lines)
+
+
 def _run_init(args: argparse.Namespace) -> int:
     """Run the init wizard or defaults mode."""
     output = Path(args.output)
@@ -215,12 +420,14 @@ def _run_init_defaults(output: Path) -> int:
     plan_paths = (
         {k: str(v) for k, v in detected_paths.model_dump(exclude_none=True).items()} if detected_paths else None
     )
+    board_url = _default_board_url_for_target(target)
 
     try:
         config = scaffold_config(
             target=target,
-            board_url="https://github.com/orgs/OWNER/projects/N",
+            board_url=board_url,
             plan_paths=plan_paths,
+            include_defaults=True,
         )
     except ConfigError as exc:
         print(f"error: {exc}", file=sys.stderr)
@@ -228,7 +435,7 @@ def _run_init_defaults(output: Path) -> int:
 
     write_config(config, output)
     print(f"Config written to {output}")
-    print("\nEdit the file to set your target and board_url, then run:")
+    print("\nEdit board_url if your project is under /users/ instead of /orgs/, then run:")
     print(f"  planpilot sync --config {output} --dry-run")
     return 0
 
@@ -247,29 +454,56 @@ def _run_init_interactive(output: Path) -> int:
         if provider is None:
             raise KeyboardInterrupt
 
-        # --- 2. Target ---
+        # --- 2. Auth strategy ---
+        auth = questionary.select(
+            "Authentication strategy:",
+            choices=[
+                questionary.Choice("gh CLI (default)", value="gh-cli"),
+                questionary.Choice("Environment variable (GITHUB_TOKEN)", value="env"),
+                questionary.Choice("Static token", value="token"),
+            ],
+            default="gh-cli",
+        ).ask()
+        if auth is None:
+            raise KeyboardInterrupt
+        auth_token: str | None = None
+        if auth == "token":
+            auth_token = questionary.password(
+                "GitHub token (PAT):",
+                validate=lambda v: len(v.strip()) > 0 or "Token is required for static token auth",
+            ).ask()
+            if auth_token is None:
+                raise KeyboardInterrupt
+            auth_token = auth_token.strip()
+
+        # --- 3. Target ---
         detected_target = detect_target()
         target = questionary.text(
             "Target repository (owner/repo):",
             default=detected_target or "",
-            validate=lambda v: len(v.strip()) > 0 or "Target is required",
+            validate=_validate_target,
         ).ask()
         if target is None:
             raise KeyboardInterrupt
         target = target.strip()
 
-        # --- 3. Board URL ---
-        org = target.split("/")[0] if "/" in target else "OWNER"
+        owner_type: str | None = None
+        if provider == "github":
+            resolved_token = _resolve_init_token(auth=auth, target=target, static_token=auth_token)
+            owner_type = _validate_github_auth_for_init(token=resolved_token, target=target)
+
+        # --- 4. Board URL ---
+        default_board_url = _default_board_url_with_owner_type(target, owner_type)
         board_url = questionary.text(
             "Board URL (GitHub project URL):",
-            default=f"https://github.com/orgs/{org}/projects/",
-            validate=lambda v: len(v.strip()) > 0 or "Board URL is required",
+            default=default_board_url,
+            validate=_validate_board_url,
         ).ask()
         if board_url is None:
             raise KeyboardInterrupt
         board_url = board_url.strip()
 
-        # --- 4. Plan layout ---
+        # --- 5. Plan layout ---
         layout = questionary.select(
             "Plan file layout:",
             choices=[
@@ -281,7 +515,7 @@ def _run_init_interactive(output: Path) -> int:
         if layout is None:
             raise KeyboardInterrupt
 
-        # --- 5. Plan paths ---
+        # --- 6. Plan paths ---
         detected_paths = detect_plan_paths()
         if layout == "split":
             defaults = {
@@ -306,27 +540,16 @@ def _run_init_interactive(output: Path) -> int:
                 raise KeyboardInterrupt
             plan_paths = {"unified": unified_path}
 
-        # --- 6. Sync map path ---
+        # --- 7. Sync map path ---
         sync_path = questionary.text("Sync map path:", default=".plans/sync-map.json").ask()
         if sync_path is None:
-            raise KeyboardInterrupt
-
-        # --- 7. Auth strategy ---
-        auth = questionary.select(
-            "Authentication strategy:",
-            choices=[
-                questionary.Choice("gh CLI (default)", value="gh-cli"),
-                questionary.Choice("Environment variable (GITHUB_TOKEN)", value="env"),
-                questionary.Choice("Static token", value="token"),
-            ],
-            default="gh-cli",
-        ).ask()
-        if auth is None:
             raise KeyboardInterrupt
 
         # --- 8. Advanced options ---
         adv_validation_mode = "strict"
         adv_max_concurrent = 1
+        adv_label = "planpilot"
+        adv_field_config: dict[str, object] | None = None
         show_advanced = questionary.confirm("Configure advanced options?", default=False).ask()
         if show_advanced is None:
             raise KeyboardInterrupt
@@ -341,17 +564,59 @@ def _run_init_interactive(output: Path) -> int:
             if mc is None:
                 raise KeyboardInterrupt
             adv_max_concurrent = int(mc)
+            label = questionary.text("Discovery label:", default="planpilot").ask()
+            if label is None:
+                raise KeyboardInterrupt
+            adv_label = label.strip() or "planpilot"
+            configure_fields = questionary.confirm("Configure field defaults?", default=False).ask()
+            if configure_fields is None:
+                raise KeyboardInterrupt
+            if configure_fields:
+                status = questionary.text("Default status:", default="Backlog").ask()
+                priority = questionary.text("Default priority:", default="P1").ask()
+                iteration = questionary.text("Default iteration:", default="active").ask()
+                size_field = questionary.text("Size field name:", default="Size").ask()
+                size_from_tshirt = questionary.confirm("Map t-shirt estimate to size field?", default=True).ask()
+                if None in {status, priority, iteration, size_field, size_from_tshirt}:
+                    raise KeyboardInterrupt
+                strategy_default = "label" if owner_type == "user" else "issue-type"
+                strategy = questionary.select(
+                    "Create type strategy:",
+                    choices=["issue-type", "label"],
+                    default=strategy_default,
+                ).ask()
+                if strategy is None:
+                    raise KeyboardInterrupt
+                adv_field_config = {
+                    "status": status.strip() or "Backlog",
+                    "priority": priority.strip() or "P1",
+                    "iteration": iteration.strip() or "active",
+                    "size_field": size_field.strip() or "Size",
+                    "size_from_tshirt": bool(size_from_tshirt),
+                    "create_type_strategy": strategy,
+                }
 
         # --- Build and write config ---
+        if auth == "token":
+            print(
+                "warning: static token auth stores token in plaintext in planpilot.json; "
+                "prefer gh-cli or env auth when possible",
+                file=sys.stderr,
+            )
+
         config = scaffold_config(
             provider=provider,
             target=target,
             board_url=board_url,
             auth=auth,
+            token=auth_token,
             plan_paths=plan_paths,
             sync_path=sync_path,
             validation_mode=adv_validation_mode,
+            label=adv_label,
             max_concurrent=adv_max_concurrent,
+            field_config=adv_field_config,
+            include_defaults=True,
         )
         write_config(config, output)
 
@@ -376,6 +641,9 @@ def _run_init_interactive(output: Path) -> int:
     except ConfigError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 3
+    except AuthenticationError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 4
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -384,6 +652,27 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.command == "init":
         return _run_init(args)
+    if args.command == "map":
+        if args.map_command != "sync":
+            print(f"error: unsupported map command: {args.map_command}", file=sys.stderr)
+            return 2
+        if args.verbose:
+            logging.basicConfig(level=logging.DEBUG, format="%(name)s %(message)s", stream=sys.stderr)
+        try:
+            asyncio.run(_run_map_sync(args))
+            return 0
+        except (ConfigError, PlanLoadError, PlanValidationError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 3
+        except (AuthenticationError, ProviderError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 4
+        except SyncError as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 5
+        except Exception as exc:  # pragma: no cover - defensive fallback
+            print(f"error: {exc}", file=sys.stderr)
+            return 1
 
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG, format="%(name)s %(message)s", stream=sys.stderr)

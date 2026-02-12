@@ -1,6 +1,6 @@
 """Public API surface for PlanPilot."""
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
@@ -16,7 +16,7 @@ from planpilot.contracts.exceptions import (
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer, RenderContext
-from planpilot.contracts.sync import CleanResult, SyncEntry, SyncMap, SyncResult
+from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
 from planpilot.providers import create_provider
 from planpilot.renderers import create_renderer
 from planpilot.scaffold import create_plan_stubs, detect_plan_paths, detect_target, scaffold_config, write_config
@@ -28,6 +28,7 @@ __all__ = [
     "CleanResult",
     "ConfigError",
     "FieldConfig",
+    "MapSyncResult",
     "Plan",
     "PlanItem",
     "PlanItemType",

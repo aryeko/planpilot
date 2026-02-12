@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import re
+from collections.abc import Iterable
 from pathlib import Path
 from typing import Any
 
@@ -12,10 +14,10 @@ from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
 from planpilot.contracts.item import Item, ItemSearchFilters
-from planpilot.contracts.plan import Plan, PlanItemType
+from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
-from planpilot.contracts.sync import CleanResult, SyncMap, SyncResult
+from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncMap, SyncResult, to_sync_entry
 from planpilot.engine import SyncEngine
 from planpilot.engine.progress import SyncProgress
 from planpilot.engine.utils import parse_metadata_block
@@ -160,20 +162,87 @@ class PlanPilot:
         self._persist_sync_map(result.sync_map, dry_run=dry_run)
         return result
 
+    async def discover_remote_plan_ids(self) -> list[str]:
+        """Discover unique PLAN_ID values from provider metadata."""
+        provider = await self._resolve_apply_provider()
+        try:
+            async with provider:
+                items = await provider.search_items(ItemSearchFilters(labels=[self._config.label]))
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        plan_ids = {
+            metadata["PLAN_ID"]
+            for item in items
+            for metadata in [parse_metadata_block(item.body)]
+            if metadata.get("PLAN_ID")
+        }
+        return sorted(plan_ids)
+
+    async def map_sync(self, *, plan_id: str, dry_run: bool = False) -> MapSyncResult:
+        """Reconcile local sync-map and bootstrap local plan from remote discovery."""
+        current = self._load_sync_map(plan_id=plan_id)
+
+        provider = await self._resolve_apply_provider()
+        try:
+            async with provider:
+                discovered_items = await provider.search_items(
+                    ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
+                )
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        desired_entries = {}
+        remote_plan_items: dict[str, PlanItem] = {}
+        for item in discovered_items:
+            metadata = parse_metadata_block(item.body)
+            if metadata.get("PLAN_ID") != plan_id:
+                continue
+            item_id = metadata.get("ITEM_ID")
+            if not item_id:
+                continue
+            desired_entries[item_id] = to_sync_entry(item)
+            remote_item = self._plan_item_from_remote(
+                item_id=item_id,
+                metadata=metadata,
+                title=item.title,
+                body=item.body,
+            )
+            remote_plan_items[item_id] = remote_item
+
+        current_entries = current.entries
+        added = sorted(item_id for item_id in desired_entries if item_id not in current_entries)
+        removed = sorted(item_id for item_id in current_entries if item_id not in desired_entries)
+        updated = sorted(
+            item_id
+            for item_id in desired_entries
+            if item_id in current_entries and current_entries[item_id] != desired_entries[item_id]
+        )
+
+        reconciled = SyncMap(
+            plan_id=plan_id,
+            target=self._config.target,
+            board_url=self._config.board_url,
+            entries=desired_entries,
+        )
+        result = MapSyncResult(
+            sync_map=reconciled,
+            added=added,
+            removed=removed,
+            updated=updated,
+            plan_items_synced=len(remote_plan_items),
+            dry_run=dry_run,
+        )
+        if not dry_run:
+            self._persist_sync_map(reconciled, dry_run=False)
+            self._persist_plan_from_remote(items=remote_plan_items.values())
+        return result
+
     async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
         """Discover and delete all issues belonging to a plan.
 
         Always uses the real provider for discovery so dry-run accurately
         reflects what would be deleted.
-
-        Args:
-            dry_run: If True, preview what would be deleted without making changes.
-            all_plans: If True, delete all planpilot-managed issues (by label)
-                regardless of plan_id.  When False, only issues matching the
-                current plan's content hash are targeted.
-
-        Returns:
-            CleanResult with plan_id, items_deleted count, and dry_run flag.
         """
         loaded_plan = PlanLoader().load(self._config.plan_paths)
         plan_id = PlanHasher().compute_plan_id(loaded_plan)
@@ -216,7 +285,6 @@ class PlanPilot:
             metadata = parse_metadata_block(item.body)
             if not all_plans and metadata.get("PLAN_ID") != plan_id:
                 continue
-            # In all_plans mode, any item with a PLANPILOT metadata block qualifies
             if all_plans and not metadata:
                 continue
             items_to_delete.append(item)
@@ -374,3 +442,137 @@ class PlanPilot:
         if not dry_run:
             return self._config.sync_path
         return Path(f"{self._config.sync_path}.dry-run")
+
+    def _load_sync_map(self, *, plan_id: str) -> SyncMap:
+        path = self._config.sync_path
+        if not path.exists():
+            return SyncMap(plan_id=plan_id, target=self._config.target, board_url=self._config.board_url, entries={})
+        try:
+            payload: Any = json.loads(path.read_text(encoding="utf-8"))
+            parsed = SyncMap.model_validate(payload)
+        except (OSError, json.JSONDecodeError, ValidationError) as exc:
+            raise ConfigError(f"invalid sync map file: {path}") from exc
+        return parsed
+
+    def _persist_plan_from_remote(self, *, items: Iterable[PlanItem]) -> None:
+        ordered = sorted(
+            items,
+            key=lambda item: (
+                self._plan_type_rank(item.type),
+                item.id,
+            ),
+        )
+        by_parent: dict[str, list[str]] = {}
+        for item in ordered:
+            if item.parent_id:
+                by_parent.setdefault(item.parent_id, []).append(item.id)
+        normalized: list[PlanItem] = []
+        for item in ordered:
+            normalized.append(item.model_copy(update={"sub_item_ids": sorted(by_parent.get(item.id, []))}))
+
+        try:
+            if self._config.plan_paths.unified is not None:
+                path = self._config.plan_paths.unified
+                path.parent.mkdir(parents=True, exist_ok=True)
+                payload = {"items": [item.model_dump(mode="json", exclude_none=True) for item in normalized]}
+                path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
+                return
+
+            split: dict[PlanItemType, list[dict[str, Any]]] = {
+                PlanItemType.EPIC: [],
+                PlanItemType.STORY: [],
+                PlanItemType.TASK: [],
+            }
+            for item in normalized:
+                split[item.type].append(item.model_dump(mode="json", exclude_none=True))
+
+            for item_type, maybe_path in (
+                (PlanItemType.EPIC, self._config.plan_paths.epics),
+                (PlanItemType.STORY, self._config.plan_paths.stories),
+                (PlanItemType.TASK, self._config.plan_paths.tasks),
+            ):
+                if maybe_path is None:
+                    continue
+                path = maybe_path
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(json.dumps(split[item_type], indent=2) + "\n", encoding="utf-8")
+        except OSError as exc:
+            raise SyncError("failed to persist plan files from remote map sync") from exc
+
+    @staticmethod
+    def _plan_type_rank(item_type: PlanItemType) -> int:
+        if item_type is PlanItemType.EPIC:
+            return 0
+        if item_type is PlanItemType.STORY:
+            return 1
+        return 2
+
+    def _plan_item_from_remote(self, *, item_id: str, metadata: dict[str, str], title: str, body: str) -> PlanItem:
+        item_type = self._resolve_remote_item_type(item_id=item_id, metadata=metadata)
+        sections = self._extract_markdown_sections(body)
+        goal = sections.get("Goal")
+        requirements = self._parse_bullets(sections.get("Requirements"))
+        acceptance = self._parse_bullets(sections.get("Acceptance Criteria"))
+
+        if not goal:
+            goal = "(migrated from remote)"
+        if not requirements:
+            requirements = ["(migrated from remote)"]
+        if not acceptance:
+            acceptance = ["(migrated from remote)"]
+
+        return PlanItem(
+            id=item_id,
+            type=item_type,
+            title=title,
+            goal=goal,
+            parent_id=(metadata.get("PARENT_ID") or None),
+            requirements=requirements,
+            acceptance_criteria=acceptance,
+        )
+
+    @staticmethod
+    def _resolve_remote_item_type(*, item_id: str, metadata: dict[str, str]) -> PlanItemType:
+        raw = (metadata.get("ITEM_TYPE") or "").strip().upper()
+        if raw in {"EPIC", "STORY", "TASK"}:
+            return PlanItemType(raw)
+        upper_item_id = item_id.upper()
+        if upper_item_id.startswith("EPIC"):
+            return PlanItemType.EPIC
+        if upper_item_id.startswith("STORY"):
+            return PlanItemType.STORY
+        return PlanItemType.TASK
+
+    @staticmethod
+    def _extract_markdown_sections(body: str) -> dict[str, str]:
+        sections: dict[str, str] = {}
+        current: str | None = None
+        lines: list[str] = []
+        for line in body.splitlines():
+            if line.startswith("## "):
+                if current is not None:
+                    sections[current] = "\n".join(lines).strip()
+                current = line[3:].strip()
+                lines = []
+                continue
+            if current is not None:
+                lines.append(line)
+        if current is not None:
+            sections[current] = "\n".join(lines).strip()
+        return sections
+
+    @staticmethod
+    def _parse_bullets(section: str | None) -> list[str]:
+        if not section:
+            return []
+        values: list[str] = []
+        for line in section.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                continue
+            match = re.match(r"^[*-]\s+(.*)$", stripped)
+            if match:
+                values.append(match.group(1).strip())
+            else:
+                values.append(stripped)
+        return values

@@ -29,6 +29,12 @@ from planpilot.cli import _format_clean_summary, _format_summary, _run_clean, _r
 from planpilot.contracts.config import PlanPaths
 
 
+@pytest.fixture(autouse=True)
+def _mock_init_auth_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "fake-token")
+    monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", lambda **_kw: "org")
+
+
 def _make_config(tmp_path: Path) -> PlanPilotConfig:
     return PlanPilotConfig(
         provider="github",
@@ -94,11 +100,11 @@ def test_build_parser_requires_subcommand() -> None:
     assert exc.value.code == 2
 
 
-def test_build_parser_sync_requires_mode_and_config() -> None:
+def test_build_parser_sync_requires_mode() -> None:
     parser = build_parser()
 
     with pytest.raises(SystemExit) as exc:
-        parser.parse_args(["sync", "--config", "planpilot.json"])
+        parser.parse_args(["sync"])
 
     assert exc.value.code == 2
 
@@ -107,10 +113,10 @@ def test_build_parser_sync_requires_mode_and_config() -> None:
 def test_build_parser_sync_accepts_required_arguments(mode: str) -> None:
     parser = build_parser()
 
-    args = parser.parse_args(["sync", "--config", "planpilot.json", mode])
+    args = parser.parse_args(["sync", mode])
 
     assert args.command == "sync"
-    assert args.config == "planpilot.json"
+    assert args.config == "./planpilot.json"
     assert args.verbose is False
 
 
@@ -453,10 +459,14 @@ def _build_fake_questionary(answers: dict[str, Any]) -> SimpleNamespace:
     def _confirm(prompt: str, **_kw: Any) -> _FakeQuestion:
         return _FakeQuestion(_find(prompt))
 
+    def _password(prompt: str, **_kw: Any) -> _FakeQuestion:
+        return _FakeQuestion(_find(prompt))
+
     return SimpleNamespace(
         select=_select,
         text=_text,
         confirm=_confirm,
+        password=_password,
         Choice=lambda label, value: value,  # type: ignore[arg-type]
     )
 
@@ -472,6 +482,8 @@ _SPLIT_ANSWERS: dict[str, Any] = {
     "Sync map": ".plans/sync-map.json",
     "Authentication": "gh-cli",
     "Configure advanced": False,
+    "Discovery label": "planpilot",
+    "Configure field defaults": False,
     "Create empty": True,
     "already exists": True,
 }
@@ -737,6 +749,256 @@ def test_init_interactive_auth_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     assert exit_code == 0
     config = json.loads(output.read_text())
     assert config["auth"] == "env"
+
+
+def test_init_interactive_auth_preflight_error_returns_4(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = tmp_path / "planpilot.json"
+    fake_q = _build_fake_questionary(_SPLIT_ANSWERS)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setattr(
+        "planpilot.cli._resolve_init_token",
+        lambda **_kw: (_ for _ in ()).throw(AuthenticationError("missing scopes")),
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 4
+    assert "missing scopes" in capsys.readouterr().err
+
+
+def test_init_interactive_auth_token_prompts_and_writes_token(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Authentication": "token",
+        "GitHub token": "ghp_example_token",
+        "Create empty": False,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 0
+    captured = capsys.readouterr()
+    assert "stores token in plaintext" in captured.err
+    config = json.loads(output.read_text())
+    assert config["auth"] == "token"
+    assert config["token"] == "ghp_example_token"
+
+
+def test_init_interactive_auth_token_ctrl_c_on_password(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Authentication": "token",
+        "GitHub token": None,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 2
+
+
+def test_init_interactive_advanced_field_defaults(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Configure advanced": True,
+        "Validation mode": "strict",
+        "Max concurrent": "2",
+        "Discovery label": "custom-label",
+        "Configure field defaults": True,
+        "Default status": "In Progress",
+        "Default priority": "P2",
+        "Default iteration": "next",
+        "Size field name": "Estimate",
+        "Map t-shirt estimate": False,
+        "Create type strategy": "label",
+        "Create empty": False,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["label"] == "custom-label"
+    assert config["field_config"]["status"] == "In Progress"
+    assert config["field_config"]["priority"] == "P2"
+    assert config["field_config"]["iteration"] == "next"
+    assert config["field_config"]["size_field"] == "Estimate"
+    assert config["field_config"]["size_from_tshirt"] is False
+    assert config["field_config"]["create_type_strategy"] == "label"
+
+
+def test_init_interactive_advanced_field_defaults_ctrl_c(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Configure advanced": True,
+        "Validation mode": "strict",
+        "Max concurrent": "2",
+        "Configure field defaults": None,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 2
+
+
+def test_init_interactive_advanced_label_ctrl_c(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Configure advanced": True,
+        "Validation mode": "strict",
+        "Max concurrent": "2",
+        "Discovery label": None,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 2
+
+
+def test_init_interactive_advanced_field_defaults_values_ctrl_c(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Configure advanced": True,
+        "Validation mode": "strict",
+        "Max concurrent": "2",
+        "Configure field defaults": True,
+        "Default status": None,
+        "Default priority": "P1",
+        "Default iteration": "active",
+        "Size field name": "Size",
+        "Map t-shirt estimate": True,
+        "Create type strategy": "issue-type",
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 2
+
+
+def test_init_interactive_advanced_field_defaults_strategy_ctrl_c(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Configure advanced": True,
+        "Validation mode": "strict",
+        "Max concurrent": "2",
+        "Configure field defaults": True,
+        "Default status": "Backlog",
+        "Default priority": "P1",
+        "Default iteration": "active",
+        "Size field name": "Size",
+        "Map t-shirt estimate": True,
+        "Create type strategy": None,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 2
+
+
+def test_init_interactive_user_board_auto_sets_label_strategy(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Board URL": "https://github.com/users/alice/projects/7",
+        "Create empty": False,
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["field_config"]["create_type_strategy"] == "label"
+
+
+def test_init_interactive_invalid_board_url_reports_config_error(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {
+        **_SPLIT_ANSWERS,
+        "Board URL": "https://github.com/orgs/org/projects/",
+    }
+    fake_q = _build_fake_questionary(answers)
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 3
+    assert "Unsupported project URL" in capsys.readouterr().err
 
 
 def test_init_interactive_target_ctrl_c(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
