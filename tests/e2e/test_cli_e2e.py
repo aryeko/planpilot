@@ -15,6 +15,12 @@ from planpilot.providers.dry_run import DryRunProvider
 FIXTURES_ROOT = Path(__file__).parent / "fixtures" / "plans"
 
 
+@pytest.fixture(autouse=True)
+def _mock_init_auth_preflight(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "fake-token")
+    monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", lambda **_kw: "org")
+
+
 def _write_config(
     tmp_path: Path,
     *,
@@ -402,6 +408,7 @@ def _build_fake_questionary(answers: dict[str, Any]) -> SimpleNamespace:
         select=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
         text=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
         confirm=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
+        password=lambda prompt, **kw: _FakeQuestion(_find(prompt)),
         Choice=lambda label, value: value,
     )
 
@@ -642,6 +649,68 @@ def test_e2e_init_interactive_with_advanced_options(
     assert config["auth"] == "env"
     assert config["validation_mode"] == "partial"
     assert config["max_concurrent"] == 5
+
+
+def test_e2e_init_interactive_with_static_token_auth(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "org/repo",
+            "Board URL": "https://github.com/orgs/org/projects/1",
+            "Plan file layout": "unified",
+            "Unified plan": ".plans/plan.json",
+            "Sync map": ".plans/sync-map.json",
+            "Authentication": "token",
+            "GitHub token": "ghp_e2e_token",
+            "Configure advanced": False,
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["auth"] == "token"
+    assert config["token"] == "ghp_e2e_token"
+
+
+def test_e2e_init_interactive_user_board_defaults_label_strategy(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    output = tmp_path / "planpilot.json"
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+
+    fake_q = _build_fake_questionary(
+        {
+            "Provider": "github",
+            "Target repository": "org/repo",
+            "Board URL": "https://github.com/users/alice/projects/7",
+            "Plan file layout": "unified",
+            "Unified plan": ".plans/plan.json",
+            "Sync map": ".plans/sync-map.json",
+            "Authentication": "gh-cli",
+            "Configure advanced": False,
+            "Create empty": False,
+        }
+    )
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    exit_code = main(["init", "--output", str(output)])
+
+    assert exit_code == 0
+    config = json.loads(output.read_text())
+    assert config["field_config"]["create_type_strategy"] == "label"
 
 
 def test_e2e_init_interactive_ctrl_c_aborts(

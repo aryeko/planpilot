@@ -189,6 +189,40 @@ class TestScaffoldConfig:
 
         assert config["field_config"] == {"status": "Todo"}
 
+    def test_user_board_defaults_create_type_strategy_to_label(self) -> None:
+        config = scaffold_config(
+            target="owner/repo",
+            board_url="https://github.com/users/alice/projects/1",
+        )
+
+        assert config["field_config"]["create_type_strategy"] == "label"
+
+    def test_user_board_rejects_issue_type_strategy(self) -> None:
+        with pytest.raises(ConfigError, match="create_type_strategy"):
+            scaffold_config(
+                target="owner/repo",
+                board_url="https://github.com/users/alice/projects/1",
+                field_config={"create_type_strategy": "issue-type"},
+            )
+
+    def test_invalid_board_url_raises_config_error(self) -> None:
+        with pytest.raises(ConfigError, match="Unsupported project URL"):
+            scaffold_config(
+                target="owner/repo",
+                board_url="https://github.com/orgs/owner/projects/",
+            )
+
+    def test_token_auth_with_token_included(self) -> None:
+        config = scaffold_config(
+            target="owner/repo",
+            board_url="https://github.com/orgs/owner/projects/1",
+            auth="token",
+            token="ghp_example",
+        )
+
+        assert config["auth"] == "token"
+        assert config["token"] == "ghp_example"
+
 
 # ---------------------------------------------------------------------------
 # write_config

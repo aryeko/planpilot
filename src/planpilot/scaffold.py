@@ -10,7 +10,8 @@ from typing import Any
 from pydantic import ValidationError
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError
+from planpilot.contracts.exceptions import ConfigError, ProjectURLError
+from planpilot.providers.github.mapper import parse_project_url
 
 # Defaults used by scaffold_config when no value is provided.
 _SPLIT_DEFAULTS = {
@@ -97,6 +98,7 @@ def scaffold_config(
     board_url: str,
     provider: str = "github",
     auth: str = "gh-cli",
+    token: str | None = None,
     plan_paths: dict[str, str] | None = None,
     sync_path: str = _SYNC_PATH_DEFAULT,
     validation_mode: str = "strict",
@@ -125,6 +127,8 @@ def scaffold_config(
     # Only include non-default values to keep the output minimal.
     if auth != "gh-cli":
         raw["auth"] = auth
+    if token is not None:
+        raw["token"] = token
     if sync_path != _SYNC_PATH_DEFAULT:
         raw["sync_path"] = sync_path
     if validation_mode != "strict":
@@ -133,8 +137,22 @@ def scaffold_config(
         raw["label"] = label
     if max_concurrent != 1:
         raw["max_concurrent"] = max_concurrent
-    if field_config:
-        raw["field_config"] = field_config
+    resolved_field_config = dict(field_config or {})
+    if provider == "github":
+        try:
+            owner_type, _, _ = parse_project_url(board_url)
+        except ProjectURLError as exc:
+            raise ConfigError(str(exc)) from exc
+
+        strategy = resolved_field_config.get("create_type_strategy")
+        if owner_type == "user":
+            if strategy is None:
+                resolved_field_config["create_type_strategy"] = "label"
+            elif strategy != "label":
+                raise ConfigError("GitHub user-owned projects require field_config.create_type_strategy='label'")
+
+    if resolved_field_config:
+        raw["field_config"] = resolved_field_config
 
     # Validate through PlanPilotConfig to ensure consistency.
     try:
