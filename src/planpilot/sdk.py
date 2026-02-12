@@ -12,7 +12,7 @@ from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
 from planpilot.contracts.item import Item, ItemSearchFilters
-from planpilot.contracts.plan import Plan
+from planpilot.contracts.plan import Plan, PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
 from planpilot.contracts.sync import CleanResult, SyncMap, SyncResult
@@ -184,6 +184,7 @@ class PlanPilot:
                 items_deleted = await self._discover_and_delete_items(
                     provider,
                     plan_id,
+                    loaded_plan,
                     dry_run=dry_run,
                     all_plans=all_plans,
                 )
@@ -196,6 +197,7 @@ class PlanPilot:
         self,
         provider: Provider,
         plan_id: str,
+        plan: Plan,
         *,
         dry_run: bool,
         all_plans: bool = False,
@@ -208,7 +210,8 @@ class PlanPilot:
 
         existing_items = await provider.search_items(filters)
 
-        items_to_delete = []
+        items_to_delete: list[Item] = []
+        metadata_by_provider_id: dict[str, dict[str, str]] = {}
         for item in existing_items:
             metadata = parse_metadata_block(item.body)
             if not all_plans and metadata.get("PLAN_ID") != plan_id:
@@ -217,24 +220,129 @@ class PlanPilot:
             if all_plans and not metadata:
                 continue
             items_to_delete.append(item)
+            metadata_by_provider_id[item.id] = metadata
+
+        ordered_items_to_delete = self._order_items_for_deletion(
+            items_to_delete,
+            metadata_by_provider_id=metadata_by_provider_id,
+            plan=plan,
+            all_plans=all_plans,
+        )
 
         if not dry_run:
-            remaining = list(items_to_delete)
-            for attempt in range(2):
+            remaining = list(ordered_items_to_delete)
+            while remaining:
                 failed: list[Item] = []
+                first_error: ProviderError | None = None
+                deleted_in_pass = 0
                 for item in remaining:
                     try:
                         await provider.delete_item(item.id)
-                    except ProviderError:
-                        if attempt == 0:
-                            failed.append(item)
-                        else:
-                            raise
-                remaining = failed
-                if not remaining:
+                        deleted_in_pass += 1
+                    except ProviderError as exc:
+                        if first_error is None:
+                            first_error = exc
+                        failed.append(item)
+                if not failed:
                     break
+                if deleted_in_pass == 0:
+                    assert first_error is not None
+                    raise first_error
+                remaining = failed
 
         return len(items_to_delete)
+
+    @staticmethod
+    def _item_type_rank(item_type: PlanItemType | str | None) -> int:
+        if item_type in {PlanItemType.TASK, "TASK"}:
+            return 0
+        if item_type in {PlanItemType.STORY, "STORY"}:
+            return 1
+        if item_type in {PlanItemType.EPIC, "EPIC"}:
+            return 2
+        return 3
+
+    def _order_items_for_deletion(
+        self,
+        items: list[Item],
+        *,
+        metadata_by_provider_id: dict[str, dict[str, str]],
+        plan: Plan,
+        all_plans: bool,
+    ) -> list[Item]:
+        if not items:
+            return []
+
+        item_by_provider_id = {item.id: item for item in items}
+        plan_items_by_id = {plan_item.id: plan_item for plan_item in plan.items}
+        provider_id_by_item_id: dict[str, str] = {}
+        plan_type_by_provider_id: dict[str, PlanItemType] = {}
+
+        for item in items:
+            metadata = metadata_by_provider_id.get(item.id, {})
+            item_id = metadata.get("ITEM_ID")
+            if not item_id:
+                continue
+            provider_id_by_item_id[item_id] = item.id
+            plan_item = plan_items_by_id.get(item_id)
+            if plan_item is not None:
+                plan_type_by_provider_id[item.id] = plan_item.type
+
+        prerequisites: dict[str, set[str]] = {item.id: set() for item in items}
+        dependents: dict[str, set[str]] = {item.id: set() for item in items}
+
+        for item in items:
+            metadata = metadata_by_provider_id.get(item.id, {})
+            item_id = metadata.get("ITEM_ID")
+            parent_item_id: str | None = None
+
+            if all_plans:
+                parent_item_id = metadata.get("PARENT_ID")
+            elif item_id:
+                plan_item = plan_items_by_id.get(item_id)
+                parent_item_id = plan_item.parent_id if plan_item is not None else None
+
+            if not parent_item_id:
+                continue
+
+            parent_provider_id = provider_id_by_item_id.get(parent_item_id)
+            if parent_provider_id is None or parent_provider_id == item.id:
+                continue
+
+            prerequisites[parent_provider_id].add(item.id)
+            dependents[item.id].add(parent_provider_id)
+
+        def _sort_key(provider_id: str) -> tuple[int, str, str]:
+            item = item_by_provider_id[provider_id]
+            metadata = metadata_by_provider_id.get(provider_id, {})
+            type_hint: PlanItemType | str | None = (
+                plan_type_by_provider_id.get(provider_id) or metadata.get("ITEM_TYPE") or item.item_type
+            )
+            return (self._item_type_rank(type_hint), item.key, item.id)
+
+        remaining_prereqs = {provider_id: set(reqs) for provider_id, reqs in prerequisites.items()}
+        ready = sorted(
+            [provider_id for provider_id, reqs in remaining_prereqs.items() if not reqs],
+            key=_sort_key,
+        )
+        ordered: list[str] = []
+
+        while ready:
+            current = ready.pop(0)
+            ordered.append(current)
+            for parent in sorted(dependents[current], key=_sort_key):
+                prereq_set = remaining_prereqs[parent]
+                if current in prereq_set:
+                    prereq_set.remove(current)
+                    if not prereq_set:
+                        ready.append(parent)
+            ready.sort(key=_sort_key)
+
+        if len(ordered) != len(items):
+            remaining = [provider_id for provider_id in item_by_provider_id if provider_id not in set(ordered)]
+            ordered.extend(sorted(remaining, key=_sort_key))
+
+        return [item_by_provider_id[provider_id] for provider_id in ordered]
 
     async def _resolve_apply_provider(self) -> Provider:
         if self._provider is not None:

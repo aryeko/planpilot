@@ -14,7 +14,9 @@ def test_render_minimal_item_includes_only_metadata_and_goal() -> None:
 
     body = renderer.render(item, context)
 
-    assert body.startswith("PLANPILOT_META_V1\nPLAN_ID:plan-123\nITEM_ID:T1\nEND_PLANPILOT_META")
+    assert body.startswith(
+        "PLANPILOT_META_V1\nPLAN_ID:plan-123\nITEM_ID:T1\nITEM_TYPE:TASK\nPARENT_ID:\nEND_PLANPILOT_META"
+    )
     assert "## Goal\n\nShip v2 renderer" in body
     assert "## Motivation" not in body
     assert "## Parent" not in body

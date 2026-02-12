@@ -55,13 +55,24 @@ def _make_config(tmp_path: Path, *, plan_path: Path | None = None) -> PlanPilotC
 
 def _write_plan_and_get_id(tmp_path: Path) -> tuple[PlanPilotConfig, str]:
     plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+    return _write_custom_plan_and_get_id(tmp_path, plan)
+
+
+def _write_custom_plan_and_get_id(tmp_path: Path, plan: Plan) -> tuple[PlanPilotConfig, str]:
     plan_path = tmp_path / "plan.json"
     plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
     config = _make_config(tmp_path, plan_path=plan_path)
     return config, PlanHasher().compute_plan_id(plan)
 
 
-def _metadata_body(plan_id: str, item_id: str, *, with_metadata: bool = True) -> str:
+def _metadata_body(
+    plan_id: str,
+    item_id: str,
+    *,
+    item_type: PlanItemType = PlanItemType.TASK,
+    parent_id: str | None = None,
+    with_metadata: bool = True,
+) -> str:
     if not with_metadata:
         return "# Title"
     return "\n".join(
@@ -69,6 +80,8 @@ def _metadata_body(plan_id: str, item_id: str, *, with_metadata: bool = True) ->
             "PLANPILOT_META_V1",
             f"PLAN_ID:{plan_id}",
             f"ITEM_ID:{item_id}",
+            f"ITEM_TYPE:{item_type.value}",
+            f"PARENT_ID:{parent_id or ''}",
             "END_PLANPILOT_META",
             "",
             "# Title",
@@ -82,13 +95,21 @@ async def _create_clean_item(
     *,
     plan_id: str,
     item_id: str,
+    item_type: PlanItemType = PlanItemType.TASK,
+    parent_id: str | None = None,
     with_metadata: bool = True,
 ) -> Item:
     return await provider.create_item(
         CreateItemInput(
             title=f"Item {item_id}",
-            body=_metadata_body(plan_id, item_id, with_metadata=with_metadata),
-            item_type=PlanItemType.TASK,
+            body=_metadata_body(
+                plan_id,
+                item_id,
+                item_type=item_type,
+                parent_id=parent_id,
+                with_metadata=with_metadata,
+            ),
+            item_type=item_type,
             labels=[config.label],
         )
     )
@@ -423,7 +444,7 @@ async def test_clean_retries_parent_deletion_after_children(tmp_path: Path) -> N
 
     assert result.items_deleted == 2
     assert provider.retry_attempts == 1
-    assert provider.delete_calls == [parent.id, child.id, parent.id]
+    assert provider.delete_calls == [child.id, parent.id, parent.id]
     assert provider.items == {}
 
 
@@ -477,7 +498,66 @@ async def test_clean_raises_when_delete_retry_fails_twice(tmp_path: Path) -> Non
     with pytest.raises(ProviderError, match="delete failed"):
         await sdk.clean(dry_run=False)
 
-    assert provider.delete_calls == [item.id, item.id]
+    assert provider.delete_calls == [item.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_deletes_leaf_first_for_deep_hierarchy(tmp_path: Path) -> None:
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1"),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="S1"),
+        ]
+    )
+    config, plan_id = _write_custom_plan_and_get_id(tmp_path, plan)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    epic = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1", item_type=PlanItemType.EPIC)
+    story = await _create_clean_item(
+        provider, config, plan_id=plan_id, item_id="S1", item_type=PlanItemType.STORY, parent_id="E1"
+    )
+    task = await _create_clean_item(
+        provider, config, plan_id=plan_id, item_id="T1", item_type=PlanItemType.TASK, parent_id="S1"
+    )
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 3
+    assert provider.delete_calls == [task.id, story.id, epic.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_uses_metadata_parent_id_for_leaf_first_order(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    parent_a = await _create_clean_item(provider, config, plan_id="plan-a", item_id="E-A", item_type=PlanItemType.EPIC)
+    child_a = await _create_clean_item(
+        provider,
+        config,
+        plan_id="plan-a",
+        item_id="T-A",
+        item_type=PlanItemType.TASK,
+        parent_id="E-A",
+    )
+    parent_b = await _create_clean_item(provider, config, plan_id="plan-b", item_id="E-B", item_type=PlanItemType.EPIC)
+    child_b = await _create_clean_item(
+        provider,
+        config,
+        plan_id="plan-b",
+        item_id="T-B",
+        item_type=PlanItemType.TASK,
+        parent_id="E-B",
+    )
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 4
+    assert provider.delete_calls.index(child_a.id) < provider.delete_calls.index(parent_a.id)
+    assert provider.delete_calls.index(child_b.id) < provider.delete_calls.index(parent_b.id)
 
 
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:
