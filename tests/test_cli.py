@@ -421,6 +421,15 @@ def test_format_summary_no_existing_items(tmp_path: Path) -> None:
     assert "Matched:" not in output
 
 
+def test_format_summary_ignores_entries_with_unknown_item_type(tmp_path: Path) -> None:
+    result, config = _make_sync_result(dry_run=False, sync_path=tmp_path / "sync-map.json")
+    result.sync_map.entries["UNKNOWN"] = MagicMock(item_type="OTHER")
+
+    output = _format_summary(result, config)
+
+    assert "Items:     4 total (1 epic, 1 story, 1 task)" in output
+
+
 # ---------------------------------------------------------------------------
 # Interactive init wizard tests (questionary mocked)
 # ---------------------------------------------------------------------------
@@ -749,6 +758,40 @@ def test_init_interactive_auth_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     assert exit_code == 0
     config = json.loads(output.read_text())
     assert config["auth"] == "env"
+
+
+def test_init_interactive_github_preflight_uses_progress_when_stderr_tty(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {**_SPLIT_ANSWERS, "Create empty": False}
+    fake_q = _build_fake_questionary(answers)
+    observed: dict[str, object] = {}
+
+    class _FakeRichProgress:
+        def __enter__(self) -> object:
+            return object()
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+            return False
+
+    def _fake_validate_github_auth_for_init(**kwargs: object) -> str:
+        observed.update(kwargs)
+        return "org"
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "resolved")
+    monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", _fake_validate_github_auth_for_init)
+    monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
+    monkeypatch.setattr("planpilot.progress.RichSyncProgress", _FakeRichProgress)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 0
+    assert observed["progress"] is not None
 
 
 def test_init_interactive_auth_preflight_error_returns_4(

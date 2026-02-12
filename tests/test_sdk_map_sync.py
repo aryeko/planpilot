@@ -9,6 +9,7 @@ from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput
 from planpilot.contracts.plan import Plan, PlanItemType
+from planpilot.engine.progress import SyncProgress
 from planpilot.sdk import PlanPilot
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer
@@ -46,6 +47,23 @@ def _write_plan(config: PlanPilotConfig, plan: Plan) -> None:
     payload = {"items": [item.model_dump(mode="json", exclude_none=True) for item in plan.items]}
     assert config.plan_paths.unified is not None
     config.plan_paths.unified.write_text(json.dumps(payload), encoding="utf-8")
+
+
+class _SpyProgress(SyncProgress):
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str]] = []
+
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        self.events.append(("start", phase))
+
+    def item_done(self, phase: str) -> None:
+        self.events.append(("item", phase))
+
+    def phase_done(self, phase: str) -> None:
+        self.events.append(("done", phase))
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        self.events.append(("error", phase))
 
 
 @pytest.mark.asyncio
@@ -256,6 +274,26 @@ async def test_discover_remote_plan_ids_surfaces_provider_error(tmp_path: Path) 
 
 
 @pytest.mark.asyncio
+async def test_discover_remote_plan_ids_provider_error_emits_phase_error(tmp_path: Path) -> None:
+    class _FailingSearchProvider(FakeProvider):
+        async def search_items(self, filters):  # type: ignore[override]
+            raise ProviderError("search failed")
+
+    progress = _SpyProgress()
+    sdk = PlanPilot(
+        provider=_FailingSearchProvider(),
+        renderer=FakeRenderer(),
+        config=_make_config(tmp_path),
+        progress=progress,
+    )
+
+    with pytest.raises(ProviderError, match="search failed"):
+        await sdk.discover_remote_plan_ids()
+
+    assert ("error", "Map Plan IDs") in progress.events
+
+
+@pytest.mark.asyncio
 async def test_map_sync_surfaces_provider_error(tmp_path: Path) -> None:
     class _FailingSearchProvider(FakeProvider):
         async def search_items(self, filters):  # type: ignore[override]
@@ -265,6 +303,62 @@ async def test_map_sync_surfaces_provider_error(tmp_path: Path) -> None:
 
     with pytest.raises(ProviderError, match="search failed"):
         await sdk.map_sync(plan_id="abc123", dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_map_sync_provider_error_emits_phase_error(tmp_path: Path) -> None:
+    class _FailingSearchProvider(FakeProvider):
+        async def search_items(self, filters):  # type: ignore[override]
+            raise ProviderError("search failed")
+
+    progress = _SpyProgress()
+    sdk = PlanPilot(
+        provider=_FailingSearchProvider(),
+        renderer=FakeRenderer(),
+        config=_make_config(tmp_path),
+        progress=progress,
+    )
+
+    with pytest.raises(ProviderError, match="search failed"):
+        await sdk.map_sync(plan_id="abc123", dry_run=True)
+
+    assert ("error", "Map Discover") in progress.events
+
+
+@pytest.mark.asyncio
+async def test_map_sync_progress_marks_skipped_mismatched_and_missing_item_id(
+    tmp_path: Path,
+    sample_plan: Plan,
+) -> None:
+    provider = FakeProvider()
+    config = _make_config(tmp_path)
+    _write_plan(config, sample_plan)
+    progress = _SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+    sync_result = await sdk.sync(sample_plan)
+    plan_id = sync_result.sync_map.plan_id
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Mismatched PLAN_ID",
+            body=f"PLANPILOT_META_V1\nPLAN_ID:{plan_id}x\nITEM_ID:BAD1\nEND_PLANPILOT_META\n",
+            item_type=PlanItemType.TASK,
+            labels=[sdk._config.label],
+        )
+    )
+    await provider.create_item(
+        CreateItemInput(
+            title="Missing ITEM_ID",
+            body=f"PLANPILOT_META_V1\nPLAN_ID:{plan_id}\nEND_PLANPILOT_META\n",
+            item_type=PlanItemType.TASK,
+            labels=[sdk._config.label],
+        )
+    )
+
+    await sdk.map_sync(plan_id=plan_id, dry_run=True)
+
+    reconcile_items = [event for event in progress.events if event == ("item", "Map Reconcile")]
+    assert len(reconcile_items) >= len(sample_plan.items) + 2
 
 
 def test_persist_plan_from_remote_builds_sub_item_ids_and_skips_missing_split_paths(tmp_path: Path) -> None:

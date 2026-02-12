@@ -301,6 +301,21 @@ def test_main_map_sync_error_mapping(monkeypatch: pytest.MonkeyPatch, error: Exc
     assert exit_code == expected_code
 
 
+def test_main_map_unsupported_subcommand_returns_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class _FakeParser:
+        def parse_args(self, _argv: list[str] | None) -> argparse.Namespace:
+            return argparse.Namespace(command="map", map_command="noop", verbose=False)
+
+    monkeypatch.setattr("planpilot.cli.build_parser", lambda: _FakeParser())
+
+    exit_code = main([])
+
+    assert exit_code == 2
+    assert "unsupported map command" in capsys.readouterr().err
+
+
 def test_resolve_selected_plan_id_errors_when_questionary_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(sys.stdin, "isatty", lambda: True)
     monkeypatch.delitem(sys.modules, "questionary", raising=False)
