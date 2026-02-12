@@ -128,6 +128,21 @@ class TestDetectPlanPaths:
         result = detect_plan_paths()
         assert result is None or isinstance(result, PlanPaths)
 
+    def test_iterdir_error_returns_none(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+        plans = tmp_path / ".plans"
+        plans.mkdir()
+
+        original_iterdir = Path.iterdir
+
+        def _patched_iterdir(self: Path):
+            if self == plans:
+                raise OSError("permission denied")
+            return original_iterdir(self)
+
+        monkeypatch.setattr(Path, "iterdir", _patched_iterdir)
+
+        assert detect_plan_paths(tmp_path) is None
+
 
 # ---------------------------------------------------------------------------
 # scaffold_config
@@ -222,6 +237,25 @@ class TestScaffoldConfig:
 
         assert config["auth"] == "token"
         assert config["token"] == "ghp_example"
+
+    def test_user_board_accepts_explicit_label_strategy(self) -> None:
+        config = scaffold_config(
+            target="owner/repo",
+            board_url="https://github.com/users/alice/projects/1",
+            field_config={"create_type_strategy": "label"},
+        )
+
+        assert config["field_config"]["create_type_strategy"] == "label"
+
+    def test_non_github_provider_skips_project_url_parsing(self) -> None:
+        config = scaffold_config(
+            provider="jira",
+            target="owner/repo",
+            board_url="not-a-github-url",
+            plan_paths={"unified": "plan.json"},
+        )
+
+        assert config["provider"] == "jira"
 
 
 # ---------------------------------------------------------------------------
