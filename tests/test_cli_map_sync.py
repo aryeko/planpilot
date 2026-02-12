@@ -97,7 +97,11 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
             assert dry_run is True
             return expected
 
-    async def _fake_from_config(_config: object, **_kwargs: object) -> _FakeSDK:
+    from_config_calls: list[set[str]] = []
+
+    async def _fake_from_config(_config: object, **kwargs: object) -> _FakeSDK:
+        from_config_calls.append(set(kwargs))
+        assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _path: config)
@@ -117,6 +121,7 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123"]
+    assert len(from_config_calls) == 2
 
 
 @pytest.mark.asyncio
@@ -133,7 +138,11 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
             assert dry_run is False
             return expected
 
-    async def _fake_from_config(_config: object, **_kwargs: object) -> _FakeSDK:
+    from_config_calls: list[set[str]] = []
+
+    async def _fake_from_config(_config: object, **kwargs: object) -> _FakeSDK:
+        from_config_calls.append(set(kwargs))
+        assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _path: config)
@@ -153,6 +162,43 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123", "zzz999"]
+    assert len(from_config_calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_run_map_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json")
+    expected = _make_map_result(dry_run=True)
+
+    class _FakeSDK:
+        async def discover_remote_plan_ids(self) -> list[str]:
+            return ["abc123"]
+
+        async def map_sync(self, *, plan_id: str, dry_run: bool) -> MapSyncResult:
+            assert plan_id == "abc123"
+            assert dry_run is True
+            return expected
+
+    async def _fake_from_config(_config: object, **kwargs: object) -> _FakeSDK:
+        assert kwargs == {}
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _path: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    args = argparse.Namespace(
+        command="map",
+        map_command="sync",
+        config="planpilot.json",
+        plan_id=None,
+        dry_run=True,
+        apply=False,
+        verbose=True,
+    )
+
+    actual = await _run_map_sync(args)
+
+    assert actual.sync_map.plan_id == "abc123"
 
 
 def test_format_map_sync_summary_includes_counts_and_notice(tmp_path: Path) -> None:
@@ -253,6 +299,21 @@ def test_main_map_sync_error_mapping(monkeypatch: pytest.MonkeyPatch, error: Exc
     exit_code = main(["map", "sync", "--config", "planpilot.json", "--dry-run", "--plan-id", "abc123"])
 
     assert exit_code == expected_code
+
+
+def test_main_map_unsupported_subcommand_returns_2(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class _FakeParser:
+        def parse_args(self, _argv: list[str] | None) -> argparse.Namespace:
+            return argparse.Namespace(command="map", map_command="noop", verbose=False)
+
+    monkeypatch.setattr("planpilot.cli.build_parser", lambda: _FakeParser())
+
+    exit_code = main([])
+
+    assert exit_code == 2
+    assert "unsupported map command" in capsys.readouterr().err
 
 
 def test_resolve_selected_plan_id_errors_when_questionary_missing(monkeypatch: pytest.MonkeyPatch) -> None:

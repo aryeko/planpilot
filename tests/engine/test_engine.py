@@ -8,8 +8,8 @@ import pytest
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.contracts.sync import SyncMap
+from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType
+from planpilot.contracts.sync import SyncEntry, SyncMap
 from planpilot.engine.engine import SyncEngine
 from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
 from tests.fakes.provider import FakeItem, FakeProvider
@@ -274,7 +274,8 @@ async def test_sync_dry_run_runs_pipeline_and_sets_flag(tmp_path: Path) -> None:
     assert result.dry_run is True
     assert len(provider.search_calls) == 1
     assert len(provider.create_calls) == 1
-    assert len(provider.update_calls) == 1
+    # Single item with no children - body unchanged after create, enrich skipped
+    assert len(provider.update_calls) == 0
     assert result.sync_map.entries["E1"].key == "#1"
     assert result.items_created[PlanItemType.EPIC] == 1
 
@@ -363,6 +364,185 @@ async def test_sync_enrich_skips_items_without_sync_entries(tmp_path: Path) -> N
 
 
 @pytest.mark.asyncio
+async def test_enrich_updates_when_item_type_changes_even_if_title_and_body_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-type",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.EPIC,
+            labels=[config.label],
+        )
+    )
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    sync_map = SyncMap(plan_id="plan-type", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.EPIC)
+
+    await engine._enrich(plan, "plan-type", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].item_type == PlanItemType.STORY
+
+
+@pytest.mark.asyncio
+async def test_enrich_updates_when_labels_drift_even_if_title_body_and_type_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-labels",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=["wrong-label"],
+        )
+    )
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+    sync_map = SyncMap(plan_id="plan-labels", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.STORY)
+
+    await engine._enrich(plan, "plan-labels", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].labels == [config.label]
+
+
+@pytest.mark.asyncio
+async def test_enrich_updates_when_size_drift_even_if_title_body_and_type_match(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    existing = await provider.create_item(
+        CreateItemInput(
+            title="Story",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:plan-size",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    "# Story",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+            size="S",
+        )
+    )
+    plan = Plan(
+        items=[
+            PlanItem(
+                id="S1",
+                type=PlanItemType.STORY,
+                title="Story",
+                estimate=Estimate(tshirt="M"),
+            )
+        ]
+    )
+    sync_map = SyncMap(plan_id="plan-size", target=config.target, board_url=config.board_url)
+    sync_map.entries["S1"] = SyncEntry(id=existing.id, key=existing.key, url=existing.url, item_type=PlanItemType.STORY)
+
+    await engine._enrich(plan, "plan-size", sync_map, item_objects={"S1": existing})
+
+    assert len(provider.update_calls) == 1
+    assert provider.update_calls[0][1].size == "M"
+
+
+@pytest.mark.asyncio
+async def test_set_relations_keeps_existing_pairs_when_touched_by_update(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic One", sub_item_ids=["S1"]),
+            PlanItem(id="E2", type=PlanItemType.EPIC, title="Epic Two", sub_item_ids=["S2"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story One", parent_id="E1", depends_on=["S2"]),
+            PlanItem(id="S2", type=PlanItemType.STORY, title="Story Two", parent_id="E2"),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Unrelated new task"),
+        ]
+    )
+
+    item_objects: dict[str, Item] = {}
+    for plan_item in plan.items:
+        item_objects[plan_item.id] = await provider.create_item(
+            CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
+        )
+
+    await engine._set_relations(
+        plan,
+        item_objects=item_objects,
+        created_ids={"T1"},
+        updated_ids={"E1"},
+    )
+
+    epic_one_id = item_objects["E1"].id
+    epic_two_id = item_objects["E2"].id
+    assert provider.dependencies[epic_one_id] == {epic_two_id}
+
+
+@pytest.mark.asyncio
+async def test_set_relations_processes_pairs_when_nothing_touched(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic One", sub_item_ids=["S1"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story One", parent_id="E1"),
+        ]
+    )
+    item_objects: dict[str, Item] = {}
+    for plan_item in plan.items:
+        item_objects[plan_item.id] = await provider.create_item(
+            CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
+        )
+
+    await engine._set_relations(
+        plan,
+        item_objects=item_objects,
+        created_ids=set(),
+        updated_ids=set(),
+    )
+
+    story_id = item_objects["S1"].id
+    epic_id = item_objects["E1"].id
+    assert provider.parents == {story_id: epic_id}
+    assert provider.dependencies == {}
+
+
+@pytest.mark.asyncio
 async def test_sync_strict_mode_raises_on_unresolved_parent(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
@@ -434,7 +614,7 @@ async def test_set_relations_skips_items_missing_from_item_objects(tmp_path: Pat
     engine = SyncEngine(provider, renderer, config)
     plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
 
-    await engine._set_relations(plan, item_objects={})
+    await engine._set_relations(plan, item_objects={}, created_ids={"E1"})
 
     assert provider.parents == {}
     assert provider.dependencies == {}
@@ -452,7 +632,7 @@ async def test_set_relations_strict_raises_for_external_parent_reference(tmp_pat
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="EXT-1")])
 
     with pytest.raises(SyncError, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
 
 @pytest.mark.asyncio
@@ -467,7 +647,7 @@ async def test_set_relations_strict_raises_for_self_parent_reference(tmp_path: P
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
 
     with pytest.raises(SyncError, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
 
 @pytest.mark.asyncio
@@ -482,7 +662,7 @@ async def test_set_relations_partial_warns_for_self_parent_reference(tmp_path: P
     plan = Plan(items=[PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="T1")])
 
     with pytest.warns(UserWarning, match="Unresolved parent_id"):
-        await engine._set_relations(plan, item_objects={"T1": existing})
+        await engine._set_relations(plan, item_objects={"T1": existing}, created_ids={"T1"})
 
     assert existing.id not in provider.parents
 
@@ -509,7 +689,7 @@ async def test_set_relations_skips_story_rollup_without_story_parents(tmp_path: 
             CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
         )
 
-    await engine._set_relations(plan, item_objects)
+    await engine._set_relations(plan, item_objects, created_ids=set(item_objects))
 
     epic_ids = {item.id for item in provider.items.values() if item.item_type == PlanItemType.EPIC}
     for item_id in epic_ids:

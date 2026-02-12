@@ -44,14 +44,19 @@ class SyncEngine:
 
         existing_map = await self._discover(plan_id)
         item_objects: dict[str, Item] = {}
+        plan_type_by_id = {item.id: item.type for item in plan.items}
         for item_id, existing_item in existing_map.items():
-            sync_map.entries[item_id] = to_sync_entry(existing_item)
+            entry = to_sync_entry(existing_item)
+            entry.item_type = plan_type_by_id.get(item_id, entry.item_type)
+            sync_map.entries[item_id] = entry
             item_objects[item_id] = existing_item
 
         try:
-            await self._upsert(plan, plan_id, existing_map, sync_map, item_objects, items_created)
-            await self._enrich(plan, plan_id, sync_map, item_objects)
-            await self._set_relations(plan, item_objects)
+            created_ids: set[str] = set()
+            updated_ids: set[str] = set()
+            await self._upsert(plan, plan_id, existing_map, sync_map, item_objects, items_created, created_ids)
+            await self._enrich(plan, plan_id, sync_map, item_objects, updated_ids)
+            await self._set_relations(plan, item_objects, created_ids, updated_ids)
         except* (SyncError, ProviderError) as error_group:
             first_error = error_group.exceptions[0]
             raise first_error from error_group
@@ -88,6 +93,7 @@ class SyncEngine:
         sync_map: SyncMap,
         item_objects: dict[str, Item],
         items_created: dict[PlanItemType, int],
+        created_ids: set[str],
     ) -> None:
         self._progress.phase_start("Create", total=len(plan.items))
         try:
@@ -104,6 +110,7 @@ class SyncEngine:
                                 sync_map,
                                 item_objects,
                                 items_created,
+                                created_ids,
                             )
                         )
             self._progress.phase_done("Create")
@@ -120,10 +127,13 @@ class SyncEngine:
         sync_map: SyncMap,
         item_objects: dict[str, Item],
         items_created: dict[PlanItemType, int],
+        created_ids: set[str],
     ) -> None:
         if plan_item.id in existing_map:
             existing = existing_map[plan_item.id]
-            sync_map.entries[plan_item.id] = to_sync_entry(existing)
+            entry = to_sync_entry(existing)
+            entry.item_type = plan_item.type
+            sync_map.entries[plan_item.id] = entry
             item_objects[plan_item.id] = existing
             self._progress.item_done("Create")
             return
@@ -146,6 +156,7 @@ class SyncEngine:
         sync_map.entries[plan_item.id] = to_sync_entry(created_item)
         item_objects[plan_item.id] = created_item
         items_created[plan_item.type] += 1
+        created_ids.add(plan_item.id)
         self._progress.item_done("Create")
 
     async def _enrich(
@@ -154,12 +165,13 @@ class SyncEngine:
         plan_id: str,
         sync_map: SyncMap,
         item_objects: dict[str, Item],
+        updated_ids: set[str] | None = None,
     ) -> None:
         self._progress.phase_start("Enrich", total=len(plan.items))
         try:
             async with asyncio.TaskGroup() as tg:
                 for plan_item in plan.items:
-                    tg.create_task(self._enrich_item(plan, plan_item, plan_id, sync_map, item_objects))
+                    tg.create_task(self._enrich_item(plan, plan_item, plan_id, sync_map, item_objects, updated_ids))
             self._progress.phase_done("Enrich")
         except BaseException as exc:
             self._progress.phase_error("Enrich", exc)
@@ -172,6 +184,7 @@ class SyncEngine:
         plan_id: str,
         sync_map: SyncMap,
         item_objects: dict[str, Item],
+        updated_ids: set[str] | None = None,
     ) -> None:
         entry = sync_map.entries.get(plan_item.id)
         if entry is None:
@@ -180,19 +193,51 @@ class SyncEngine:
 
         context = self._build_context(plan, plan_item, plan_id, sync_map)
         body = self._renderer.render(plan_item, context)
+        desired_labels = [self._config.label]
+        desired_size = plan_item.estimate.tshirt if plan_item.estimate is not None else None
+
+        existing_item = item_objects.get(plan_item.id)
+        labels_match = True
+        size_match = True
+        if existing_item is not None:
+            existing_labels = getattr(existing_item, "labels", None)
+            existing_size = getattr(existing_item, "size", None)
+            if existing_labels is not None:
+                labels_match = set(existing_labels) == set(desired_labels)
+            if existing_size is not None:
+                size_match = existing_size == desired_size
+        if (
+            existing_item is not None
+            and existing_item.title == plan_item.title
+            and existing_item.body.strip() == body.strip()
+            and existing_item.item_type == plan_item.type
+            and labels_match
+            and size_match
+        ):
+            self._progress.item_done("Enrich")
+            return
+
         update_input = UpdateItemInput(
             title=plan_item.title,
             body=body,
             item_type=plan_item.type,
-            labels=[self._config.label],
-            size=plan_item.estimate.tshirt if plan_item.estimate is not None else None,
+            labels=desired_labels,
+            size=desired_size,
         )
 
         updated_item = await self._guarded(self._provider.update_item(entry.id, update_input))
         item_objects[plan_item.id] = updated_item
+        if updated_ids is not None:
+            updated_ids.add(plan_item.id)
         self._progress.item_done("Enrich")
 
-    async def _set_relations(self, plan: Plan, item_objects: dict[str, Item]) -> None:
+    async def _set_relations(
+        self,
+        plan: Plan,
+        item_objects: dict[str, Item],
+        created_ids: set[str],
+        updated_ids: set[str] | None = None,
+    ) -> None:
         by_id = {item.id: item for item in plan.items}
         plan_ids = set(by_id)
         parent_pairs: set[tuple[str, str]] = set()
@@ -248,6 +293,14 @@ class SyncEngine:
         for child_parent, blocker_parent in compute_parent_blocked_by(plan.items, PlanItemType.EPIC):
             if child_parent in item_objects and blocker_parent in item_objects and child_parent != blocker_parent:
                 dependency_pairs.add((child_parent, blocker_parent))
+
+        # Skip relation pairs where both sides are untouched in this run.
+        # If nothing was touched (e.g., custom renderer omits relation context),
+        # keep all pairs so relation-only updates still apply.
+        touched_ids = created_ids.union(updated_ids or set())
+        if touched_ids:
+            parent_pairs = {(c, p) for c, p in parent_pairs if c in touched_ids or p in touched_ids}
+            dependency_pairs = {(b, k) for b, k in dependency_pairs if b in touched_ids or k in touched_ids}
 
         total_relations = len(parent_pairs) + len(dependency_pairs)
         self._progress.phase_start("Relations", total=total_relations)

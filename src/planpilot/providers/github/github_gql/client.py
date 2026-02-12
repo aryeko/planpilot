@@ -13,6 +13,7 @@ from .operations import (
     CLOSE_ISSUE_GQL,
     CREATE_ISSUE_GQL,
     CREATE_LABEL_GQL,
+    DELETE_ISSUE_GQL,
     FETCH_ORG_PROJECT_GQL,
     FETCH_PROJECT_FIELDS_GQL,
     FETCH_PROJECT_ITEMS_GQL,
@@ -38,6 +39,7 @@ if TYPE_CHECKING:
     from .close_issue import CloseIssue
     from .create_issue import CreateIssue
     from .create_label import CreateLabel
+    from .delete_issue import DeleteIssue
     from .enums import IssueClosedStateReason
     from .fetch_org_project import FetchOrgProject
     from .fetch_project_fields import FetchProjectFields
@@ -163,6 +165,16 @@ class GitHubGraphQLClient(AsyncBaseClient):
         )
         data = self.get_data(response)
         return CreateLabel.model_validate(data)
+
+    async def delete_issue(self, issue_id: str, **kwargs: Any) -> "DeleteIssue":
+        from .delete_issue import DeleteIssue
+
+        variables: dict[str, object] = {"issueId": issue_id}
+        response = await self.execute(
+            query=DELETE_ISSUE_GQL, operation_name="DeleteIssue", variables=variables, **kwargs
+        )
+        data = self.get_data(response)
+        return DeleteIssue.model_validate(data)
 
     async def fetch_org_project(self, owner: str, number: int, **kwargs: Any) -> "FetchOrgProject":
         from .fetch_org_project import FetchOrgProject

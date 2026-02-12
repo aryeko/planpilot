@@ -13,11 +13,11 @@ from pydantic import ValidationError
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProjectURLError, ProviderError, SyncError
-from planpilot.contracts.item import ItemSearchFilters
+from planpilot.contracts.item import Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
 from planpilot.contracts.renderer import BodyRenderer
-from planpilot.contracts.sync import MapSyncResult, SyncMap, SyncResult, to_sync_entry
+from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncMap, SyncResult, to_sync_entry
 from planpilot.engine import SyncEngine
 from planpilot.engine.progress import SyncProgress
 from planpilot.engine.utils import parse_metadata_block
@@ -164,11 +164,15 @@ class PlanPilot:
 
     async def discover_remote_plan_ids(self) -> list[str]:
         """Discover unique PLAN_ID values from provider metadata."""
+        if self._progress is not None:
+            self._progress.phase_start("Map Plan IDs")
         provider = await self._resolve_apply_provider()
         try:
             async with provider:
                 items = await provider.search_items(ItemSearchFilters(labels=[self._config.label]))
         except* ProviderError as provider_errors:
+            if self._progress is not None:
+                self._progress.phase_error("Map Plan IDs", provider_errors.exceptions[0])
             raise provider_errors.exceptions[0] from None
 
         plan_ids = {
@@ -177,12 +181,16 @@ class PlanPilot:
             for metadata in [parse_metadata_block(item.body)]
             if metadata.get("PLAN_ID")
         }
+        if self._progress is not None:
+            self._progress.phase_done("Map Plan IDs")
         return sorted(plan_ids)
 
     async def map_sync(self, *, plan_id: str, dry_run: bool = False) -> MapSyncResult:
         """Reconcile local sync-map and bootstrap local plan from remote discovery."""
         current = self._load_sync_map(plan_id=plan_id)
 
+        if self._progress is not None:
+            self._progress.phase_start("Map Discover")
         provider = await self._resolve_apply_provider()
         try:
             async with provider:
@@ -190,16 +198,26 @@ class PlanPilot:
                     ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
                 )
         except* ProviderError as provider_errors:
+            if self._progress is not None:
+                self._progress.phase_error("Map Discover", provider_errors.exceptions[0])
             raise provider_errors.exceptions[0] from None
+        if self._progress is not None:
+            self._progress.phase_done("Map Discover")
 
         desired_entries = {}
         remote_plan_items: dict[str, PlanItem] = {}
+        if self._progress is not None:
+            self._progress.phase_start("Map Reconcile", total=len(discovered_items))
         for item in discovered_items:
             metadata = parse_metadata_block(item.body)
             if metadata.get("PLAN_ID") != plan_id:
+                if self._progress is not None:
+                    self._progress.item_done("Map Reconcile")
                 continue
             item_id = metadata.get("ITEM_ID")
             if not item_id:
+                if self._progress is not None:
+                    self._progress.item_done("Map Reconcile")
                 continue
             desired_entries[item_id] = to_sync_entry(item)
             remote_item = self._plan_item_from_remote(
@@ -209,6 +227,10 @@ class PlanPilot:
                 body=item.body,
             )
             remote_plan_items[item_id] = remote_item
+            if self._progress is not None:
+                self._progress.item_done("Map Reconcile")
+        if self._progress is not None:
+            self._progress.phase_done("Map Reconcile")
 
         current_entries = current.entries
         added = sorted(item_id for item_id in desired_entries if item_id not in current_entries)
@@ -234,9 +256,213 @@ class PlanPilot:
             dry_run=dry_run,
         )
         if not dry_run:
+            if self._progress is not None:
+                self._progress.phase_start("Map Persist")
             self._persist_sync_map(reconciled, dry_run=False)
             self._persist_plan_from_remote(items=remote_plan_items.values())
+            if self._progress is not None:
+                self._progress.phase_done("Map Persist")
         return result
+
+    async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
+        """Discover and delete all issues belonging to a plan.
+
+        Always uses the real provider for discovery so dry-run accurately
+        reflects what would be deleted.
+        """
+        loaded_plan: Plan | None = None
+        if all_plans:
+            plan_id = "all-plans"
+        else:
+            loaded_plan = PlanLoader().load(self._config.plan_paths)
+            plan_id = PlanHasher().compute_plan_id(loaded_plan)
+
+        try:
+            provider = await self._resolve_apply_provider()
+            async with provider:
+                items_deleted = await self._discover_and_delete_items(
+                    provider,
+                    plan_id,
+                    loaded_plan,
+                    dry_run=dry_run,
+                    all_plans=all_plans,
+                )
+        except* ProviderError as provider_errors:
+            raise provider_errors.exceptions[0] from None
+
+        return CleanResult(plan_id=plan_id, items_deleted=items_deleted, dry_run=dry_run)
+
+    async def _discover_and_delete_items(
+        self,
+        provider: Provider,
+        plan_id: str,
+        plan: Plan | None,
+        *,
+        dry_run: bool,
+        all_plans: bool = False,
+    ) -> int:
+        """Discover issues by label (and optionally plan_id) and delete them."""
+        if all_plans:
+            filters = ItemSearchFilters(labels=[self._config.label])
+        else:
+            filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
+
+        if self._progress is not None:
+            self._progress.phase_start("Clean Discover")
+        existing_items = await provider.search_items(filters)
+        if self._progress is not None:
+            self._progress.phase_done("Clean Discover")
+
+        items_to_delete: list[Item] = []
+        metadata_by_provider_id: dict[str, dict[str, str]] = {}
+        if self._progress is not None:
+            self._progress.phase_start("Clean Filter", total=len(existing_items))
+        for item in existing_items:
+            metadata = parse_metadata_block(item.body)
+            if not all_plans and metadata.get("PLAN_ID") != plan_id:
+                if self._progress is not None:
+                    self._progress.item_done("Clean Filter")
+                continue
+            if all_plans and not metadata:
+                if self._progress is not None:
+                    self._progress.item_done("Clean Filter")
+                continue
+            items_to_delete.append(item)
+            metadata_by_provider_id[item.id] = metadata
+            if self._progress is not None:
+                self._progress.item_done("Clean Filter")
+        if self._progress is not None:
+            self._progress.phase_done("Clean Filter")
+
+        ordered_items_to_delete = self._order_items_for_deletion(
+            items_to_delete,
+            metadata_by_provider_id=metadata_by_provider_id,
+            plan=plan,
+            all_plans=all_plans,
+        )
+
+        if self._progress is not None:
+            self._progress.phase_start("Clean Delete", total=len(ordered_items_to_delete))
+        if not dry_run:
+            remaining = list(ordered_items_to_delete)
+            while remaining:
+                failed: list[Item] = []
+                first_error: ProviderError | None = None
+                deleted_in_pass = 0
+                for item in remaining:
+                    try:
+                        await provider.delete_item(item.id)
+                        deleted_in_pass += 1
+                        if self._progress is not None:
+                            self._progress.item_done("Clean Delete")
+                    except ProviderError as exc:
+                        if first_error is None:
+                            first_error = exc
+                        failed.append(item)
+                if not failed:
+                    break
+                if deleted_in_pass == 0:
+                    assert first_error is not None
+                    if self._progress is not None:
+                        self._progress.phase_error("Clean Delete", first_error)
+                    raise first_error
+                remaining = failed
+        if self._progress is not None:
+            self._progress.phase_done("Clean Delete")
+
+        return len(items_to_delete)
+
+    @staticmethod
+    def _item_type_rank(item_type: PlanItemType | str | None) -> int:
+        if item_type in {PlanItemType.TASK, "TASK"}:
+            return 0
+        if item_type in {PlanItemType.STORY, "STORY"}:
+            return 1
+        if item_type in {PlanItemType.EPIC, "EPIC"}:
+            return 2
+        return 3
+
+    def _order_items_for_deletion(
+        self,
+        items: list[Item],
+        *,
+        metadata_by_provider_id: dict[str, dict[str, str]],
+        plan: Plan | None,
+        all_plans: bool,
+    ) -> list[Item]:
+        if not items:
+            return []
+
+        item_by_provider_id = {item.id: item for item in items}
+        plan_items_by_id = {plan_item.id: plan_item for plan_item in (plan.items if plan is not None else [])}
+        provider_id_by_item_id: dict[str, str] = {}
+        plan_type_by_provider_id: dict[str, PlanItemType] = {}
+
+        for item in items:
+            metadata = metadata_by_provider_id.get(item.id, {})
+            item_id = metadata.get("ITEM_ID")
+            if not item_id:
+                continue
+            provider_id_by_item_id[item_id] = item.id
+            plan_item = plan_items_by_id.get(item_id)
+            if plan_item is not None:
+                plan_type_by_provider_id[item.id] = plan_item.type
+
+        prerequisites: dict[str, set[str]] = {item.id: set() for item in items}
+        dependents: dict[str, set[str]] = {item.id: set() for item in items}
+
+        for item in items:
+            metadata = metadata_by_provider_id.get(item.id, {})
+            item_id = metadata.get("ITEM_ID")
+            parent_item_id: str | None = None
+
+            if all_plans:
+                parent_item_id = metadata.get("PARENT_ID")
+            elif item_id:
+                plan_item = plan_items_by_id.get(item_id)
+                parent_item_id = plan_item.parent_id if plan_item is not None else None
+
+            if not parent_item_id:
+                continue
+
+            parent_provider_id = provider_id_by_item_id.get(parent_item_id)
+            if parent_provider_id is None or parent_provider_id == item.id:
+                continue
+
+            prerequisites[parent_provider_id].add(item.id)
+            dependents[item.id].add(parent_provider_id)
+
+        def _sort_key(provider_id: str) -> tuple[int, str, str]:
+            item = item_by_provider_id[provider_id]
+            metadata = metadata_by_provider_id.get(provider_id, {})
+            type_hint: PlanItemType | str | None = (
+                plan_type_by_provider_id.get(provider_id) or metadata.get("ITEM_TYPE") or item.item_type
+            )
+            return (self._item_type_rank(type_hint), item.key, item.id)
+
+        remaining_prereqs = {provider_id: set(reqs) for provider_id, reqs in prerequisites.items()}
+        ready = sorted(
+            [provider_id for provider_id, reqs in remaining_prereqs.items() if not reqs],
+            key=_sort_key,
+        )
+        ordered: list[str] = []
+
+        while ready:
+            current = ready.pop(0)
+            ordered.append(current)
+            for parent in sorted(dependents[current], key=_sort_key):
+                prereq_set = remaining_prereqs[parent]
+                if current in prereq_set:
+                    prereq_set.remove(current)
+                    if not prereq_set:
+                        ready.append(parent)
+            ready.sort(key=_sort_key)
+
+        if len(ordered) != len(items):
+            remaining = [provider_id for provider_id in item_by_provider_id if provider_id not in set(ordered)]
+            ordered.extend(sorted(remaining, key=_sort_key))
+
+        return [item_by_provider_id[provider_id] for provider_id in ordered]
 
     async def _resolve_apply_provider(self) -> Provider:
         if self._provider is not None:

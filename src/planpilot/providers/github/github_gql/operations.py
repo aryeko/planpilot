@@ -9,6 +9,7 @@ __all__ = [
     "CLOSE_ISSUE_GQL",
     "CREATE_ISSUE_GQL",
     "CREATE_LABEL_GQL",
+    "DELETE_ISSUE_GQL",
     "FETCH_ORG_PROJECT_GQL",
     "FETCH_PROJECT_FIELDS_GQL",
     "FETCH_PROJECT_ITEMS_GQL",
@@ -110,6 +111,14 @@ mutation CreateLabel($repositoryId: ID!, $name: String!) {
     label {
       id
     }
+  }
+}
+"""
+
+DELETE_ISSUE_GQL = """
+mutation DeleteIssue($issueId: ID!) {
+  deleteIssue(input: {issueId: $issueId}) {
+    clientMutationId
   }
 }
 """

@@ -38,6 +38,8 @@ class MarkdownRenderer(BodyRenderer):
                 "PLANPILOT_META_V1",
                 f"PLAN_ID:{context.plan_id}",
                 f"ITEM_ID:{item.id}",
+                f"ITEM_TYPE:{item.type.value}",
+                f"PARENT_ID:{item.parent_id or ''}",
                 "END_PLANPILOT_META",
             ]
         )

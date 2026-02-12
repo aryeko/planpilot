@@ -9,6 +9,7 @@ The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles arg
 ```
 planpilot [--version]
 planpilot sync --config <path> (--dry-run | --apply) [--verbose]
+planpilot clean [--config <path>] (--dry-run | --apply) [--all] [--verbose]
 planpilot init [--output <path>] [--defaults]
 planpilot map sync --config <path> (--dry-run | --apply) [--plan-id <id>] [--verbose]
 ```
@@ -52,13 +53,9 @@ planpilot - sync complete (apply)
   Target:    owner/repo
   Board:     https://github.com/orgs/owner/projects/1
 
-  Created:   2 epic(s), 5 story(s), 12 task(s)
-  Existing:  0 epic(s), 1 story(s), 3 task(s)
-
-  Epic   E1      #42    https://github.com/owner/repo/issues/42
-  Epic   E2      #43    https://github.com/owner/repo/issues/43
-  Story  S1      #44    https://github.com/owner/repo/issues/44
-  ...
+  Items:     20 total (2 epics, 6 stories, 12 tasks)
+  Created:   1 (1 story)
+  Matched:   19 (2 epics, 5 stories, 12 tasks)
 
   Sync map:  /abs/path/to/sync-map.json           (apply mode)
   Sync map:  /abs/path/to/sync-map.json.dry-run   (dry-run mode)
@@ -68,16 +65,7 @@ planpilot - sync complete (apply)
 
 This summary is human-oriented and not a stable machine contract. Automation should use SDK return objects (`SyncResult`).
 
-**Computing "Existing" counts:** Group `sync_map.entries` by `entry.item_type`, subtract `items_created` counts. Only displayed when > 0.
-
-### Item Table
-
-| Column | Source | Description |
-|--------|--------|-------------|
-| Type | `PlanItemType` name | "Epic", "Story", "Task" |
-| ID | `sync_map.entries` dict key | Plan-level item ID |
-| Key | `SyncEntry.key` | Provider-assigned key (e.g. `#42`) |
-| URL | `SyncEntry.url` | Full URL to the item |
+**Computing "Matched" counts:** Group `sync_map.entries` by `entry.item_type`, then subtract `items_created` counts.
 
 ### Error Output
 
@@ -108,6 +96,20 @@ Plan ID selection rules:
 
 - reconciled `sync-map.json`
 - local plan files at configured `plan_paths` (bootstrapped from remote metadata/body)
+
+### `clean` Subcommand
+
+Delete provider issues discovered from planpilot metadata.
+
+| Argument | Type | Required | Default | Description |
+|----------|------|----------|---------|-------------|
+| `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
+| `--dry-run` | flag | One of | — | Preview deletions only (no provider writes) |
+| `--apply` | flag | these | — | Execute issue deletions |
+| `--all` | flag | No | `False` | Target all planpilot-managed issues by label, regardless of current plan hash |
+| `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
+
+`clean` always discovers through the real provider. In default mode it targets issues matching the current computed plan hash. With `--all`, it targets all planpilot metadata-managed issues.
 
 ### `init` Subcommand
 

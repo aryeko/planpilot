@@ -69,7 +69,7 @@ test-e2e = "pytest -v tests/e2e/test_cli_e2e.py"
 coverage = "pytest -v --cov-report=html:.coverage/html"
 coverage-e2e = "pytest -v tests/e2e/test_cli_e2e.py --cov-report=term-missing --cov-report=xml:.coverage/coverage-e2e.xml"
 typecheck = "mypy src/planpilot"
-check = ["lint", "format-check", "test"]
+check = ["lint", "format-check", "typecheck", "test"]
 
 [tool.poe.tasks.gen-schema]
 help = "Introspect GitHub GraphQL API and download schema"

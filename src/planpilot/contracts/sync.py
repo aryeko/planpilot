@@ -28,6 +28,12 @@ class SyncResult(BaseModel):
     dry_run: bool = False
 
 
+class CleanResult(BaseModel):
+    plan_id: str
+    items_deleted: int
+    dry_run: bool = False
+
+
 class MapSyncResult(BaseModel):
     sync_map: SyncMap
     added: list[str] = Field(default_factory=list)

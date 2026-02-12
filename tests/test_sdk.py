@@ -7,8 +7,10 @@ import pytest
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput, Item
+from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.engine.progress import SyncProgress
+from planpilot.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer
@@ -50,6 +52,110 @@ def _make_config(tmp_path: Path, *, plan_path: Path | None = None) -> PlanPilotC
         plan_paths=PlanPaths(unified=plan_path or tmp_path / "plan.json"),
         sync_path=tmp_path / "sync-map.json",
     )
+
+
+def _write_plan_and_get_id(tmp_path: Path) -> tuple[PlanPilotConfig, str]:
+    plan = Plan(items=[PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic")])
+    return _write_custom_plan_and_get_id(tmp_path, plan)
+
+
+def _write_custom_plan_and_get_id(tmp_path: Path, plan: Plan) -> tuple[PlanPilotConfig, str]:
+    plan_path = tmp_path / "plan.json"
+    plan_path.write_text(plan.model_dump_json(indent=2), encoding="utf-8")
+    config = _make_config(tmp_path, plan_path=plan_path)
+    return config, PlanHasher().compute_plan_id(plan)
+
+
+def _metadata_body(
+    plan_id: str,
+    item_id: str,
+    *,
+    item_type: PlanItemType = PlanItemType.TASK,
+    parent_id: str | None = None,
+    with_metadata: bool = True,
+) -> str:
+    if not with_metadata:
+        return "# Title"
+    return "\n".join(
+        [
+            "PLANPILOT_META_V1",
+            f"PLAN_ID:{plan_id}",
+            f"ITEM_ID:{item_id}",
+            f"ITEM_TYPE:{item_type.value}",
+            f"PARENT_ID:{parent_id or ''}",
+            "END_PLANPILOT_META",
+            "",
+            "# Title",
+        ]
+    )
+
+
+async def _create_clean_item(
+    provider: FakeProvider,
+    config: PlanPilotConfig,
+    *,
+    plan_id: str,
+    item_id: str,
+    item_type: PlanItemType = PlanItemType.TASK,
+    parent_id: str | None = None,
+    with_metadata: bool = True,
+) -> Item:
+    return await provider.create_item(
+        CreateItemInput(
+            title=f"Item {item_id}",
+            body=_metadata_body(
+                plan_id,
+                item_id,
+                item_type=item_type,
+                parent_id=parent_id,
+                with_metadata=with_metadata,
+            ),
+            item_type=item_type,
+            labels=[config.label],
+        )
+    )
+
+
+class RetryDeleteProvider(FakeProvider):
+    def __init__(self, *, retry_item_id: str) -> None:
+        super().__init__()
+        self._retry_item_id = retry_item_id
+        self.retry_attempts = 0
+
+    async def delete_item(self, item_id: str) -> None:
+        if item_id == self._retry_item_id and self.retry_attempts == 0:
+            self.retry_attempts += 1
+            self.delete_calls.append(item_id)
+            raise ProviderError("parent has sub-issues")
+        await super().delete_item(item_id)
+
+
+class AlwaysFailDeleteProvider(FakeProvider):
+    async def delete_item(self, item_id: str) -> None:
+        self.delete_calls.append(item_id)
+        raise ProviderError("delete failed")
+
+
+class FailingSearchProvider(FakeProvider):
+    async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
+        raise ProviderError("search failed")
+
+
+class SpyProgress(SyncProgress):
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str, int | None]] = []
+
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        self.events.append(("start", phase, total))
+
+    def item_done(self, phase: str) -> None:
+        self.events.append(("item", phase, None))
+
+    def phase_done(self, phase: str) -> None:
+        self.events.append(("done", phase, None))
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        self.events.append(("error", phase, None))
 
 
 @pytest.mark.asyncio
@@ -240,6 +346,361 @@ async def test_sync_persist_write_error_is_wrapped_as_sync_error(
 
     with pytest.raises(SyncError, match="failed to persist sync map"):
         await sdk.sync(sample_plan)
+
+
+@pytest.mark.asyncio
+async def test_clean_dry_run_discovers_but_does_not_delete(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="T1")
+
+    result = await sdk.clean(dry_run=True)
+
+    assert result.items_deleted == 3
+    assert result.dry_run is True
+    assert provider.delete_calls == []
+    assert len(provider.items) == 3
+
+
+@pytest.mark.asyncio
+async def test_clean_apply_discovers_and_deletes(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="T1")
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 3
+    assert len(provider.delete_calls) == 3
+    assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_filters_by_plan_id(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    matching_a = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    matching_b = await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+    other = await _create_clean_item(provider, config, plan_id="other-plan-id", item_id="X1")
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 2
+    assert set(provider.delete_calls) == {matching_a.id, matching_b.id}
+    assert list(provider.items) == [other.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_ignores_plan_id(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    await _create_clean_item(provider, config, plan_id="plan-b", item_id="E2")
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 2
+    assert len(provider.delete_calls) == 2
+    assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_skips_items_without_metadata(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    with_metadata = await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    without_metadata = await _create_clean_item(
+        provider, config, plan_id="plan-a", item_id="NO_META", with_metadata=False
+    )
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 1
+    assert provider.delete_calls == [with_metadata.id]
+    assert list(provider.items) == [without_metadata.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_returns_zero_when_no_matches(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 0
+    assert provider.delete_calls == []
+
+
+@pytest.mark.asyncio
+async def test_clean_retries_parent_deletion_after_children(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    setup_provider = FakeProvider()
+    parent = await _create_clean_item(setup_provider, config, plan_id=plan_id, item_id="E1")
+    child = await _create_clean_item(setup_provider, config, plan_id=plan_id, item_id="S1")
+
+    provider = RetryDeleteProvider(retry_item_id=parent.id)
+    provider.items = dict(setup_provider.items)
+    provider._next_number = setup_provider._next_number
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 2
+    assert provider.retry_attempts == 1
+    assert provider.delete_calls == [child.id, parent.id, parent.id]
+    assert provider.items == {}
+
+
+@pytest.mark.asyncio
+async def test_clean_skips_metadata_plan_mismatch_even_if_body_contains_plan_id(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Mismatched metadata plan",
+            body="\n".join(
+                [
+                    "PLANPILOT_META_V1",
+                    "PLAN_ID:other-plan",
+                    "ITEM_ID:S1",
+                    "END_PLANPILOT_META",
+                    "",
+                    f"Contains PLAN_ID:{plan_id} outside metadata.",
+                ]
+            ),
+            item_type=PlanItemType.STORY,
+            labels=[config.label],
+        )
+    )
+
+    result = await sdk.clean()
+
+    assert result.items_deleted == 0
+    assert provider.delete_calls == []
+
+
+@pytest.mark.asyncio
+async def test_clean_unwraps_provider_error_from_search(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    sdk = PlanPilot(provider=FailingSearchProvider(), renderer=FakeRenderer(), config=config)
+
+    with pytest.raises(ProviderError, match="search failed"):
+        await sdk.clean()
+
+
+@pytest.mark.asyncio
+async def test_clean_raises_on_single_item_delete_failure(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = AlwaysFailDeleteProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    item = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+
+    with pytest.raises(ProviderError, match="delete failed"):
+        await sdk.clean(dry_run=False)
+
+    assert provider.delete_calls == [item.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_delete_failure_emits_progress_error(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = AlwaysFailDeleteProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+
+    with pytest.raises(ProviderError, match="delete failed"):
+        await sdk.clean(dry_run=False)
+
+    assert ("error", "Clean Delete", None) in progress.events
+
+
+@pytest.mark.asyncio
+async def test_clean_deletes_leaf_first_for_deep_hierarchy(tmp_path: Path) -> None:
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic"),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story", parent_id="E1"),
+            PlanItem(id="T1", type=PlanItemType.TASK, title="Task", parent_id="S1"),
+        ]
+    )
+    config, plan_id = _write_custom_plan_and_get_id(tmp_path, plan)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    epic = await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1", item_type=PlanItemType.EPIC)
+    story = await _create_clean_item(
+        provider, config, plan_id=plan_id, item_id="S1", item_type=PlanItemType.STORY, parent_id="E1"
+    )
+    task = await _create_clean_item(
+        provider, config, plan_id=plan_id, item_id="T1", item_type=PlanItemType.TASK, parent_id="S1"
+    )
+
+    result = await sdk.clean(dry_run=False)
+
+    assert result.items_deleted == 3
+    assert provider.delete_calls == [task.id, story.id, epic.id]
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_uses_metadata_parent_id_for_leaf_first_order(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    parent_a = await _create_clean_item(provider, config, plan_id="plan-a", item_id="E-A", item_type=PlanItemType.EPIC)
+    child_a = await _create_clean_item(
+        provider,
+        config,
+        plan_id="plan-a",
+        item_id="T-A",
+        item_type=PlanItemType.TASK,
+        parent_id="E-A",
+    )
+    parent_b = await _create_clean_item(provider, config, plan_id="plan-b", item_id="E-B", item_type=PlanItemType.EPIC)
+    child_b = await _create_clean_item(
+        provider,
+        config,
+        plan_id="plan-b",
+        item_id="T-B",
+        item_type=PlanItemType.TASK,
+        parent_id="E-B",
+    )
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.items_deleted == 4
+    assert provider.delete_calls.index(child_a.id) < provider.delete_calls.index(parent_a.id)
+    assert provider.delete_calls.index(child_b.id) < provider.delete_calls.index(parent_b.id)
+
+
+@pytest.mark.asyncio
+async def test_clean_all_plans_does_not_require_local_plan_files(tmp_path: Path) -> None:
+    missing_plan_path = tmp_path / "missing-plan.json"
+    config = _make_config(tmp_path, plan_path=missing_plan_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    await _create_clean_item(provider, config, plan_id="plan-b", item_id="E2")
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.plan_id == "all-plans"
+    assert result.items_deleted == 2
+    assert len(provider.delete_calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_clean_emits_progress_events(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+
+    result = await sdk.clean(dry_run=True)
+
+    assert result.items_deleted == 2
+    phases = [phase for kind, phase, _ in progress.events if kind == "start"]
+    assert "Clean Discover" in phases
+    assert "Clean Filter" in phases
+    assert "Clean Delete" in phases
+
+
+@pytest.mark.asyncio
+async def test_clean_filter_progress_marks_skipped_entries(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id="other-plan-id", item_id="X1")
+    await _create_clean_item(provider, config, plan_id="plan-a", item_id="NO_META", with_metadata=False)
+
+    await sdk.clean(dry_run=True)
+    await sdk.clean(dry_run=True, all_plans=True)
+
+    clean_filter_items = [event for event in progress.events if event == ("item", "Clean Filter", None)]
+    assert len(clean_filter_items) >= 2
+
+
+@pytest.mark.asyncio
+async def test_map_sync_emits_progress_events(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1", item_type=PlanItemType.EPIC)
+
+    result = await sdk.map_sync(plan_id=plan_id, dry_run=True)
+
+    assert len(result.sync_map.entries) == 1
+    phases = [phase for kind, phase, _ in progress.events if kind == "start"]
+    assert "Map Discover" in phases
+    assert "Map Reconcile" in phases
+
+
+def test_item_type_rank_unknown_type_defaults_last(tmp_path: Path) -> None:
+    sdk = PlanPilot(provider=FakeProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
+
+    assert sdk._item_type_rank("UNKNOWN") == 3
+
+
+@pytest.mark.asyncio
+async def test_order_items_for_deletion_handles_cycles_and_unmapped_parent(tmp_path: Path) -> None:
+    config, _ = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    a = await _create_clean_item(provider, config, plan_id="plan-x", item_id="A", item_type=PlanItemType.STORY)
+    b = await _create_clean_item(provider, config, plan_id="plan-x", item_id="B", item_type=PlanItemType.STORY)
+    c = await _create_clean_item(provider, config, plan_id="plan-x", item_id="C", item_type=PlanItemType.TASK)
+
+    ordered = sdk._order_items_for_deletion(
+        [a, b, c],
+        metadata_by_provider_id={
+            a.id: {"ITEM_ID": "A", "PARENT_ID": "B", "ITEM_TYPE": "STORY"},
+            b.id: {"ITEM_ID": "B", "PARENT_ID": "A", "ITEM_TYPE": "STORY"},
+            c.id: {"ITEM_TYPE": "TASK", "PARENT_ID": "UNMAPPED"},
+        },
+        plan=None,
+        all_plans=True,
+    )
+
+    assert sorted(item.id for item in ordered) == sorted([a.id, b.id, c.id])
+
+    ordered_without_item_id = sdk._order_items_for_deletion(
+        [c],
+        metadata_by_provider_id={c.id: {"ITEM_TYPE": "TASK"}},
+        plan=Plan(items=[]),
+        all_plans=False,
+    )
+
+    assert [item.id for item in ordered_without_item_id] == [c.id]
 
 
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:

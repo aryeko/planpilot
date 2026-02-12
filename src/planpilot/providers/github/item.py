@@ -23,6 +23,8 @@ class GitHubItem(Item):
         body: str,
         item_type: PlanItemType | None,
         url: str,
+        labels: list[str] | None = None,
+        size: str | None = None,
     ) -> None:
         self.provider = provider
         self.issue_id = issue_id
@@ -31,6 +33,8 @@ class GitHubItem(Item):
         self._body = body
         self._item_type = item_type
         self._url = url
+        self._labels = labels or []
+        self._size = size
 
     @property
     def id(self) -> str:
@@ -55,6 +59,14 @@ class GitHubItem(Item):
     @property
     def item_type(self) -> PlanItemType | None:
         return self._item_type
+
+    @property
+    def labels(self) -> list[str]:
+        return list(self._labels)
+
+    @property
+    def size(self) -> str | None:
+        return self._size
 
     async def set_parent(self, parent: Item) -> None:
         if not self.provider.context.supports_sub_issues:

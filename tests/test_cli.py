@@ -13,6 +13,7 @@ import pytest
 
 from planpilot import (
     AuthenticationError,
+    CleanResult,
     ConfigError,
     PlanItemType,
     PlanLoadError,
@@ -24,7 +25,7 @@ from planpilot import (
     SyncMap,
     SyncResult,
 )
-from planpilot.cli import _format_summary, _run_init, _run_sync, build_parser, main
+from planpilot.cli import _format_clean_summary, _format_summary, _run_clean, _run_init, _run_sync, build_parser, main
 from planpilot.contracts.config import PlanPaths
 
 
@@ -141,8 +142,9 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
             assert dry_run is True
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
         assert input_config == config
+        assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -164,7 +166,9 @@ async def test_run_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, 
         async def sync(self, *, dry_run: bool) -> SyncResult:
             return result
 
-    async def _fake_from_config(input_config: PlanPilotConfig, **_kwargs: object):
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert kwargs == {}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -239,11 +243,9 @@ def test_format_summary_apply_mode_shows_existing_counts(tmp_path: Path) -> None
     assert "Plan ID:   a1b2c3d4e5f6" in output
     assert "Target:    owner/repo" in output
     assert "Board:     https://github.com/orgs/owner/projects/1" in output
-    assert "Created:   1 epic(s), 0 story(s), 0 task(s)" in output
-    assert "Existing:  0 epic(s), 1 story(s), 1 task(s)" in output
-    assert "Epic   E1" in output
-    assert "Story  S1" in output
-    assert "Task   T1" in output
+    assert "Items:     3 total (1 epic, 1 story, 1 task)" in output
+    assert "Created:   1 (1 epic)" in output
+    assert "Matched:   2 (1 story, 1 task)" in output
     assert "Sync map:  " in output
     assert str(config.sync_path) in output
 
@@ -414,8 +416,18 @@ def test_format_summary_no_existing_items(tmp_path: Path) -> None:
 
     output = _format_summary(result, config)
 
-    assert "Created:   1 epic(s)" in output
-    assert "Existing:" not in output
+    assert "Items:     1 total (1 epic)" in output
+    assert "Created:   1 (1 epic)" in output
+    assert "Matched:" not in output
+
+
+def test_format_summary_ignores_entries_with_unknown_item_type(tmp_path: Path) -> None:
+    result, config = _make_sync_result(dry_run=False, sync_path=tmp_path / "sync-map.json")
+    result.sync_map.entries["UNKNOWN"] = MagicMock(item_type="OTHER")
+
+    output = _format_summary(result, config)
+
+    assert "Items:     4 total (1 epic, 1 story, 1 task)" in output
 
 
 # ---------------------------------------------------------------------------
@@ -746,6 +758,40 @@ def test_init_interactive_auth_env(monkeypatch: pytest.MonkeyPatch, tmp_path: Pa
     assert exit_code == 0
     config = json.loads(output.read_text())
     assert config["auth"] == "env"
+
+
+def test_init_interactive_github_preflight_uses_progress_when_stderr_tty(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    output = tmp_path / "planpilot.json"
+    answers = {**_SPLIT_ANSWERS, "Create empty": False}
+    fake_q = _build_fake_questionary(answers)
+    observed: dict[str, object] = {}
+
+    class _FakeRichProgress:
+        def __enter__(self) -> object:
+            return object()
+
+        def __exit__(self, exc_type: object, exc: object, tb: object) -> bool:
+            return False
+
+    def _fake_validate_github_auth_for_init(**kwargs: object) -> str:
+        observed.update(kwargs)
+        return "org"
+
+    monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
+    monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
+    monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "resolved")
+    monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", _fake_validate_github_auth_for_init)
+    monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
+    monkeypatch.setattr("planpilot.progress.RichSyncProgress", _FakeRichProgress)
+    monkeypatch.setitem(sys.modules, "questionary", fake_q)
+
+    args = argparse.Namespace(command="init", output=str(output), defaults=False)
+    exit_code = _run_init(args)
+
+    assert exit_code == 0
+    assert observed["progress"] is not None
 
 
 def test_init_interactive_auth_preflight_error_returns_4(
@@ -1148,3 +1194,195 @@ def test_init_interactive_unified_path_ctrl_c(monkeypatch: pytest.MonkeyPatch, t
     exit_code = _run_init(args)
 
     assert exit_code == 2
+
+
+# ---------------------------------------------------------------------------
+# clean subcommand
+# ---------------------------------------------------------------------------
+
+
+def test_build_parser_clean_requires_mode() -> None:
+    parser = build_parser()
+
+    with pytest.raises(SystemExit) as exc:
+        parser.parse_args(["clean"])
+
+    assert exc.value.code == 2
+
+
+@pytest.mark.parametrize("mode", ["--dry-run", "--apply"])
+def test_build_parser_clean_accepts_required_arguments(mode: str) -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", mode])
+
+    assert args.command == "clean"
+    assert args.config == "planpilot.json"
+    assert args.verbose is False
+
+
+def test_build_parser_clean_defaults_config_path() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--dry-run"])
+
+    assert args.command == "clean"
+    assert args.config == "./planpilot.json"
+
+
+def test_format_clean_summary_apply_mode() -> None:
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=3, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "planpilot - clean complete (apply)" in output
+    assert "Plan ID:    a1b2c3d4e5f6" in output
+    assert "Deleted:    3 issues" in output
+    assert "[dry-run]" not in output
+
+
+def test_format_clean_summary_dry_run_mode() -> None:
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=3, dry_run=True)
+
+    output = _format_clean_summary(result)
+
+    assert "planpilot - clean complete (dry-run)" in output
+    assert "Deleted:    3 issues" in output
+    assert "[dry-run] No issues were deleted" in output
+
+
+def test_format_clean_summary_single_item() -> None:
+    result = CleanResult(plan_id="xyz789", items_deleted=1, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "Deleted:    1 issue" in output
+
+
+def test_format_clean_summary_zero_items() -> None:
+    result = CleanResult(plan_id="xyz789", items_deleted=0, dry_run=False)
+
+    output = _format_clean_summary(result)
+
+    assert "Deleted:    0 issues" in output
+
+
+@pytest.mark.asyncio
+async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=True,
+        apply=False,
+        verbose=False,
+    )
+    # no --all flag → getattr fallback to False
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=2, dry_run=True)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
+            assert dry_run is True
+            assert all_plans is False
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert set(kwargs) == {"progress"}
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+@pytest.mark.asyncio
+async def test_run_clean_all_flag_passes_through(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=False,
+        apply=True,
+        verbose=False,
+    )
+    # simulate argparse --all
+    setattr(args, "all", True)  # noqa: B010
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=5, dry_run=False)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
+            assert dry_run is False
+            assert all_plans is True
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert set(kwargs) == {"progress"}
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+@pytest.mark.asyncio
+async def test_run_clean_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=True,
+        apply=False,
+        verbose=True,
+    )
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=1, dry_run=True)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
+            assert dry_run is True
+            assert all_plans is False
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert kwargs == {}
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+def test_build_parser_clean_all_flag() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", "--apply", "--all"])
+
+    assert args.command == "clean"
+    assert args.all is True
+
+
+def test_build_parser_clean_defaults_all_false() -> None:
+    parser = build_parser()
+
+    args = parser.parse_args(["clean", "--config", "planpilot.json", "--apply"])
+
+    assert args.all is False
+
+
+def test_main_routes_to_clean(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("planpilot.cli.asyncio.run", lambda _: None)
+
+    exit_code = main(["clean", "--config", "planpilot.json", "--dry-run"])
+
+    assert exit_code == 0
