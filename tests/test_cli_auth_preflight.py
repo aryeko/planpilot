@@ -130,6 +130,22 @@ def test_validate_github_auth_for_init_emits_progress(monkeypatch: pytest.Monkey
     assert starts == ["Init Auth", "Init Repo", "Init Projects", "Init Owner"]
 
 
+def test_validate_github_auth_for_init_scope_failure_emits_phase_error(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeClient(
+        user_response=_FakeResponse(status_code=200, headers={"x-oauth-scopes": "repo"}),
+        repo_response=_FakeResponse(status_code=200),
+        graphql_response=_FakeResponse(status_code=200, headers={"content-type": "application/json"}, payload={}),
+        owner_response=_FakeResponse(status_code=200, payload={"type": "Organization"}),
+    )
+    progress = _SpyProgress()
+    monkeypatch.setattr("planpilot.cli.httpx.Client", lambda **_kw: fake)
+
+    with pytest.raises(AuthenticationError, match="missing required GitHub scopes"):
+        _validate_github_auth_for_init(token="tok", target="owner/repo", progress=progress)
+
+    assert ("error", "Init Auth") in progress.events
+
+
 def test_validate_github_auth_for_init_returns_user_owner_type(monkeypatch: pytest.MonkeyPatch) -> None:
     fake = _FakeClient(
         user_response=_FakeResponse(status_code=200, headers={"x-oauth-scopes": "repo, project"}),

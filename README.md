@@ -187,6 +187,16 @@ planpilot sync --config ./planpilot.json --apply
 | `--apply` | — | Apply mode |
 | `--verbose` | off | Enable verbose logging |
 
+### `planpilot clean`
+
+| Flag | Default | Description |
+|------|---------|-------------|
+| `--config` | `./planpilot.json` | Path to `planpilot.json` |
+| `--dry-run` | — | Preview which issues would be deleted |
+| `--apply` | — | Execute deletions |
+| `--all` | off | Delete all planpilot-managed issues by label, regardless of current plan hash |
+| `--verbose` | off | Enable verbose logging |
+
 ### `planpilot map sync`
 
 | Flag | Default | Description |

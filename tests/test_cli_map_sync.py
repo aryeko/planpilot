@@ -97,7 +97,10 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
             assert dry_run is True
             return expected
 
+    from_config_calls: list[set[str]] = []
+
     async def _fake_from_config(_config: object, **kwargs: object) -> _FakeSDK:
+        from_config_calls.append(set(kwargs))
         assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
@@ -118,6 +121,7 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123"]
+    assert len(from_config_calls) == 2
 
 
 @pytest.mark.asyncio
@@ -134,7 +138,10 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
             assert dry_run is False
             return expected
 
+    from_config_calls: list[set[str]] = []
+
     async def _fake_from_config(_config: object, **kwargs: object) -> _FakeSDK:
+        from_config_calls.append(set(kwargs))
         assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
@@ -155,6 +162,7 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123", "zzz999"]
+    assert len(from_config_calls) == 2
 
 
 @pytest.mark.asyncio

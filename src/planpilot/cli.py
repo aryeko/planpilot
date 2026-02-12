@@ -98,7 +98,12 @@ def _validate_github_auth_for_init(*, token: str, target: str, progress: SyncPro
             if progress is not None:
                 progress.phase_error("Init Auth", error)
             raise error
-        _check_classic_scopes(scopes_header=user_resp.headers.get("x-oauth-scopes"))
+        try:
+            _check_classic_scopes(scopes_header=user_resp.headers.get("x-oauth-scopes"))
+        except AuthenticationError as error:
+            if progress is not None:
+                progress.phase_error("Init Auth", error)
+            raise
         if progress is not None:
             progress.phase_done("Init Auth")
 
@@ -262,10 +267,12 @@ async def _run_map_sync(args: argparse.Namespace) -> MapSyncResult:
         with RichSyncProgress() as progress:
             pp = await PlanPilot.from_config(config, progress=progress)
             candidate_plan_ids = await pp.discover_remote_plan_ids()
-            selected_plan_id = _resolve_selected_plan_id(
-                explicit_plan_id=args.plan_id,
-                candidate_plan_ids=candidate_plan_ids,
-            )
+        selected_plan_id = _resolve_selected_plan_id(
+            explicit_plan_id=args.plan_id,
+            candidate_plan_ids=candidate_plan_ids,
+        )
+        with RichSyncProgress() as progress:
+            pp = await PlanPilot.from_config(config, progress=progress)
             result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
     else:
         pp = await PlanPilot.from_config(config)
