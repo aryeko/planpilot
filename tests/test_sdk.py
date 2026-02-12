@@ -560,6 +560,23 @@ async def test_clean_all_plans_uses_metadata_parent_id_for_leaf_first_order(tmp_
     assert provider.delete_calls.index(child_b.id) < provider.delete_calls.index(parent_b.id)
 
 
+@pytest.mark.asyncio
+async def test_clean_all_plans_does_not_require_local_plan_files(tmp_path: Path) -> None:
+    missing_plan_path = tmp_path / "missing-plan.json"
+    config = _make_config(tmp_path, plan_path=missing_plan_path)
+    provider = SpyProvider()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+
+    await _create_clean_item(provider, config, plan_id="plan-a", item_id="E1")
+    await _create_clean_item(provider, config, plan_id="plan-b", item_id="E2")
+
+    result = await sdk.clean(all_plans=True)
+
+    assert result.plan_id == "all-plans"
+    assert result.items_deleted == 2
+    assert len(provider.delete_calls) == 2
+
+
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:
     config_dir = tmp_path / "cfg"
     config_dir.mkdir()

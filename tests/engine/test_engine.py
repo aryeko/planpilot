@@ -433,6 +433,36 @@ async def test_set_relations_keeps_existing_pairs_when_touched_by_update(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_set_relations_skips_all_pairs_when_nothing_touched(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(
+        items=[
+            PlanItem(id="E1", type=PlanItemType.EPIC, title="Epic One", sub_item_ids=["S1"]),
+            PlanItem(id="S1", type=PlanItemType.STORY, title="Story One", parent_id="E1"),
+        ]
+    )
+    item_objects: dict[str, Item] = {}
+    for plan_item in plan.items:
+        item_objects[plan_item.id] = await provider.create_item(
+            CreateItemInput(title=plan_item.title, body="body", item_type=plan_item.type, labels=[config.label])
+        )
+
+    await engine._set_relations(
+        plan,
+        item_objects=item_objects,
+        created_ids=set(),
+        updated_ids=set(),
+    )
+
+    assert provider.parents == {}
+    assert provider.dependencies == {}
+
+
+@pytest.mark.asyncio
 async def test_sync_strict_mode_raises_on_unresolved_parent(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()

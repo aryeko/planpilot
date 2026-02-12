@@ -244,8 +244,12 @@ class PlanPilot:
         Always uses the real provider for discovery so dry-run accurately
         reflects what would be deleted.
         """
-        loaded_plan = PlanLoader().load(self._config.plan_paths)
-        plan_id = PlanHasher().compute_plan_id(loaded_plan)
+        loaded_plan: Plan | None = None
+        if all_plans:
+            plan_id = "all-plans"
+        else:
+            loaded_plan = PlanLoader().load(self._config.plan_paths)
+            plan_id = PlanHasher().compute_plan_id(loaded_plan)
 
         try:
             provider = await self._resolve_apply_provider()
@@ -266,7 +270,7 @@ class PlanPilot:
         self,
         provider: Provider,
         plan_id: str,
-        plan: Plan,
+        plan: Plan | None,
         *,
         dry_run: bool,
         all_plans: bool = False,
@@ -335,14 +339,14 @@ class PlanPilot:
         items: list[Item],
         *,
         metadata_by_provider_id: dict[str, dict[str, str]],
-        plan: Plan,
+        plan: Plan | None,
         all_plans: bool,
     ) -> list[Item]:
         if not items:
             return []
 
         item_by_provider_id = {item.id: item for item in items}
-        plan_items_by_id = {plan_item.id: plan_item for plan_item in plan.items}
+        plan_items_by_id = {plan_item.id: plan_item for plan_item in (plan.items if plan is not None else [])}
         provider_id_by_item_id: dict[str, str] = {}
         plan_type_by_provider_id: dict[str, PlanItemType] = {}
 
