@@ -511,7 +511,7 @@ async def test_set_relations_keeps_existing_pairs_when_touched_by_update(tmp_pat
 
 
 @pytest.mark.asyncio
-async def test_set_relations_skips_all_pairs_when_nothing_touched(tmp_path: Path) -> None:
+async def test_set_relations_processes_pairs_when_nothing_touched(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
     config = make_config(tmp_path)
@@ -536,7 +536,9 @@ async def test_set_relations_skips_all_pairs_when_nothing_touched(tmp_path: Path
         updated_ids=set(),
     )
 
-    assert provider.parents == {}
+    story_id = item_objects["S1"].id
+    epic_id = item_objects["E1"].id
+    assert provider.parents == {story_id: epic_id}
     assert provider.dependencies == {}
 
 

@@ -295,9 +295,12 @@ class SyncEngine:
                 dependency_pairs.add((child_parent, blocker_parent))
 
         # Skip relation pairs where both sides are untouched in this run.
+        # If nothing was touched (e.g., custom renderer omits relation context),
+        # keep all pairs so relation-only updates still apply.
         touched_ids = created_ids.union(updated_ids or set())
-        parent_pairs = {(c, p) for c, p in parent_pairs if c in touched_ids or p in touched_ids}
-        dependency_pairs = {(b, k) for b, k in dependency_pairs if b in touched_ids or k in touched_ids}
+        if touched_ids:
+            parent_pairs = {(c, p) for c, p in parent_pairs if c in touched_ids or p in touched_ids}
+            dependency_pairs = {(b, k) for b, k in dependency_pairs if b in touched_ids or k in touched_ids}
 
         total_relations = len(parent_pairs) + len(dependency_pairs)
         self._progress.phase_start("Relations", total=total_relations)
