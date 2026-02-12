@@ -2,6 +2,86 @@
 
 <!-- version list -->
 
+## v2.3.0 (2026-02-12)
+
+### Bug Fixes
+
+- Address remaining PR review items for enrich and tests
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Address reviewer findings in engine and provider paths
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Avoid mixed import style in provider tests ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Clean uses real provider for discovery and adds --all flag
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Default clean config path to planpilot.json ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Harden clean behavior and cover SDK clean flows
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Harden idempotent relations and clean --all ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Make clean deletion leaf-first and hierarchy-aware
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Make sync pipeline fully idempotent on re-run ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Polish progress UX and align CLI docs ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Preserve relation updates when no items were touched
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Satisfy mypy variable scoping in init auth preflight
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+### Chores
+
+- Add test1/ to gitignore ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Exclude generated GraphQL client from CodeQL scan
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+### Features
+
+- Add clean workflow and make sync fully idempotent
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Add planpilot clean command for permanent issue deletion
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Add progress to clean, map sync, and init preflight
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+### Testing
+
+- Raise clean/provider patch coverage and tighten local checks
+  ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+- Raise cli/sdk patch coverage for PR checks ([#73](https://github.com/aryeko/planpilot/pull/73),
+  [`128a44a`](https://github.com/aryeko/planpilot/commit/128a44a9220a694e8b98ad0f5b492b83c7beb7cc))
+
+
 ## v2.2.0 (2026-02-12)
 
 ### Bug Fixes

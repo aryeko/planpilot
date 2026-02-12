@@ -1,6 +1,6 @@
 """Public API surface for PlanPilot."""
 
-__version__ = "2.2.0"
+__version__ = "2.3.0"
 
 from planpilot.auth import create_token_resolver
 from planpilot.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
