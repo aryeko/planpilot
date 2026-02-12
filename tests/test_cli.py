@@ -1245,7 +1245,7 @@ async def test_run_clean_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_p
 
     async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
         assert input_config == config
-        assert kwargs == {}
+        assert set(kwargs) == {"progress"}
         return _FakeSDK()
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
@@ -1274,6 +1274,37 @@ async def test_run_clean_all_flag_passes_through(monkeypatch: pytest.MonkeyPatch
         async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
             assert dry_run is False
             assert all_plans is True
+            return result
+
+    async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):
+        assert input_config == config
+        assert set(kwargs) == {"progress"}
+        return _FakeSDK()
+
+    monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
+    monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+
+    actual = await _run_clean(args)
+
+    assert actual == result
+
+
+@pytest.mark.asyncio
+async def test_run_clean_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    args = argparse.Namespace(
+        command="clean",
+        config="/tmp/planpilot.json",
+        dry_run=True,
+        apply=False,
+        verbose=True,
+    )
+    config = _make_config(tmp_path)
+    result = CleanResult(plan_id="a1b2c3d4e5f6", items_deleted=1, dry_run=True)
+
+    class _FakeSDK:
+        async def clean(self, *, dry_run: bool, all_plans: bool) -> CleanResult:
+            assert dry_run is True
+            assert all_plans is False
             return result
 
     async def _fake_from_config(input_config: PlanPilotConfig, **kwargs: object):

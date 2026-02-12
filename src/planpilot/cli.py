@@ -32,6 +32,7 @@ from planpilot import (
     write_config,
 )
 from planpilot.contracts.exceptions import ProjectURLError
+from planpilot.engine.progress import SyncProgress
 from planpilot.providers.github.mapper import parse_project_url
 
 _REQUIRED_CLASSIC_SCOPES = {"repo", "project"}
@@ -86,20 +87,36 @@ def _check_classic_scopes(*, scopes_header: str | None) -> None:
         raise AuthenticationError(f"Token is missing required GitHub scopes: {needed}")
 
 
-def _validate_github_auth_for_init(*, token: str, target: str) -> str | None:
+def _validate_github_auth_for_init(*, token: str, target: str, progress: SyncProgress | None = None) -> str | None:
     owner, repo = target.split("/", 1)
     with httpx.Client(timeout=10.0) as client:
+        if progress is not None:
+            progress.phase_start("Init Auth")
         user_resp = client.get("https://api.github.com/user", headers=_github_headers(token))
         if user_resp.status_code != 200:
-            raise AuthenticationError("GitHub authentication failed; verify your token/gh login and network access")
+            error = AuthenticationError("GitHub authentication failed; verify your token/gh login and network access")
+            if progress is not None:
+                progress.phase_error("Init Auth", error)
+            raise error
         _check_classic_scopes(scopes_header=user_resp.headers.get("x-oauth-scopes"))
+        if progress is not None:
+            progress.phase_done("Init Auth")
 
+        if progress is not None:
+            progress.phase_start("Init Repo")
         repo_resp = client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=_github_headers(token))
         if repo_resp.status_code != 200:
-            raise AuthenticationError(
+            error = AuthenticationError(
                 f"Cannot access target repository '{target}'; verify repo scope/permissions and repo visibility"
             )
+            if progress is not None:
+                progress.phase_error("Init Repo", error)
+            raise error
+        if progress is not None:
+            progress.phase_done("Init Repo")
 
+        if progress is not None:
+            progress.phase_start("Init Projects")
         viewer_projects_query = {"query": "query { viewer { projectsV2(first: 1) { nodes { id } } } }"}
         projects_resp = client.post(
             "https://api.github.com/graphql",
@@ -110,19 +127,34 @@ def _validate_github_auth_for_init(*, token: str, target: str) -> str | None:
             projects_resp.json() if projects_resp.headers.get("content-type", "").startswith("application/json") else {}
         )
         if projects_resp.status_code != 200 or payload.get("errors"):
-            raise AuthenticationError(
+            error = AuthenticationError(
                 "Token does not have sufficient project permissions; ensure project access is granted"
             )
+            if progress is not None:
+                progress.phase_error("Init Projects", error)
+            raise error
+        if progress is not None:
+            progress.phase_done("Init Projects")
 
+        if progress is not None:
+            progress.phase_start("Init Owner")
         owner_resp = client.get(f"https://api.github.com/users/{owner}", headers=_github_headers(token))
         if owner_resp.status_code != 200:
+            if progress is not None:
+                progress.phase_done("Init Owner")
             return None
         owner_payload = owner_resp.json()
         owner_type = owner_payload.get("type")
         if owner_type == "Organization":
+            if progress is not None:
+                progress.phase_done("Init Owner")
             return "org"
         if owner_type == "User":
+            if progress is not None:
+                progress.phase_done("Init Owner")
             return "user"
+        if progress is not None:
+            progress.phase_done("Init Owner")
         return None
 
 
@@ -224,13 +256,25 @@ async def _run_sync(args: argparse.Namespace) -> SyncResult:
 
 async def _run_map_sync(args: argparse.Namespace) -> MapSyncResult:
     config = load_config(args.config)
-    pp = await PlanPilot.from_config(config)
-    candidate_plan_ids = await pp.discover_remote_plan_ids()
-    selected_plan_id = _resolve_selected_plan_id(
-        explicit_plan_id=args.plan_id,
-        candidate_plan_ids=candidate_plan_ids,
-    )
-    result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
+    if not args.verbose:
+        from planpilot.progress import RichSyncProgress
+
+        with RichSyncProgress() as progress:
+            pp = await PlanPilot.from_config(config, progress=progress)
+            candidate_plan_ids = await pp.discover_remote_plan_ids()
+            selected_plan_id = _resolve_selected_plan_id(
+                explicit_plan_id=args.plan_id,
+                candidate_plan_ids=candidate_plan_ids,
+            )
+            result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
+    else:
+        pp = await PlanPilot.from_config(config)
+        candidate_plan_ids = await pp.discover_remote_plan_ids()
+        selected_plan_id = _resolve_selected_plan_id(
+            explicit_plan_id=args.plan_id,
+            candidate_plan_ids=candidate_plan_ids,
+        )
+        result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
     result = result.model_copy(update={"candidate_plan_ids": candidate_plan_ids})
     print(_format_map_sync_summary(result, config))
     return result
@@ -332,8 +376,15 @@ async def _run_clean(args: argparse.Namespace) -> CleanResult:
     config = load_config(args.config)
     all_plans: bool = getattr(args, "all", False)
 
-    pp = await PlanPilot.from_config(config)
-    result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
+    if not args.verbose:
+        from planpilot.progress import RichSyncProgress
+
+        with RichSyncProgress() as progress:
+            pp = await PlanPilot.from_config(config, progress=progress)
+            result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
+    else:
+        pp = await PlanPilot.from_config(config)
+        result = await pp.clean(dry_run=args.dry_run, all_plans=all_plans)
 
     print(_format_clean_summary(result))
     return result
@@ -489,8 +540,15 @@ def _run_init_interactive(output: Path) -> int:
 
         owner_type: str | None = None
         if provider == "github":
-            resolved_token = _resolve_init_token(auth=auth, target=target, static_token=auth_token)
-            owner_type = _validate_github_auth_for_init(token=resolved_token, target=target)
+            if sys.stderr.isatty():
+                from planpilot.progress import RichSyncProgress
+
+                with RichSyncProgress() as progress:
+                    resolved_token = _resolve_init_token(auth=auth, target=target, static_token=auth_token)
+                    owner_type = _validate_github_auth_for_init(token=resolved_token, target=target, progress=progress)
+            else:
+                resolved_token = _resolve_init_token(auth=auth, target=target, static_token=auth_token)
+                owner_type = _validate_github_auth_for_init(token=resolved_token, target=target)
 
         # --- 4. Board URL ---
         default_board_url = _default_board_url_with_owner_type(target, owner_type)

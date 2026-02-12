@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from planpilot import AuthenticationError
+from planpilot.engine.progress import SyncProgress
 from planpilot.cli import (
     _check_classic_scopes,
     _resolve_init_token,
@@ -56,6 +57,23 @@ class _FakeClient:
         raise AssertionError(f"Unexpected POST URL: {url}")
 
 
+class _SpyProgress(SyncProgress):
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str]] = []
+
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        self.events.append(("start", phase))
+
+    def item_done(self, phase: str) -> None:
+        self.events.append(("item", phase))
+
+    def phase_done(self, phase: str) -> None:
+        self.events.append(("done", phase))
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        self.events.append(("error", phase))
+
+
 def test_validate_target_requires_owner_repo_shape() -> None:
     assert _validate_target("owner/repo") is True
     assert _validate_target("owner") == "Use target format owner/repo"
@@ -95,6 +113,21 @@ def test_validate_github_auth_for_init_returns_org_owner_type(monkeypatch: pytes
     monkeypatch.setattr("planpilot.cli.httpx.Client", lambda **_kw: fake)
 
     assert _validate_github_auth_for_init(token="tok", target="owner/repo") == "org"
+
+
+def test_validate_github_auth_for_init_emits_progress(monkeypatch: pytest.MonkeyPatch) -> None:
+    fake = _FakeClient(
+        user_response=_FakeResponse(status_code=200, headers={"x-oauth-scopes": "repo, project"}),
+        repo_response=_FakeResponse(status_code=200),
+        graphql_response=_FakeResponse(status_code=200, headers={"content-type": "application/json"}, payload={}),
+        owner_response=_FakeResponse(status_code=200, payload={"type": "Organization"}),
+    )
+    progress = _SpyProgress()
+    monkeypatch.setattr("planpilot.cli.httpx.Client", lambda **_kw: fake)
+
+    assert _validate_github_auth_for_init(token="tok", target="owner/repo", progress=progress) == "org"
+    starts = [phase for kind, phase in progress.events if kind == "start"]
+    assert starts == ["Init Auth", "Init Repo", "Init Projects", "Init Owner"]
 
 
 def test_validate_github_auth_for_init_returns_user_owner_type(monkeypatch: pytest.MonkeyPatch) -> None:

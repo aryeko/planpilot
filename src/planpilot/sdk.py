@@ -164,11 +164,15 @@ class PlanPilot:
 
     async def discover_remote_plan_ids(self) -> list[str]:
         """Discover unique PLAN_ID values from provider metadata."""
+        if self._progress is not None:
+            self._progress.phase_start("Map Plan IDs")
         provider = await self._resolve_apply_provider()
         try:
             async with provider:
                 items = await provider.search_items(ItemSearchFilters(labels=[self._config.label]))
         except* ProviderError as provider_errors:
+            if self._progress is not None:
+                self._progress.phase_error("Map Plan IDs", provider_errors.exceptions[0])
             raise provider_errors.exceptions[0] from None
 
         plan_ids = {
@@ -177,12 +181,16 @@ class PlanPilot:
             for metadata in [parse_metadata_block(item.body)]
             if metadata.get("PLAN_ID")
         }
+        if self._progress is not None:
+            self._progress.phase_done("Map Plan IDs")
         return sorted(plan_ids)
 
     async def map_sync(self, *, plan_id: str, dry_run: bool = False) -> MapSyncResult:
         """Reconcile local sync-map and bootstrap local plan from remote discovery."""
         current = self._load_sync_map(plan_id=plan_id)
 
+        if self._progress is not None:
+            self._progress.phase_start("Map Discover")
         provider = await self._resolve_apply_provider()
         try:
             async with provider:
@@ -190,16 +198,26 @@ class PlanPilot:
                     ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
                 )
         except* ProviderError as provider_errors:
+            if self._progress is not None:
+                self._progress.phase_error("Map Discover", provider_errors.exceptions[0])
             raise provider_errors.exceptions[0] from None
+        if self._progress is not None:
+            self._progress.phase_done("Map Discover")
 
         desired_entries = {}
         remote_plan_items: dict[str, PlanItem] = {}
+        if self._progress is not None:
+            self._progress.phase_start("Map Reconcile", total=len(discovered_items))
         for item in discovered_items:
             metadata = parse_metadata_block(item.body)
             if metadata.get("PLAN_ID") != plan_id:
+                if self._progress is not None:
+                    self._progress.item_done("Map Reconcile")
                 continue
             item_id = metadata.get("ITEM_ID")
             if not item_id:
+                if self._progress is not None:
+                    self._progress.item_done("Map Reconcile")
                 continue
             desired_entries[item_id] = to_sync_entry(item)
             remote_item = self._plan_item_from_remote(
@@ -209,6 +227,10 @@ class PlanPilot:
                 body=item.body,
             )
             remote_plan_items[item_id] = remote_item
+            if self._progress is not None:
+                self._progress.item_done("Map Reconcile")
+        if self._progress is not None:
+            self._progress.phase_done("Map Reconcile")
 
         current_entries = current.entries
         added = sorted(item_id for item_id in desired_entries if item_id not in current_entries)
@@ -234,8 +256,12 @@ class PlanPilot:
             dry_run=dry_run,
         )
         if not dry_run:
+            if self._progress is not None:
+                self._progress.phase_start("Map Persist")
             self._persist_sync_map(reconciled, dry_run=False)
             self._persist_plan_from_remote(items=remote_plan_items.values())
+            if self._progress is not None:
+                self._progress.phase_done("Map Persist")
         return result
 
     async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
@@ -281,18 +307,32 @@ class PlanPilot:
         else:
             filters = ItemSearchFilters(labels=[self._config.label], body_contains=f"PLAN_ID:{plan_id}")
 
+        if self._progress is not None:
+            self._progress.phase_start("Clean Discover")
         existing_items = await provider.search_items(filters)
+        if self._progress is not None:
+            self._progress.phase_done("Clean Discover")
 
         items_to_delete: list[Item] = []
         metadata_by_provider_id: dict[str, dict[str, str]] = {}
+        if self._progress is not None:
+            self._progress.phase_start("Clean Filter", total=len(existing_items))
         for item in existing_items:
             metadata = parse_metadata_block(item.body)
             if not all_plans and metadata.get("PLAN_ID") != plan_id:
+                if self._progress is not None:
+                    self._progress.item_done("Clean Filter")
                 continue
             if all_plans and not metadata:
+                if self._progress is not None:
+                    self._progress.item_done("Clean Filter")
                 continue
             items_to_delete.append(item)
             metadata_by_provider_id[item.id] = metadata
+            if self._progress is not None:
+                self._progress.item_done("Clean Filter")
+        if self._progress is not None:
+            self._progress.phase_done("Clean Filter")
 
         ordered_items_to_delete = self._order_items_for_deletion(
             items_to_delete,
@@ -301,6 +341,8 @@ class PlanPilot:
             all_plans=all_plans,
         )
 
+        if self._progress is not None:
+            self._progress.phase_start("Clean Delete", total=len(ordered_items_to_delete))
         if not dry_run:
             remaining = list(ordered_items_to_delete)
             while remaining:
@@ -311,6 +353,8 @@ class PlanPilot:
                     try:
                         await provider.delete_item(item.id)
                         deleted_in_pass += 1
+                        if self._progress is not None:
+                            self._progress.item_done("Clean Delete")
                     except ProviderError as exc:
                         if first_error is None:
                             first_error = exc
@@ -319,8 +363,12 @@ class PlanPilot:
                     break
                 if deleted_in_pass == 0:
                     assert first_error is not None
+                    if self._progress is not None:
+                        self._progress.phase_error("Clean Delete", first_error)
                     raise first_error
                 remaining = failed
+        if self._progress is not None:
+            self._progress.phase_done("Clean Delete")
 
         return len(items_to_delete)
 

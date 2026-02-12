@@ -9,6 +9,7 @@ from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.engine.progress import SyncProgress
 from planpilot.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider
@@ -138,6 +139,23 @@ class AlwaysFailDeleteProvider(FakeProvider):
 class FailingSearchProvider(FakeProvider):
     async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
         raise ProviderError("search failed")
+
+
+class SpyProgress(SyncProgress):
+    def __init__(self) -> None:
+        self.events: list[tuple[str, str, int | None]] = []
+
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        self.events.append(("start", phase, total))
+
+    def item_done(self, phase: str) -> None:
+        self.events.append(("item", phase, None))
+
+    def phase_done(self, phase: str) -> None:
+        self.events.append(("done", phase, None))
+
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        self.events.append(("error", phase, None))
 
 
 @pytest.mark.asyncio
@@ -575,6 +593,42 @@ async def test_clean_all_plans_does_not_require_local_plan_files(tmp_path: Path)
     assert result.plan_id == "all-plans"
     assert result.items_deleted == 2
     assert len(provider.delete_calls) == 2
+
+
+@pytest.mark.asyncio
+async def test_clean_emits_progress_events(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1")
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="S1")
+
+    result = await sdk.clean(dry_run=True)
+
+    assert result.items_deleted == 2
+    phases = [phase for kind, phase, _ in progress.events if kind == "start"]
+    assert "Clean Discover" in phases
+    assert "Clean Filter" in phases
+    assert "Clean Delete" in phases
+
+
+@pytest.mark.asyncio
+async def test_map_sync_emits_progress_events(tmp_path: Path) -> None:
+    config, plan_id = _write_plan_and_get_id(tmp_path)
+    provider = SpyProvider()
+    progress = SpyProgress()
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config, progress=progress)
+
+    await _create_clean_item(provider, config, plan_id=plan_id, item_id="E1", item_type=PlanItemType.EPIC)
+
+    result = await sdk.map_sync(plan_id=plan_id, dry_run=True)
+
+    assert len(result.sync_map.entries) == 1
+    phases = [phase for kind, phase, _ in progress.events if kind == "start"]
+    assert "Map Discover" in phases
+    assert "Map Reconcile" in phases
 
 
 def test_load_config_reads_json_and_resolves_relative_paths(tmp_path: Path) -> None:
