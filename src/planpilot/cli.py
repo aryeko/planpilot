@@ -542,6 +542,13 @@ def _run_init_interactive(output: Path) -> int:
                 }
 
         # --- Build and write config ---
+        if auth == "token":
+            print(
+                "warning: static token auth stores token in plaintext in planpilot.json; "
+                "prefer gh-cli or env auth when possible",
+                file=sys.stderr,
+            )
+
         config = scaffold_config(
             provider=provider,
             target=target,

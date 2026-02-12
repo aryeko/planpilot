@@ -4,6 +4,7 @@ import argparse
 import sys
 from pathlib import Path
 from types import SimpleNamespace
+from typing import Any
 
 import pytest
 
@@ -168,12 +169,54 @@ def test_format_map_sync_summary_includes_counts_and_notice(tmp_path: Path) -> N
     assert "[dry-run] No changes were made" in output
 
 
+def test_format_map_sync_summary_apply_mode_handles_empty_id_lists(tmp_path: Path) -> None:
+    result = MapSyncResult(
+        sync_map=SyncMap(
+            plan_id="abc123",
+            target="owner/repo",
+            board_url="https://github.com/orgs/owner/projects/1",
+            entries={},
+        ),
+        added=[],
+        updated=[],
+        removed=[],
+        candidate_plan_ids=[],
+        dry_run=False,
+    )
+    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json")
+
+    output = _format_map_sync_summary(result, config)
+
+    assert "planpilot - map sync complete (apply)" in output
+    assert "Added:        0 (none)" in output
+    assert "Updated:      0 (none)" in output
+    assert "Removed:      0 (none)" in output
+    assert "[dry-run] No changes were made" not in output
+
+
 def test_main_routes_to_map_sync(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr("planpilot.cli.asyncio.run", lambda _coroutine: None)
 
     exit_code = main(["map", "sync", "--config", "planpilot.json", "--dry-run", "--plan-id", "abc123"])
 
     assert exit_code == 0
+
+
+def test_main_map_sync_enables_verbose_logging(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr("planpilot.cli.asyncio.run", lambda _coroutine: None)
+
+    captured: dict[str, object] = {}
+
+    def _fake_basic_config(**kwargs: object) -> None:
+        captured.update(kwargs)
+
+    monkeypatch.setattr("planpilot.cli.logging.basicConfig", _fake_basic_config)
+
+    exit_code = main(["map", "sync", "--config", "planpilot.json", "--dry-run", "--verbose"])
+
+    assert exit_code == 0
+    assert captured["level"] == 10
+    assert captured["stream"] is sys.stderr
 
 
 def test_validate_board_url_helper_accepts_and_rejects_values() -> None:
@@ -217,7 +260,7 @@ def test_resolve_selected_plan_id_errors_when_questionary_missing(monkeypatch: p
     monkeypatch.delitem(sys.modules, "questionary", raising=False)
     original_import = __import__
 
-    def _fake_import(name: str, *args: object, **kwargs: object):
+    def _fake_import(name: str, *args: Any, **kwargs: Any):
         if name == "questionary":
             raise ImportError("missing questionary")
         return original_import(name, *args, **kwargs)

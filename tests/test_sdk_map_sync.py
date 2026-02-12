@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError
+from planpilot.contracts.exceptions import ConfigError, SyncError
 from planpilot.contracts.item import CreateItemInput
 from planpilot.contracts.plan import Plan, PlanItemType
 from planpilot.sdk import PlanPilot
@@ -20,6 +20,20 @@ def _make_config(tmp_path: Path) -> PlanPilotConfig:
         target="owner/repo",
         board_url="https://github.com/orgs/owner/projects/1",
         plan_paths=PlanPaths(unified=tmp_path / "plan.json"),
+        sync_path=tmp_path / "sync-map.json",
+    )
+
+
+def _make_split_config(tmp_path: Path) -> PlanPilotConfig:
+    return PlanPilotConfig(
+        provider="github",
+        target="owner/repo",
+        board_url="https://github.com/orgs/owner/projects/1",
+        plan_paths=PlanPaths(
+            epics=tmp_path / "epics.json",
+            stories=tmp_path / "stories.json",
+            tasks=tmp_path / "tasks.json",
+        ),
         sync_path=tmp_path / "sync-map.json",
     )
 
@@ -93,8 +107,7 @@ async def test_map_sync_apply_reconciles_added_updated_removed(tmp_path: Path, s
 
     # Tamper provider metadata for E1 by changing key/url
     e1_provider_id = sync_result.sync_map.entries["E1"].id
-    provider.items[e1_provider_id]._key = "#4242"
-    provider.items[e1_provider_id]._url = "https://fake/issues/4242"
+    provider.set_item_identity(e1_provider_id, key="#4242", url="https://fake/issues/4242")
 
     result = await sdk.map_sync(plan_id=plan_id, dry_run=False)
 
@@ -144,3 +157,87 @@ async def test_map_sync_invalid_sync_map_file_raises_config_error(tmp_path: Path
 
     with pytest.raises(ConfigError, match="invalid sync map file"):
         await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=True)
+
+
+@pytest.mark.asyncio
+async def test_map_sync_skips_partial_or_mismatched_metadata(tmp_path: Path, sample_plan: Plan) -> None:
+    provider = FakeProvider()
+    config = _make_config(tmp_path)
+    _write_plan(config, sample_plan)
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+    sync_result = await sdk.sync(sample_plan)
+    plan_id = sync_result.sync_map.plan_id
+
+    await provider.create_item(
+        CreateItemInput(
+            title="Mismatched PLAN_ID",
+            body=(f"PLANPILOT_META_V1\nPLAN_ID:{plan_id}x\nITEM_ID:BAD1\nEND_PLANPILOT_META\n## Goal\n- ignored\n"),
+            item_type=PlanItemType.TASK,
+            labels=[sdk._config.label],
+        )
+    )
+    await provider.create_item(
+        CreateItemInput(
+            title="Missing ITEM_ID",
+            body=f"PLANPILOT_META_V1\nPLAN_ID:{plan_id}\nEND_PLANPILOT_META\n",
+            item_type=PlanItemType.TASK,
+            labels=[sdk._config.label],
+        )
+    )
+
+    result = await sdk.map_sync(plan_id=plan_id, dry_run=True)
+
+    assert "BAD1" not in result.sync_map.entries
+    assert len(result.sync_map.entries) == len(sample_plan.items)
+
+
+@pytest.mark.asyncio
+async def test_map_sync_apply_persists_split_plan_files(tmp_path: Path, sample_plan: Plan) -> None:
+    provider = FakeProvider()
+    config = _make_split_config(tmp_path)
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+    sync_result = await sdk.sync(sample_plan)
+
+    result = await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
+
+    assert result.plan_items_synced == len(sample_plan.items)
+    assert config.plan_paths.epics is not None and config.plan_paths.epics.exists()
+    assert config.plan_paths.stories is not None and config.plan_paths.stories.exists()
+    assert config.plan_paths.tasks is not None and config.plan_paths.tasks.exists()
+
+    epic_payload = json.loads(config.plan_paths.epics.read_text(encoding="utf-8"))
+    story_payload = json.loads(config.plan_paths.stories.read_text(encoding="utf-8"))
+    task_payload = json.loads(config.plan_paths.tasks.read_text(encoding="utf-8"))
+
+    assert len(epic_payload) + len(story_payload) + len(task_payload) == len(sample_plan.items)
+    merged = {item["id"]: item for item in [*epic_payload, *story_payload, *task_payload]}
+    assert sorted(merged.keys()) == ["E1", "S1", "T1"]
+
+
+@pytest.mark.asyncio
+async def test_map_sync_apply_plan_persist_write_error_raises_sync_error(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    sample_plan: Plan,
+) -> None:
+    provider = FakeProvider()
+    config = _make_split_config(tmp_path)
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+    sync_result = await sdk.sync(sample_plan)
+    original_write_text = Path.write_text
+
+    def _boom(
+        self: Path,
+        data: str,
+        encoding: str | None = None,
+        errors: str | None = None,
+        newline: str | None = None,
+    ) -> int:
+        if self == config.plan_paths.tasks:
+            raise OSError("disk full")
+        return original_write_text(self, data, encoding=encoding, errors=errors, newline=newline)
+
+    monkeypatch.setattr(Path, "write_text", _boom)
+
+    with pytest.raises(SyncError, match="failed to persist plan files"):
+        await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
