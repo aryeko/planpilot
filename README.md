@@ -222,6 +222,8 @@ A complete working example is in the [examples/](examples/) directory, including
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
 - [Engine](docs/design/engine.md) -- sync pipeline behavior
+- [Map Sync Design](docs/design/map-sync.md) -- remote plan discovery and local reconciliation flow
+- [Clean Workflow Design](docs/design/clean.md) -- safe deletion strategy and apply/dry-run semantics
 - [CLI](docs/modules/cli.md) -- command structure, output, and exit codes
 - [SDK](docs/modules/sdk.md) -- public API and composition root
 - [Providers](docs/modules/providers.md) -- provider model and extension guide

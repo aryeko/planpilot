@@ -13,12 +13,13 @@ class PlanPilot:
     """PlanPilot SDK — the public API for programmatic plan syncing."""
 
     def __init__(self, *, provider: Provider | None, renderer: BodyRenderer,
-                 config: PlanPilotConfig) -> None:
+                 config: PlanPilotConfig, progress: SyncProgress | None = None) -> None:
         """Initialize with injected dependencies (advanced/testing)."""
 
     @classmethod
     async def from_config(cls, config: PlanPilotConfig, *,
-                          renderer_name: str = "markdown") -> PlanPilot:
+                           renderer_name: str = "markdown",
+                           progress: SyncProgress | None = None) -> PlanPilot:
         """Create PlanPilot from config (recommended).
 
         1. Build renderer via create_renderer(renderer_name)
@@ -33,6 +34,14 @@ class PlanPilot:
         Raises:
             PlanLoadError, PlanValidationError, ProviderError, SyncError
         """
+    async def discover_remote_plan_ids(self) -> list[str]:
+        """Discover unique PLAN_ID values from provider item metadata."""
+
+    async def map_sync(self, *, plan_id: str, dry_run: bool = False) -> MapSyncResult:
+        """Reconcile local sync-map and bootstrap local plan from remote metadata."""
+
+    async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
+        """Delete planpilot-managed provider items for current plan or all plans."""
 ```
 
 ### `sync()` Lifecycle
@@ -74,6 +83,60 @@ CLI (or other callers) persist artifacts explicitly through persistence modules 
 **Provider lifecycle:** `sync()` manages provider construction and lifecycle internally. Callers never manage `async with`.
 
 **Error handling:** In apply mode, if engine/provider raises, `__aexit__` is still called. Exception propagates after cleanup.
+
+## `discover_remote_plan_ids()`
+
+Discovers unique `PLAN_ID` values from provider metadata blocks. This is used by CLI `map sync` when `--plan-id` is omitted.
+
+- Uses real provider discovery (`search_items(labels=[config.label])`)
+- Parses item bodies for metadata blocks
+- Returns sorted, unique plan IDs
+- Emits progress phases when `progress` is configured
+
+This method does not mutate provider items or local files.
+
+## `map_sync()` Lifecycle
+
+`map_sync()` reconciles local sync-map state with provider metadata for one selected `plan_id`.
+
+```mermaid
+flowchart TB
+    Start["map_sync(plan_id, dry_run)"] --> Load["load_sync_map(sync_path)"]
+    Load --> Discover["provider.search_items(labels + PLAN_ID marker)"]
+    Discover --> Reconcile["MapSyncReconciler.reconcile_discovered_items"]
+    Reconcile --> Build["Build MapSyncResult\nadded/updated/removed + remote_plan_items"]
+    Build --> Return["Return MapSyncResult"]
+```
+
+Important ownership rule:
+
+- SDK `map_sync()` returns `MapSyncResult` only.
+- Local persistence (writing sync-map and reconstructed plan files) is caller-owned. The CLI performs this in apply mode via `planpilot.cli.persistence.*`.
+
+## `clean()` Lifecycle
+
+`clean()` discovers planpilot-managed items and optionally deletes them.
+
+```mermaid
+flowchart TB
+    Start["clean(dry_run, all_plans)"] --> PlanId{"all_plans?"}
+    PlanId -- No --> LoadPlan["load plan + compute plan_id"]
+    PlanId -- Yes --> AllPlans["plan_id = all-plans"]
+    LoadPlan --> Discover
+    AllPlans --> Discover
+    Discover["provider.search_items(...) + metadata filter"] --> Order["order_items_for_deletion\n(leaf-first/cycle-safe)"]
+    Order --> Mode{"dry_run?"}
+    Mode -- Yes --> Count["return count only"]
+    Mode -- No --> Delete["delete pass with retry on parent-first failures"]
+    Delete --> Count
+    Count --> Return["Return CleanResult"]
+```
+
+Important semantics:
+
+- Discovery always uses real provider access (even in dry-run) so previews are accurate.
+- `all_plans=True` targets all items with planpilot metadata (by label + metadata parse).
+- Deletion order is planner-driven to avoid relation constraint failures.
 
 ## load_config()
 
@@ -139,7 +202,8 @@ The SDK re-exports selected types so callers import from one place:
 | **Scaffold** | `scaffold_config`, `detect_target`, `detect_plan_paths`, `write_config`, `create_plan_stubs` |
 | **Config** | `PlanPilotConfig`, `PlanPaths`, `FieldConfig` |
 | **Plan** | `Plan`, `PlanItem`, `PlanItemType` |
-| **Sync** | `SyncResult`, `SyncMap`, `SyncEntry` |
+| **Sync** | `SyncResult`, `SyncMap`, `SyncEntry`, `MapSyncResult`, `CleanResult` |
+| **Progress** | `SyncProgress`, `InitProgress` |
 | **Contracts** | `Provider`, `BodyRenderer`, `RenderContext` |
 | **Factories** | `create_provider`, `create_renderer`, `create_token_resolver` |
 | **Exceptions** | `PlanPilotError`, `ConfigError`, `PlanLoadError`, `PlanValidationError`, `ProviderError`, `AuthenticationError`, `SyncError` |
@@ -171,6 +235,36 @@ config = scaffold_config(
     board_url="https://github.com/orgs/myorg/projects/1",
 )
 write_config(config, Path("planpilot.json"))
+```
+
+### Map Sync Usage
+
+```python
+from planpilot import PlanPilot, load_config
+
+config = load_config("planpilot.json")
+pp = await PlanPilot.from_config(config)
+
+candidate_ids = await pp.discover_remote_plan_ids()
+selected_plan_id = candidate_ids[0]
+
+result = await pp.map_sync(plan_id=selected_plan_id, dry_run=True)
+print(result.added, result.updated, result.removed)
+```
+
+### Clean Usage
+
+```python
+from planpilot import PlanPilot, load_config
+
+config = load_config("planpilot.json")
+pp = await PlanPilot.from_config(config)
+
+preview = await pp.clean(dry_run=True)
+print(f"Would delete: {preview.items_deleted}")
+
+applied = await pp.clean(dry_run=False)
+print(f"Deleted: {applied.items_deleted}")
 ```
 
 ## Design Decisions

@@ -10,9 +10,11 @@ A complete redesign focused on SDK-first development with clean layered architec
 2. **[Repository Layout](./design/repository-layout.md)** — Current package ownership (`core/`, `cli/`, `sdk.py`) and code map
 3. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
 4. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
-5. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-6. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-7. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
+5. **[Map Sync Design](./design/map-sync.md)** — Plan ID discovery/selection and local reconciliation semantics
+6. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
+7. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+8. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+9. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Module specs
 

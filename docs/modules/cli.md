@@ -164,3 +164,8 @@ src/planpilot/
 ├── cli/persistence/*.py   # local sync-map and remote-plan persistence helpers
 └── __main__.py            # python -m planpilot support
 ```
+
+## Related docs
+
+- [Map Sync Design](../design/map-sync.md) — candidate plan ID discovery/selection and reconciliation flow
+- [Clean Workflow Design](../design/clean.md) — metadata-scoped discovery and deletion ordering semantics
