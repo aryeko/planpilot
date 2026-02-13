@@ -1226,6 +1226,52 @@ async def test_reconcile_managed_labels_noop_when_already_desired(monkeypatch: p
     assert added == []
 
 
+@pytest.mark.asyncio
+async def test_reconcile_managed_labels_does_not_readd_existing_non_managed_labels(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        create_type_strategy="label",
+        create_type_map={"TASK": "type:task"},
+    )
+
+    async def fake_get_label_name_to_id(item_id: str) -> dict[str, str]:
+        _ = item_id
+        return {
+            "planpilot": "id-planpilot",
+            "type:task": "id-task",
+            "custom": "id-custom",
+        }
+
+    added: list[list[str]] = []
+
+    async def fake_ensure_discovery_labels(item_id: str, labels: list[str]) -> None:
+        _ = item_id
+        added.append(labels)
+
+    monkeypatch.setattr(provider, "_get_item_label_name_to_id", fake_get_label_name_to_id)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_ensure_discovery_labels)
+
+    await provider._reconcile_managed_labels(
+        item_id="I1",
+        item_type=PlanItemType.TASK,
+        labels=["planpilot", "custom"],
+    )
+
+    assert added == []
+
+
 def test_is_duplicate_relation_error_returns_false_for_other_messages() -> None:
     err = Exception("Some unrelated GraphQL failure")
     assert GitHubProvider._is_duplicate_relation_error(err) is False

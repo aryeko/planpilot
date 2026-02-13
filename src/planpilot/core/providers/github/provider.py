@@ -434,10 +434,11 @@ class GitHubProvider(Provider):
 
         existing_label_ids = await self._get_item_label_name_to_id(item_id)
         managed_names = {self._label}.union(set(self.context.create_type_map.values()))
+        existing_names = set(existing_label_ids)
         current_managed = {name for name in existing_label_ids if name in managed_names}
 
         stale_names = sorted(current_managed.difference(desired_labels))
-        missing_names = sorted(desired_labels.difference(current_managed))
+        missing_names = sorted(desired_labels.difference(existing_names))
 
         if stale_names:
             remove_ids = [existing_label_ids[name] for name in stale_names if name in existing_label_ids]

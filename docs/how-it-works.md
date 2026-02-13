@@ -41,10 +41,11 @@ flowchart TD
 
 ## Dry-run behavior
 
-- `--dry-run` uses `DryRunProvider`:
+- `sync --dry-run` uses `DryRunProvider`:
   - no auth/network calls
   - no provider mutations
 - A dry-run sync map is still written to `<sync_path>.dry-run` for inspection.
+- `clean --dry-run` is discovery-only but still uses the real provider so deletion previews are accurate.
 
 ## Apply behavior
 

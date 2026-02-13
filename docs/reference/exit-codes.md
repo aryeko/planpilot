@@ -7,7 +7,7 @@ Canonical CLI process exit mapping.
 | Code | Meaning | Typical sources |
 |---|---|---|
 | `0` | Success | Completed command |
-| `2` | Usage error / user abort | Argparse failure, cancelled interactive prompt |
+| `2` | Usage error / user abort | Argparse failure, explicit user abort paths handled as usage |
 | `3` | Config or plan failure | `ConfigError`, `PlanLoadError`, `PlanValidationError` |
 | `4` | Auth/provider failure | `AuthenticationError`, `ProviderError`, `ProjectURLError` |
 | `5` | Sync/reconciliation failure | `SyncError` and wrapped provider execution failures |
