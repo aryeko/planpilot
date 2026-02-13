@@ -12,9 +12,10 @@ A complete redesign focused on SDK-first development with clean layered architec
 4. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
 5. **[Map Sync Design](./design/map-sync.md)** — Plan ID discovery/selection and local reconciliation semantics
 6. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
-7. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-8. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-9. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
+7. **[Documentation Architecture](./design/documentation-architecture.md)** — Doc IA, ownership map, and update rules
+8. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+9. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+10. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Module specs
 
@@ -48,6 +49,12 @@ A complete redesign focused on SDK-first development with clean layered architec
 - Dry-run uses a `DryRunProvider` (no auth/network calls, no provider mutations)
 - Dry-run sync maps are persisted to `<sync_path>.dry-run`
 - Engine owns dispatch concurrency (`max_concurrent`); provider owns per-call retries and rate-limit coordination
+
+## Docs Maintenance
+
+- `docs/README.md` is the docs navigation source of truth.
+- Each behavior change should update both design-level docs (`docs/design/`) and module-level docs (`docs/modules/`) where relevant.
+- When adding a new docs page, link it here and ensure local markdown links resolve.
 
 ## Known v2 Limitations
 

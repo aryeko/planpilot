@@ -220,6 +220,7 @@ A complete working example is in the [examples/](examples/) directory, including
 - [E2E Testing](docs/testing/e2e.md) -- offline end-to-end test design, coverage, and usage
 - [Plan Schemas](docs/reference/plan-schemas.md) -- plan JSON shapes and examples
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
+- [Documentation Architecture](docs/design/documentation-architecture.md) -- docs structure, ownership, and update rules
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
 - [Engine](docs/design/engine.md) -- sync pipeline behavior
 - [Map Sync Design](docs/design/map-sync.md) -- remote plan discovery and local reconciliation flow
