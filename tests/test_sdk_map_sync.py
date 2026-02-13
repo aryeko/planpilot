@@ -7,12 +7,12 @@ import pytest
 
 from planpilot.cli.persistence.remote_plan import persist_plan_from_remote
 from planpilot.cli.persistence.sync_map import persist_sync_map
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput
-from planpilot.contracts.plan import Plan, PlanItemType
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, ProviderError, SyncError
+from planpilot.core.contracts.item import CreateItemInput
+from planpilot.core.contracts.plan import Plan, PlanItemType
+from planpilot.core.engine.progress import SyncProgress
 from planpilot.core.map_sync import RemotePlanParser
-from planpilot.engine.progress import SyncProgress
 from planpilot.sdk import PlanPilot
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer

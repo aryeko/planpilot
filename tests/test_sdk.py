@@ -5,11 +5,11 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError
-from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.engine.progress import SyncProgress
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError
+from planpilot.core.contracts.item import CreateItemInput, Item, ItemSearchFilters
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.engine.progress import SyncProgress
 from planpilot.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider

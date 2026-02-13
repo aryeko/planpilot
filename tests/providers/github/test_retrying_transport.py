@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, patch
 import httpx
 import pytest
 
-from planpilot.providers.github._retrying_transport import RetryingTransport
+from planpilot.core.providers.github._retrying_transport import RetryingTransport
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -64,7 +64,9 @@ class TestSuccessfulRequests:
 
 class TestTransportErrors:
     @pytest.mark.asyncio
-    @patch("planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock)
+    @patch(
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock
+    )
     async def test_retries_on_transport_error_then_succeeds(self, mock_backoff: AsyncMock) -> None:
         inner = AsyncMock(spec=httpx.AsyncBaseTransport)
         inner.handle_async_request.side_effect = [
@@ -80,7 +82,9 @@ class TestTransportErrors:
         mock_backoff.assert_awaited_once_with(0)
 
     @pytest.mark.asyncio
-    @patch("planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock)
+    @patch(
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock
+    )
     async def test_raises_after_max_retries_exhausted(self, mock_backoff: AsyncMock) -> None:
         inner = AsyncMock(spec=httpx.AsyncBaseTransport)
         inner.handle_async_request.side_effect = httpx.TransportError("fail")
@@ -101,11 +105,11 @@ class TestTransportErrors:
 class TestRateLimit:
     @pytest.mark.asyncio
     @patch(
-        "planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff",
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff",
         new_callable=AsyncMock,
     )
     @patch(
-        "planpilot.providers.github._retrying_transport.RetryingTransport._apply_rate_limit_pause",
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._apply_rate_limit_pause",
         new_callable=AsyncMock,
     )
     async def test_429_retries_with_rate_limit_pause(self, mock_pause: AsyncMock, mock_backoff: AsyncMock) -> None:
@@ -124,11 +128,11 @@ class TestRateLimit:
 
     @pytest.mark.asyncio
     @patch(
-        "planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff",
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff",
         new_callable=AsyncMock,
     )
     @patch(
-        "planpilot.providers.github._retrying_transport.RetryingTransport._apply_rate_limit_pause",
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._apply_rate_limit_pause",
         new_callable=AsyncMock,
     )
     async def test_429_returns_response_when_retries_exhausted(
@@ -151,7 +155,9 @@ class TestRateLimit:
 
 class TestServerErrors:
     @pytest.mark.asyncio
-    @patch("planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock)
+    @patch(
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock
+    )
     async def test_502_retries_then_succeeds(self, mock_backoff: AsyncMock) -> None:
         inner = AsyncMock(spec=httpx.AsyncBaseTransport)
         inner.handle_async_request.side_effect = [
@@ -166,7 +172,9 @@ class TestServerErrors:
         assert inner.handle_async_request.call_count == 2
 
     @pytest.mark.asyncio
-    @patch("planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock)
+    @patch(
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock
+    )
     async def test_server_error_returns_last_response_when_retries_exhausted(self, mock_backoff: AsyncMock) -> None:
         inner = AsyncMock(spec=httpx.AsyncBaseTransport)
         inner.handle_async_request.return_value = _make_response(503)
@@ -179,7 +187,9 @@ class TestServerErrors:
 
     @pytest.mark.asyncio
     @patch("asyncio.sleep", new_callable=AsyncMock)
-    @patch("planpilot.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock)
+    @patch(
+        "planpilot.core.providers.github._retrying_transport.RetryingTransport._sleep_backoff", new_callable=AsyncMock
+    )
     async def test_server_error_respects_retry_after_header(
         self, mock_backoff: AsyncMock, mock_sleep: AsyncMock
     ) -> None:

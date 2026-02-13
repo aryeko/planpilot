@@ -1,7 +1,7 @@
 import httpx
 import pytest
 
-from planpilot.providers.github.github_gql import GitHubGraphQLClient
+from planpilot.core.providers.github.github_gql import GitHubGraphQLClient
 
 
 @pytest.mark.asyncio

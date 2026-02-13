@@ -5,13 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput, Item
-from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType
-from planpilot.contracts.sync import SyncEntry, SyncMap
-from planpilot.engine.engine import SyncEngine
-from planpilot.engine.utils import compute_parent_blocked_by, parse_metadata_block
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
+from planpilot.core.contracts.item import CreateItemInput, Item
+from planpilot.core.contracts.plan import Estimate, Plan, PlanItem, PlanItemType
+from planpilot.core.contracts.sync import SyncEntry, SyncMap
+from planpilot.core.engine.engine import SyncEngine
+from planpilot.core.engine.utils import compute_parent_blocked_by, parse_metadata_block
 from tests.fakes.provider import FakeItem, FakeProvider
 from tests.fakes.renderer import FakeRenderer
 

@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
 
 
 def test_plan_paths_requires_one_input_path() -> None:

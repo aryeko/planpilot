@@ -1,6 +1,6 @@
-from planpilot.contracts.plan import Estimate, PlanItem, PlanItemType, Scope, SpecRef, Verification
-from planpilot.contracts.renderer import RenderContext
-from planpilot.renderers.markdown import MarkdownRenderer
+from planpilot.core.contracts.plan import Estimate, PlanItem, PlanItemType, Scope, SpecRef, Verification
+from planpilot.core.contracts.renderer import RenderContext
+from planpilot.core.renderers.markdown import MarkdownRenderer
 
 SPEC_REFERENCE = (
     '## Spec Reference\n\n* [https://example.com/spec](https://example.com/spec) (2.1) - "Important detail"'

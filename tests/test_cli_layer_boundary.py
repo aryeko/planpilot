@@ -29,7 +29,7 @@ def test_cli_imports_only_public_planpilot_api() -> None:
                 if (
                     cli_path.name == "rich.py"
                     and "planpilot/cli/progress" in str(cli_path)
-                    and node.module == "planpilot.engine.progress"
+                    and node.module == "planpilot.core.engine.progress"
                 ):
                     continue
                 if node.module.startswith(forbidden_prefixes):

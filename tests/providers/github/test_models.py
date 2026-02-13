@@ -1,5 +1,5 @@
-from planpilot.providers.base import ProviderContext
-from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
+from planpilot.core.providers.base import ProviderContext
+from planpilot.core.providers.github.models import GitHubProviderContext, ResolvedField
 
 
 def test_resolved_field_and_context_defaults() -> None:

@@ -1,12 +1,12 @@
 import pytest
 
-from planpilot.contracts.config import FieldConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError
-from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
-from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
-from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
-from planpilot.providers.github.provider import GitHubProvider
+from planpilot.core.contracts.config import FieldConfig
+from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError
+from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
+from planpilot.core.providers.github.models import GitHubProviderContext, ResolvedField
+from planpilot.core.providers.github.provider import GitHubProvider
 
 
 def _provider_module() -> object:

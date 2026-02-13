@@ -7,18 +7,14 @@ from pathlib import Path
 import pytest
 
 
-def test_legacy_metadata_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.metadata")
-    new_module = import_module("planpilot.core.metadata")
-
-    assert legacy_module.parse_metadata_block is new_module.parse_metadata_block
+def test_legacy_metadata_module_is_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.metadata")
 
 
-def test_legacy_progress_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.progress")
-    new_module = import_module("planpilot.cli.progress.rich")
-
-    assert legacy_module.RichSyncProgress is new_module.RichSyncProgress
+def test_legacy_progress_module_is_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.progress")
 
 
 def test_legacy_config_scaffold_module_is_compatibility_shim() -> None:
@@ -49,14 +45,6 @@ def test_legacy_init_validation_module_is_compatibility_shim() -> None:
     assert new_module.validate_board_url(invalid) is False
 
 
-def test_legacy_init_auth_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.init.auth")
-    new_module = import_module("planpilot.core.auth.preflight")
-
-    assert legacy_module.resolve_init_token is new_module.resolve_init_token
-    assert legacy_module.validate_github_auth_for_init is new_module.validate_github_auth_for_init
-
-
 def test_legacy_map_sync_modules_are_removed() -> None:
     with pytest.raises(ModuleNotFoundError):
         import_module("planpilot.map_sync.parser")
@@ -74,6 +62,49 @@ def test_legacy_persistence_modules_are_removed() -> None:
 
     with pytest.raises(ModuleNotFoundError):
         import_module("planpilot.persistence.remote_plan")
+
+
+@pytest.mark.parametrize(
+    "module_name",
+    [
+        "planpilot.metadata",
+        "planpilot.progress",
+        "planpilot.init.auth",
+        "planpilot.clean.deletion_planner",
+        "planpilot.engine.engine",
+        "planpilot.engine.progress",
+        "planpilot.engine.utils",
+        "planpilot.plan.hasher",
+        "planpilot.plan.loader",
+        "planpilot.plan.validator",
+        "planpilot.renderers.factory",
+        "planpilot.renderers.markdown",
+        "planpilot.providers.base",
+        "planpilot.providers.dry_run",
+        "planpilot.providers.factory",
+        "planpilot.providers.github.item",
+        "planpilot.providers.github.mapper",
+        "planpilot.providers.github.models",
+        "planpilot.providers.github.provider",
+        "planpilot.providers.github._retrying_transport",
+        "planpilot.providers.github.ops.convert",
+        "planpilot.providers.github.ops.crud",
+        "planpilot.providers.github.ops.labels",
+        "planpilot.providers.github.ops.project",
+        "planpilot.providers.github.ops.relations",
+        "planpilot.contracts.config",
+        "planpilot.contracts.exceptions",
+        "planpilot.contracts.init",
+        "planpilot.contracts.item",
+        "planpilot.contracts.plan",
+        "planpilot.contracts.provider",
+        "planpilot.contracts.renderer",
+        "planpilot.contracts.sync",
+    ],
+)
+def test_legacy_shim_modules_are_removed(module_name: str) -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module(module_name)
 
 
 def test_legacy_targets_module_is_compatibility_shim() -> None:
@@ -130,9 +161,9 @@ def test_cli_commands_use_cli_owned_progress_and_persistence_helpers() -> None:
 
 
 def test_core_github_gql_wrappers_are_importable() -> None:
-    legacy_client_module = import_module("planpilot.providers.github.github_gql.client")
+    legacy_client_module = import_module("planpilot.core.providers.github.github_gql.client")
     core_client_module = import_module("planpilot.core.providers.github.github_gql.client")
-    legacy_exceptions_module = import_module("planpilot.providers.github.github_gql.exceptions")
+    legacy_exceptions_module = import_module("planpilot.core.providers.github.github_gql.exceptions")
     core_exceptions_module = import_module("planpilot.core.providers.github.github_gql.exceptions")
 
     assert core_client_module.GitHubGraphQLClient is legacy_client_module.GitHubGraphQLClient

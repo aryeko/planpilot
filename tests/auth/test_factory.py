@@ -6,8 +6,8 @@ from planpilot.auth.factory import create_token_resolver
 from planpilot.auth.resolvers.env import EnvTokenResolver
 from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
 from planpilot.auth.resolvers.static import StaticTokenResolver
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError
 
 
 def _make_config(*, auth: str, target: str = "owner/repo", token: str | None = None) -> PlanPilotConfig:

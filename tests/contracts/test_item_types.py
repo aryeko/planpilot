@@ -1,5 +1,5 @@
-from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
+from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
 
 
 def test_create_item_input_defaults() -> None:

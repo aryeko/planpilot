@@ -1,5 +1,5 @@
-from planpilot.contracts.plan import PlanItem, PlanItemType
-from planpilot.contracts.renderer import RenderContext
+from planpilot.core.contracts.plan import PlanItem, PlanItemType
+from planpilot.core.contracts.renderer import RenderContext
 from tests.fakes.renderer import FakeRenderer
 
 

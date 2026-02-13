@@ -1,6 +1,6 @@
 """Init workflow domain exports."""
 
-from planpilot.init.auth import (
+from planpilot.core.auth.preflight import (
     InitAuthService,
     InitTokenResolverFactory,
     create_init_token_resolver,

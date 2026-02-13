@@ -16,8 +16,8 @@ from planpilot.config.scaffold import (
     scaffold_config,
     write_config,
 )
-from planpilot.contracts.config import PlanPaths
-from planpilot.contracts.exceptions import ConfigError
+from planpilot.core.contracts.config import PlanPaths
+from planpilot.core.contracts.exceptions import ConfigError
 
 # ---------------------------------------------------------------------------
 # detect_target

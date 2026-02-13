@@ -1,7 +1,7 @@
 import pytest
 
-from planpilot.contracts.exceptions import ProjectURLError
-from planpilot.providers.github.mapper import (
+from planpilot.core.contracts.exceptions import ProjectURLError
+from planpilot.core.providers.github.mapper import (
     build_blocked_by_map,
     build_parent_map,
     parse_project_url,

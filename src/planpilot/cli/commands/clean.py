@@ -33,7 +33,7 @@ async def run_clean(args: argparse.Namespace) -> CleanResult:
     all_plans: bool = getattr(args, "all", False)
 
     if not args.verbose:
-        from planpilot.progress import RichSyncProgress
+        from planpilot.cli.progress.rich import RichSyncProgress
 
         with RichSyncProgress() as progress:
             pp = await cli.PlanPilot.from_config(config, progress=progress)

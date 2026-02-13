@@ -9,7 +9,7 @@ from rich.console import Console
 from rich.progress import BarColumn, MofNCompleteColumn, Progress, SpinnerColumn, TextColumn, TimeElapsedColumn
 from rich.progress import TaskID as RichTaskID
 
-from planpilot.engine.progress import SyncProgress
+from planpilot.core.engine.progress import SyncProgress
 
 
 class RichSyncProgress(SyncProgress):

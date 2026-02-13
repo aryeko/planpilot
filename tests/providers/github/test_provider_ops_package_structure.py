@@ -4,11 +4,11 @@ from importlib import import_module
 
 
 def test_provider_ops_modules_export_expected_functions() -> None:
-    crud_ops = import_module("planpilot.providers.github.ops.crud")
-    relations_ops = import_module("planpilot.providers.github.ops.relations")
-    labels_ops = import_module("planpilot.providers.github.ops.labels")
-    project_ops = import_module("planpilot.providers.github.ops.project")
-    convert_ops = import_module("planpilot.providers.github.ops.convert")
+    crud_ops = import_module("planpilot.core.providers.github.ops.crud")
+    relations_ops = import_module("planpilot.core.providers.github.ops.relations")
+    labels_ops = import_module("planpilot.core.providers.github.ops.labels")
+    project_ops = import_module("planpilot.core.providers.github.ops.project")
+    convert_ops = import_module("planpilot.core.providers.github.ops.convert")
 
     assert callable(crud_ops.search_issue_nodes)
     assert callable(crud_ops.create_issue)

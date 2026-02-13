@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import pytest
 
-from planpilot.contracts.exceptions import PlanValidationError
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.plan.validator import PlanValidator
+from planpilot.core.contracts.exceptions import PlanValidationError
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.plan.validator import PlanValidator
 
 
 def _item(

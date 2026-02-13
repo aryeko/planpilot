@@ -1,7 +1,7 @@
 """Public contracts for PlanPilot v2."""
 
-from planpilot.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import (
+from planpilot.core.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import (
     AuthenticationError,
     ConfigError,
     CreateItemPartialFailureError,
@@ -13,12 +13,12 @@ from planpilot.contracts.exceptions import (
     ProviderError,
     SyncError,
 )
-from planpilot.contracts.init import InitProgress
-from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType, Scope, SpecRef, Verification
-from planpilot.contracts.provider import Provider
-from planpilot.contracts.renderer import BodyRenderer, RenderContext
-from planpilot.contracts.sync import SyncEntry, SyncMap, SyncResult, to_sync_entry
+from planpilot.core.contracts.init import InitProgress
+from planpilot.core.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import Estimate, Plan, PlanItem, PlanItemType, Scope, SpecRef, Verification
+from planpilot.core.contracts.provider import Provider
+from planpilot.core.contracts.renderer import BodyRenderer, RenderContext
+from planpilot.core.contracts.sync import SyncEntry, SyncMap, SyncResult, to_sync_entry
 
 __all__ = [
     "AuthenticationError",

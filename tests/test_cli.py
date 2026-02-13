@@ -26,7 +26,7 @@ from planpilot import (
     SyncResult,
 )
 from planpilot.cli import _format_clean_summary, _format_summary, _run_clean, _run_init, _run_sync, build_parser, main
-from planpilot.contracts.config import PlanPaths
+from planpilot.core.contracts.config import PlanPaths
 
 
 @pytest.fixture(autouse=True)
@@ -800,7 +800,7 @@ def test_init_interactive_github_preflight_uses_progress_when_stderr_tty(
     monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "resolved")
     monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", _fake_validate_github_auth_for_init)
     monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
-    monkeypatch.setattr("planpilot.progress.RichSyncProgress", _FakeRichProgress)
+    monkeypatch.setattr("planpilot.cli.progress.rich.RichSyncProgress", _FakeRichProgress)
     monkeypatch.setitem(sys.modules, "questionary", fake_q)
 
     args = argparse.Namespace(command="init", output=str(output), defaults=False)

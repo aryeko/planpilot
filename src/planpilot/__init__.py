@@ -11,8 +11,8 @@ from planpilot.config import (
     scaffold_config,
     write_config,
 )
-from planpilot.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import (
+from planpilot.core.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import (
     AuthenticationError,
     ConfigError,
     PlanLoadError,
@@ -21,11 +21,11 @@ from planpilot.contracts.exceptions import (
     ProviderError,
     SyncError,
 )
-from planpilot.contracts.init import InitProgress
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.contracts.provider import Provider
-from planpilot.contracts.renderer import BodyRenderer, RenderContext
-from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
+from planpilot.core.contracts.init import InitProgress
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.contracts.provider import Provider
+from planpilot.core.contracts.renderer import BodyRenderer, RenderContext
+from planpilot.core.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
 from planpilot.init import (
     create_init_token_resolver,
     resolve_init_token,

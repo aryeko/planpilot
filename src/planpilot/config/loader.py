@@ -8,8 +8,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, ProjectURLError
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, ProjectURLError
 from planpilot.targets.github_project import parse_project_url
 
 

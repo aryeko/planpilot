@@ -8,8 +8,8 @@ from planpilot.auth.base import TokenResolver
 from planpilot.auth.resolvers.env import EnvTokenResolver
 from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
 from planpilot.auth.resolvers.static import StaticTokenResolver
-from planpilot.contracts.config import PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError
+from planpilot.core.contracts.config import PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError
 
 RESOLVERS: dict[str, type[TokenResolver]] = {
     "gh-cli": GhCliTokenResolver,
