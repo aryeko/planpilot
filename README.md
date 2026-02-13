@@ -255,6 +255,7 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 ```bash
 poe lint           # ruff check
 poe format         # ruff format
+poe docs-links     # validate local markdown links
 poe test           # pytest -v --ignore=tests/e2e
 poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
