@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 from planpilot.core.contracts.exceptions import ProviderError
 from planpilot.core.contracts.plan import PlanItemType
@@ -10,11 +10,8 @@ from planpilot.core.metadata import parse_metadata_block
 from planpilot.core.providers.github.github_gql.fragments import IssueCore
 from planpilot.core.providers.github.item import GitHubItem
 
-if TYPE_CHECKING:
-    from planpilot.core.providers.github.provider import GitHubProvider
 
-
-def item_from_issue_core(provider: GitHubProvider, issue: IssueCore) -> GitHubItem:
+def item_from_issue_core(provider: Any, issue: IssueCore) -> GitHubItem:
     labels_nodes = issue.labels.nodes if issue.labels is not None and issue.labels.nodes is not None else []
     labels = [node.name for node in labels_nodes if node and node.name]
     metadata = parse_metadata_block(issue.body or "")

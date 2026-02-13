@@ -3,20 +3,17 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any, cast
 
 from planpilot.core.contracts.exceptions import ProviderError
 from planpilot.core.contracts.item import CreateItemInput, UpdateItemInput
 from planpilot.core.providers.github.github_gql.fragments import IssueCore
 from planpilot.core.providers.github.github_gql.search_issues import SearchIssuesSearchNodesIssue
 
-if TYPE_CHECKING:
-    from planpilot.core.providers.github.provider import GitHubProvider
-
 _LOG = logging.getLogger(__name__)
 
 
-async def search_issue_nodes(provider: GitHubProvider, query: str) -> list[IssueCore]:  # pragma: no cover
+async def search_issue_nodes(provider: Any, query: str) -> list[IssueCore]:  # pragma: no cover
     client = provider._require_client()
     cursor: str | None = None
     nodes: list[IssueCore] = []
@@ -37,7 +34,7 @@ async def search_issue_nodes(provider: GitHubProvider, query: str) -> list[Issue
     return nodes
 
 
-async def create_issue(provider: GitHubProvider, input: CreateItemInput) -> IssueCore:  # pragma: no cover
+async def create_issue(provider: Any, input: CreateItemInput) -> IssueCore:  # pragma: no cover
     client = provider._require_client()
 
     all_labels = list(dict.fromkeys([provider._label, *input.labels]))
@@ -69,10 +66,10 @@ async def create_issue(provider: GitHubProvider, input: CreateItemInput) -> Issu
 
     if data.create_issue is None or data.create_issue.issue is None:
         raise ProviderError("createIssue returned no issue")
-    return data.create_issue.issue
+    return cast(IssueCore, data.create_issue.issue)
 
 
-async def update_issue(provider: GitHubProvider, item_id: str, input: UpdateItemInput) -> IssueCore:  # pragma: no cover
+async def update_issue(provider: Any, item_id: str, input: UpdateItemInput) -> IssueCore:  # pragma: no cover
     client = provider._require_client()
 
     issue_type_id: str | None = None
@@ -93,20 +90,20 @@ async def update_issue(provider: GitHubProvider, item_id: str, input: UpdateItem
 
     if data.update_issue is None or data.update_issue.issue is None:
         raise ProviderError("updateIssue returned no issue")
-    return data.update_issue.issue
+    return cast(IssueCore, data.update_issue.issue)
 
 
-async def get_issue(provider: GitHubProvider, item_id: str) -> IssueCore:  # pragma: no cover
+async def get_issue(provider: Any, item_id: str) -> IssueCore:  # pragma: no cover
     client = provider._require_client()
     from planpilot.core.providers.github.github_gql.get_issue import GetIssueNodeIssue
 
     data = await client.get_issue(id=item_id)
     if data.node is None or not isinstance(data.node, GetIssueNodeIssue):
         raise ProviderError(f"Issue not found: {item_id}")
-    return data.node
+    return cast(IssueCore, data.node)
 
 
-async def get_item_labels(provider: GitHubProvider, item_id: str) -> list[str]:  # pragma: no cover
+async def get_item_labels(provider: Any, item_id: str) -> list[str]:  # pragma: no cover
     issue = await provider._get_issue(item_id)
     if issue.labels and issue.labels.nodes:
         return [n.name for n in issue.labels.nodes if n]

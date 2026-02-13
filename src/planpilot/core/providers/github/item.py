@@ -2,21 +2,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import Any
 
 from planpilot.core.contracts.exceptions import ProviderCapabilityError
 from planpilot.core.contracts.item import Item
 from planpilot.core.contracts.plan import PlanItemType
-
-if TYPE_CHECKING:
-    from planpilot.core.providers.github.provider import GitHubProvider
 
 
 class GitHubItem(Item):
     def __init__(
         self,
         *,
-        provider: GitHubProvider,
+        provider: Any,
         issue_id: str,
         number: int,
         title: str,

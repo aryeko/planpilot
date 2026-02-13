@@ -3,27 +3,24 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import Any, cast
 
 from planpilot.core.contracts.exceptions import ProviderError
 from planpilot.core.contracts.item import CreateItemInput
 from planpilot.core.providers.github.mapper import parse_project_url, resolve_option_id
 from planpilot.core.providers.github.models import ResolvedField
 
-if TYPE_CHECKING:
-    from planpilot.core.providers.github.provider import GitHubProvider
-
 _LOG = logging.getLogger(__name__)
 
 
-def resolve_create_type_policy(provider: GitHubProvider, owner_type: str) -> tuple[str, dict[str, str]]:
+def resolve_create_type_policy(provider: Any, owner_type: str) -> tuple[str, dict[str, str]]:
     strategy = provider._field_config.create_type_strategy
     if owner_type == "user" and strategy == "issue-type":
         strategy = "label"
     return strategy, dict(provider._field_config.create_type_map)
 
 
-async def resolve_project_context(provider: GitHubProvider) -> tuple[str, str, int, str | None]:  # pragma: no cover
+async def resolve_project_context(provider: Any) -> tuple[str, str, int, str | None]:  # pragma: no cover
     client = provider._require_client()
     owner_type, owner, number = parse_project_url(provider._board_url)
 
@@ -43,7 +40,7 @@ async def resolve_project_context(provider: GitHubProvider) -> tuple[str, str, i
 
 
 async def resolve_project_fields(  # pragma: no cover
-    provider: GitHubProvider,
+    provider: Any,
     project_id: str,
 ) -> tuple[str | None, list[dict[str, str]], ResolvedField | None, ResolvedField | None, ResolvedField | None]:
     from planpilot.core.providers.github.github_gql.fetch_project_fields import (
@@ -88,26 +85,26 @@ async def resolve_project_fields(  # pragma: no cover
     return size_field_id, size_options, status_field, priority_field, iteration_field
 
 
-async def ensure_project_item(provider: GitHubProvider, issue_id: str) -> str:  # pragma: no cover
+async def ensure_project_item(provider: Any, issue_id: str) -> str:  # pragma: no cover
     if provider.context.project_id is None:
         return ""
 
     async with provider._project_item_lock:
         existing = provider.context.project_item_ids.get(issue_id)
         if existing:
-            return existing
+            return cast(str, existing)
 
         client = provider._require_client()
         data = await client.add_project_item(project_id=provider.context.project_id, content_id=issue_id)
         if data.add_project_v_2_item_by_id is None or data.add_project_v_2_item_by_id.item is None:
             raise ProviderError("addProjectV2ItemById returned no item")
-        item_id = data.add_project_v_2_item_by_id.item.id
+        item_id = cast(str, data.add_project_v_2_item_by_id.item.id)
         provider.context.project_item_ids[issue_id] = item_id
         return item_id
 
 
 async def ensure_project_fields(
-    provider: GitHubProvider,
+    provider: Any,
     project_item_id: str,
     input: CreateItemInput,
 ) -> None:  # pragma: no cover
