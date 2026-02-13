@@ -155,6 +155,30 @@ async def test_aenter_falls_back_to_label_when_no_issue_types(monkeypatch: pytes
 
 
 @pytest.mark.asyncio
+async def test_aexit_closes_client_when_initialized() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+    )
+
+    class _Client:
+        def __init__(self) -> None:
+            self.calls: list[tuple[object | None, object | None, object | None]] = []
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb) -> None:
+            self.calls.append((exc_type, exc_val, exc_tb))
+
+    client = _Client()
+    provider._client = client  # type: ignore[assignment]
+
+    await provider.__aexit__(None, None, None)
+
+    assert client.calls == [(None, None, None)]
+    assert provider._client is None
+
+
+@pytest.mark.asyncio
 async def test_create_item_happy_path_issue_type_strategy(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -785,6 +809,28 @@ async def test_prime_relations_cache_with_empty_ids_sets_empty_cache() -> None:
 
 
 @pytest.mark.asyncio
+async def test_prime_relations_cache_skips_nodes_without_string_ids() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        async def fetch_relations(self, *, ids: list[str]):
+            _ = ids
+            return SimpleNamespace(nodes=[SimpleNamespace(id=123, parent=None, blocked_by=SimpleNamespace(nodes=[]))])
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    await provider.prime_relations_cache(["I1"])
+
+    assert provider._relations_cache == {"I1": (None, set())}
+
+
+@pytest.mark.asyncio
 async def test_get_relations_returns_empty_when_fetch_returns_no_nodes() -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -828,6 +874,38 @@ async def test_get_relations_skips_none_nodes_and_returns_empty() -> None:
 
     assert parent is None
     assert blockers == set()
+
+
+@pytest.mark.asyncio
+async def test_get_relations_returns_first_non_none_node() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        async def fetch_relations(self, *, ids: list[str]):
+            _ = ids
+            return SimpleNamespace(
+                nodes=[
+                    None,
+                    SimpleNamespace(
+                        id="I1",
+                        parent=SimpleNamespace(id="P1"),
+                        blocked_by=SimpleNamespace(nodes=[SimpleNamespace(id="B1")]),
+                    ),
+                ]
+            )
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    parent, blockers = await provider.get_relations(issue_id="I1")
+
+    assert parent == "P1"
+    assert blockers == {"B1"}
 
 
 @pytest.mark.asyncio
@@ -1072,6 +1150,53 @@ def test_extract_relations_from_node_ignores_non_string_ids() -> None:
 
     assert parent_id is None
     assert blocker_ids == {"B1"}
+
+
+@pytest.mark.asyncio
+async def test_reconcile_managed_labels_noop_when_already_desired(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        create_type_strategy="label",
+        create_type_map={"TASK": "type:task"},
+    )
+
+    async def fake_get_label_name_to_id(item_id: str) -> dict[str, str]:
+        _ = item_id
+        return {
+            "planpilot": "id-planpilot",
+            "type:task": "id-task",
+            "extra": "id-extra",
+        }
+
+    removed: list[list[str]] = []
+    added: list[list[str]] = []
+
+    async def fake_remove_labels_by_ids(item_id: str, label_ids: list[str]) -> None:
+        _ = item_id
+        removed.append(label_ids)
+
+    async def fake_ensure_discovery_labels(item_id: str, labels: list[str]) -> None:
+        _ = item_id
+        added.append(labels)
+
+    monkeypatch.setattr(provider, "_get_item_label_name_to_id", fake_get_label_name_to_id)
+    monkeypatch.setattr(provider, "_remove_labels_by_ids", fake_remove_labels_by_ids)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_ensure_discovery_labels)
+
+    await provider._reconcile_managed_labels(item_id="I1", item_type=PlanItemType.TASK, labels=["planpilot"])
+
+    assert removed == []
+    assert added == []
 
 
 def test_is_duplicate_relation_error_returns_false_for_other_messages() -> None:
