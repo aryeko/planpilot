@@ -17,20 +17,15 @@ def test_legacy_progress_module_is_removed() -> None:
         import_module("planpilot.progress")
 
 
-def test_legacy_config_scaffold_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.config.scaffold")
-    new_module = import_module("planpilot.cli.scaffold.config_builder")
+def test_legacy_config_modules_are_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.config")
 
-    assert callable(legacy_module.detect_target)
-    assert callable(new_module.detect_target)
-    assert callable(legacy_module.detect_plan_paths)
-    assert callable(new_module.detect_plan_paths)
-    assert callable(legacy_module.scaffold_config)
-    assert callable(new_module.scaffold_config)
-    assert callable(legacy_module.write_config)
-    assert callable(new_module.write_config)
-    assert callable(legacy_module.create_plan_stubs)
-    assert callable(new_module.create_plan_stubs)
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.config.loader")
+
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.config.scaffold")
 
 
 def test_legacy_init_validation_module_is_removed() -> None:

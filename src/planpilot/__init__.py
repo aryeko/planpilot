@@ -2,19 +2,19 @@
 
 __version__ = "2.3.0"
 
-from planpilot.config import (
+from planpilot.core.auth import (
+    create_init_token_resolver,
+    create_token_resolver,
+    resolve_init_token,
+    validate_github_auth_for_init,
+)
+from planpilot.core.config import (
     create_plan_stubs,
     detect_plan_paths,
     detect_target,
     load_config,
     scaffold_config,
     write_config,
-)
-from planpilot.core.auth import (
-    create_init_token_resolver,
-    create_token_resolver,
-    resolve_init_token,
-    validate_github_auth_for_init,
 )
 from planpilot.core.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
 from planpilot.core.contracts.exceptions import (

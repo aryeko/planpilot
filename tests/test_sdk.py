@@ -858,7 +858,7 @@ def test_load_config_does_not_wrap_unexpected_url_parser_errors(
     def _boom(_: str) -> tuple[str, str, int]:
         raise RuntimeError("unexpected parser failure")
 
-    monkeypatch.setattr("planpilot.config.loader.parse_project_url", _boom)
+    monkeypatch.setattr("planpilot.core.config.loader.parse_project_url", _boom)
 
     with pytest.raises(RuntimeError, match="unexpected parser failure"):
         load_config(config_path)

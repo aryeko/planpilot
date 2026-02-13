@@ -9,7 +9,7 @@ from unittest.mock import patch
 
 import pytest
 
-from planpilot.config.scaffold import (
+from planpilot.cli.scaffold.config_builder import (
     create_plan_stubs,
     detect_plan_paths,
     detect_target,
@@ -31,42 +31,56 @@ def _mock_run(stdout: str, returncode: int = 0) -> subprocess.CompletedProcess[s
 class TestDetectTarget:
     def test_ssh_remote(self) -> None:
         with patch(
-            "planpilot.config.scaffold.subprocess.run",
+            "planpilot.core.config.scaffold.subprocess.run",
             return_value=_mock_run("git@github.com:owner/repo.git\n"),
         ):
             assert detect_target() == "owner/repo"
 
     def test_https_remote(self) -> None:
         with patch(
-            "planpilot.config.scaffold.subprocess.run", return_value=_mock_run("https://github.com/owner/repo.git\n")
+            "planpilot.core.config.scaffold.subprocess.run",
+            return_value=_mock_run("https://github.com/owner/repo.git\n"),
         ):
             assert detect_target() == "owner/repo"
 
     def test_https_remote_without_dot_git(self) -> None:
         with patch(
-            "planpilot.config.scaffold.subprocess.run", return_value=_mock_run("https://github.com/owner/repo\n")
+            "planpilot.core.config.scaffold.subprocess.run",
+            return_value=_mock_run("https://github.com/owner/repo\n"),
         ):
             assert detect_target() == "owner/repo"
 
     def test_ssh_remote_without_dot_git(self) -> None:
-        with patch("planpilot.config.scaffold.subprocess.run", return_value=_mock_run("git@github.com:owner/repo\n")):
+        with patch(
+            "planpilot.core.config.scaffold.subprocess.run",
+            return_value=_mock_run("git@github.com:owner/repo\n"),
+        ):
             assert detect_target() == "owner/repo"
 
     def test_non_zero_return_code(self) -> None:
-        with patch("planpilot.config.scaffold.subprocess.run", return_value=_mock_run("", returncode=128)):
+        with patch(
+            "planpilot.core.config.scaffold.subprocess.run",
+            return_value=_mock_run("", returncode=128),
+        ):
             assert detect_target() is None
 
     def test_unparseable_remote(self) -> None:
-        with patch("planpilot.config.scaffold.subprocess.run", return_value=_mock_run("file:///local/path\n")):
+        with patch(
+            "planpilot.core.config.scaffold.subprocess.run",
+            return_value=_mock_run("file:///local/path\n"),
+        ):
             assert detect_target() is None
 
     def test_subprocess_exception(self) -> None:
-        with patch("planpilot.config.scaffold.subprocess.run", side_effect=FileNotFoundError("git not found")):
+        with patch(
+            "planpilot.core.config.scaffold.subprocess.run",
+            side_effect=FileNotFoundError("git not found"),
+        ):
             assert detect_target() is None
 
     def test_timeout_exception(self) -> None:
         with patch(
-            "planpilot.config.scaffold.subprocess.run",
+            "planpilot.core.config.scaffold.subprocess.run",
             side_effect=subprocess.TimeoutExpired(cmd="git", timeout=5),
         ):
             assert detect_target() is None
