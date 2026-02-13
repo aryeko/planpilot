@@ -55,6 +55,13 @@ def test_sdk_does_not_import_cli_layer() -> None:
     assert not violations, f"sdk imports forbidden cli layer modules: {violations}"
 
 
+def test_sdk_does_not_import_legacy_persistence_package() -> None:
+    root = Path(__file__).resolve().parents[1]
+    files = [root / "src" / "planpilot" / "sdk.py"]
+    violations = _find_forbidden_imports(files, ("planpilot.persistence",))
+    assert not violations, f"sdk imports legacy persistence package: {violations}"
+
+
 def test_cli_sync_commands_import_persistence_helpers() -> None:
     root = Path(__file__).resolve().parents[1]
     required_modules = {

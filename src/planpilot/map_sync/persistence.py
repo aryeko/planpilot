@@ -1,5 +1,5 @@
-"""Compatibility shim for map-sync remote-plan persistence."""
+"""Compatibility shim for map-sync local state loading."""
 
-from planpilot.core.map_sync.persistence import RemotePlanPersistence
+from planpilot.core.map_sync.persistence import load_sync_map
 
-__all__ = ["RemotePlanPersistence"]
+__all__ = ["load_sync_map"]

@@ -1,8 +1,8 @@
 # CLI Module Spec
 
-The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles argument parsing, output formatting, and the async runtime boundary. It also owns when local artifacts are persisted via the neutral `planpilot.persistence` helpers.
+The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles argument parsing, output formatting, and the async runtime boundary. It also owns when local artifacts are persisted via `planpilot.cli.persistence` helpers.
 
-**CLI (L4)** — depends on SDK public API (`from planpilot import ...`) plus approved persistence helpers (`planpilot.persistence.*`).
+**CLI (L4)** — depends on SDK public API (`from planpilot import ...`) plus approved persistence helpers (`planpilot.cli.persistence.*`).
 
 ## Command Structure
 

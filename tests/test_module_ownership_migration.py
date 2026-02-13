@@ -61,7 +61,7 @@ def test_legacy_map_sync_package_is_compatibility_shim() -> None:
 
     assert legacy_module.MapSyncReconciler is new_module.MapSyncReconciler
     assert legacy_module.RemotePlanParser is new_module.RemotePlanParser
-    assert legacy_module.RemotePlanPersistence is new_module.RemotePlanPersistence
+    assert legacy_module.load_sync_map is new_module.load_sync_map
 
 
 def test_legacy_persistence_package_is_compatibility_shim() -> None:

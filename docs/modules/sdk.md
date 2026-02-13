@@ -69,11 +69,7 @@ flowchart TB
 8. **Return result**
 
 `sync()` and `map_sync()` are side-effect free for local file persistence. They return domain results only.
-CLI (or other callers) can persist artifacts explicitly via SDK helper methods:
-
-- `persist_sync_map(sync_map, dry_run=...)`
-- `persist_plan_from_remote(items=...)`
-- `load_sync_map(plan_id=...)`
+CLI (or other callers) persist artifacts explicitly through persistence modules (for CLI, `planpilot.cli.persistence.*`).
 
 **Provider lifecycle:** `sync()` manages provider construction and lifecycle internally. Callers never manage `async with`.
 
@@ -186,7 +182,7 @@ write_config(config, Path("planpilot.json"))
 | `sync()` manages provider lifecycle | Simple API — no `async with` boilerplate |
 | `plan` parameter optional on `sync()` | Config-driven and programmatic usage both supported |
 | SDK sync/map_sync workflows avoid local writes | Programmatic workflows return result objects only |
-| Local artifact writes are explicit helper calls | CLI owns user-facing persistence decisions |
+| Local artifact writes are explicit caller actions | CLI owns user-facing persistence decisions |
 | `load_config()` is standalone, not a method | Used before `PlanPilot` construction |
 
 ## File Structure

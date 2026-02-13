@@ -29,13 +29,12 @@ from planpilot.core.contracts import (
     SyncResult,
 )
 from planpilot.core.engine import SyncEngine, SyncProgress
-from planpilot.core.map_sync import MapSyncReconciler, RemotePlanParser
+from planpilot.core.map_sync import MapSyncReconciler, RemotePlanParser, load_sync_map
 from planpilot.core.metadata import parse_metadata_block
 from planpilot.core.plan import PlanHasher as PlanHasher
 from planpilot.core.plan import PlanLoader, PlanValidator
 from planpilot.core.providers import DryRunProvider, create_provider
 from planpilot.core.renderers import create_renderer
-from planpilot.persistence.sync_map import load_sync_map
 
 
 def load_config(path: str | Path) -> PlanPilotConfig:
