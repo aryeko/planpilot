@@ -13,6 +13,7 @@ from planpilot.contracts.exceptions import (
     ProviderError,
     SyncError,
 )
+from planpilot.contracts.init import InitProgress
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
 from planpilot.contracts.plan import Estimate, Plan, PlanItem, PlanItemType, Scope, SpecRef, Verification
 from planpilot.contracts.provider import Provider
@@ -27,6 +28,7 @@ __all__ = [
     "CreateItemPartialFailureError",
     "Estimate",
     "FieldConfig",
+    "InitProgress",
     "Item",
     "ItemSearchFilters",
     "Plan",

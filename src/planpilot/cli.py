@@ -8,8 +8,7 @@ import logging
 import sys
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
-
-import httpx
+from typing import Protocol
 
 from planpilot import (
     AuthenticationError,
@@ -28,14 +27,22 @@ from planpilot import (
     detect_plan_paths,
     detect_target,
     load_config,
+    resolve_init_token,
     scaffold_config,
+    validate_board_url,
+    validate_github_auth_for_init,
     write_config,
 )
-from planpilot.contracts.exceptions import ProjectURLError
-from planpilot.engine.progress import SyncProgress
-from planpilot.providers.github.mapper import parse_project_url
 
 _REQUIRED_CLASSIC_SCOPES = {"repo", "project"}
+
+
+class _InitProgress(Protocol):
+    def phase_start(self, phase: str, total: int | None = None) -> None: ...
+
+    def phase_done(self, phase: str) -> None: ...
+
+    def phase_error(self, phase: str, error: BaseException) -> None: ...
 
 
 def _owner_from_target(target: str) -> str:
@@ -51,22 +58,8 @@ def _validate_target(value: str) -> bool | str:
 
 
 def _resolve_init_token(*, auth: str, target: str, static_token: str | None) -> str:
-    from planpilot.auth.base import TokenResolver
-    from planpilot.auth.resolvers.env import EnvTokenResolver
-    from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
-    from planpilot.auth.resolvers.static import StaticTokenResolver
-
-    resolver: TokenResolver
-    if auth == "gh-cli":
-        hostname = "github.com"
-        resolver = GhCliTokenResolver(hostname=hostname)
-    elif auth == "env":
-        resolver = EnvTokenResolver()
-    elif auth == "token":
-        resolver = StaticTokenResolver(token=static_token or "")
-    else:  # defensive, should be unreachable due to prompt choices
-        raise AuthenticationError(f"Unsupported auth mode: {auth}")
-    return asyncio.run(resolver.resolve())
+    del target
+    return resolve_init_token(auth=auth, static_token=static_token, run_async=asyncio.run)
 
 
 def _github_headers(token: str) -> dict[str, str]:
@@ -87,82 +80,8 @@ def _check_classic_scopes(*, scopes_header: str | None) -> None:
         raise AuthenticationError(f"Token is missing required GitHub scopes: {needed}")
 
 
-def _validate_github_auth_for_init(*, token: str, target: str, progress: SyncProgress | None = None) -> str | None:
-    owner, repo = target.split("/", 1)
-    with httpx.Client(timeout=10.0) as client:
-        if progress is not None:
-            progress.phase_start("Init Auth")
-        user_resp = client.get("https://api.github.com/user", headers=_github_headers(token))
-        if user_resp.status_code != 200:
-            auth_error = AuthenticationError(
-                "GitHub authentication failed; verify your token/gh login and network access"
-            )
-            if progress is not None:
-                progress.phase_error("Init Auth", auth_error)
-            raise auth_error
-        try:
-            _check_classic_scopes(scopes_header=user_resp.headers.get("x-oauth-scopes"))
-        except AuthenticationError as error:
-            if progress is not None:
-                progress.phase_error("Init Auth", error)
-            raise
-        if progress is not None:
-            progress.phase_done("Init Auth")
-
-        if progress is not None:
-            progress.phase_start("Init Repo")
-        repo_resp = client.get(f"https://api.github.com/repos/{owner}/{repo}", headers=_github_headers(token))
-        if repo_resp.status_code != 200:
-            repo_error = AuthenticationError(
-                f"Cannot access target repository '{target}'; verify repo scope/permissions and repo visibility"
-            )
-            if progress is not None:
-                progress.phase_error("Init Repo", repo_error)
-            raise repo_error
-        if progress is not None:
-            progress.phase_done("Init Repo")
-
-        if progress is not None:
-            progress.phase_start("Init Projects")
-        viewer_projects_query = {"query": "query { viewer { projectsV2(first: 1) { nodes { id } } } }"}
-        projects_resp = client.post(
-            "https://api.github.com/graphql",
-            headers=_github_headers(token),
-            json=viewer_projects_query,
-        )
-        payload = (
-            projects_resp.json() if projects_resp.headers.get("content-type", "").startswith("application/json") else {}
-        )
-        if projects_resp.status_code != 200 or payload.get("errors"):
-            projects_error = AuthenticationError(
-                "Token does not have sufficient project permissions; ensure project access is granted"
-            )
-            if progress is not None:
-                progress.phase_error("Init Projects", projects_error)
-            raise projects_error
-        if progress is not None:
-            progress.phase_done("Init Projects")
-
-        if progress is not None:
-            progress.phase_start("Init Owner")
-        owner_resp = client.get(f"https://api.github.com/users/{owner}", headers=_github_headers(token))
-        if owner_resp.status_code != 200:
-            if progress is not None:
-                progress.phase_done("Init Owner")
-            return None
-        owner_payload = owner_resp.json()
-        owner_type = owner_payload.get("type")
-        if owner_type == "Organization":
-            if progress is not None:
-                progress.phase_done("Init Owner")
-            return "org"
-        if owner_type == "User":
-            if progress is not None:
-                progress.phase_done("Init Owner")
-            return "user"
-        if progress is not None:
-            progress.phase_done("Init Owner")
-        return None
+def _validate_github_auth_for_init(*, token: str, target: str, progress: _InitProgress | None = None) -> str | None:
+    return validate_github_auth_for_init(token=token, target=target, progress=progress)
 
 
 def _default_board_url_for_target(target: str) -> str:
@@ -180,9 +99,7 @@ def _validate_board_url(value: str) -> bool | str:
     candidate = value.strip()
     if not candidate:
         return "Board URL is required"
-    try:
-        parse_project_url(candidate)
-    except ProjectURLError:
+    if not validate_board_url(candidate):
         return "Use a full GitHub Projects URL (orgs|users)/<owner>/projects/<number>"
     return True
 
@@ -324,8 +241,9 @@ def _format_summary(result: SyncResult, config: PlanPilotConfig) -> str:
 
     total_by_type = {PlanItemType.EPIC: 0, PlanItemType.STORY: 0, PlanItemType.TASK: 0}
     for entry in result.sync_map.entries.values():
-        if entry.item_type in total_by_type:
-            total_by_type[entry.item_type] += 1
+        item_type = entry.item_type
+        if item_type is not None and item_type in total_by_type:
+            total_by_type[item_type] += 1
 
     total_items = len(result.sync_map.entries)
     total_matched = total_items - total_created
