@@ -209,7 +209,7 @@ Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas
 
-See [docs/schemas.md](docs/schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
+See [docs/reference/plan-schemas.md](docs/reference/plan-schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
 
 A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
@@ -217,8 +217,8 @@ A complete working example is in the [examples/](examples/) directory, including
 
 - [Docs Index](docs/README.md) -- v2 documentation hub
 - [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
-- [E2E Testing](docs/e2e-testing.md) -- offline end-to-end test design, coverage, and usage
-- [Plan Schemas](docs/schemas.md) -- plan JSON shapes and examples
+- [E2E Testing](docs/testing/e2e.md) -- offline end-to-end test design, coverage, and usage
+- [Plan Schemas](docs/reference/plan-schemas.md) -- plan JSON shapes and examples
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
 - [Engine](docs/design/engine.md) -- sync pipeline behavior

@@ -124,4 +124,4 @@ Important optional fields:
   - `strict`: unresolved refs fail
   - `partial`: unresolved refs allowed when item is not loaded
 
-For full validation semantics, see [modules/plan.md](./modules/plan.md).
+For full validation semantics, see [modules/plan.md](../modules/plan.md).

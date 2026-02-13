@@ -59,10 +59,10 @@ Current E2E cases:
 9. Summary output contract checks (critical block ordering).
 10. Sync-map contract checks for both dry-run and apply outputs.
 11. Error mapping checks:
-   - `ConfigError` -> `3`
-   - `AuthenticationError` / `ProviderError` -> `4`
-   - `SyncError` -> `5`
-   - unexpected error -> `1`
+    - `ConfigError` -> `3`
+    - `AuthenticationError` / `ProviderError` -> `4`
+    - `SyncError` -> `5`
+    - unexpected error -> `1`
 
 **Init subcommand:**
 
@@ -149,4 +149,3 @@ When adding E2E scenarios:
 - `docs/how-it-works.md`
 - `docs/modules/cli.md`
 - `docs/modules/sdk.md`
-- `docs/e2e-test-plan.md` (historical implementation plan)

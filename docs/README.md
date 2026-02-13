@@ -11,8 +11,8 @@ A complete redesign focused on SDK-first development with clean layered architec
 3. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
 4. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
 5. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-6. **[E2E Testing](./e2e-testing.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-7. **[Plan Schemas](./schemas.md)** — Plan file shapes and examples
+6. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+7. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Module specs
 
