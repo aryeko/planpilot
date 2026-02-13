@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import pytest
 
 from planpilot.core.contracts.config import FieldConfig
-from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError
+from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderCapabilityError, ProviderError
 from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot.core.contracts.plan import PlanItemType
 from planpilot.core.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
@@ -770,6 +770,67 @@ async def test_prime_relations_cache_avoids_per_item_fetches() -> None:
 
 
 @pytest.mark.asyncio
+async def test_prime_relations_cache_with_empty_ids_sets_empty_cache() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    await provider.prime_relations_cache([])
+
+    assert provider._relations_cache == {}
+
+
+@pytest.mark.asyncio
+async def test_get_relations_returns_empty_when_fetch_returns_no_nodes() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        async def fetch_relations(self, *, ids: list[str]):
+            _ = ids
+            return SimpleNamespace(nodes=[])
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    parent, blockers = await provider.get_relations(issue_id="I1")
+
+    assert parent is None
+    assert blockers == set()
+
+
+@pytest.mark.asyncio
+async def test_get_relations_skips_none_nodes_and_returns_empty() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        async def fetch_relations(self, *, ids: list[str]):
+            _ = ids
+            return SimpleNamespace(nodes=[None])
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    parent, blockers = await provider.get_relations(issue_id="I1")
+
+    assert parent is None
+    assert blockers == set()
+
+
+@pytest.mark.asyncio
 async def test_delete_item_calls_delete_issue() -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -893,6 +954,124 @@ async def test_add_blocked_by_duplicate_error_is_ignored(monkeypatch: pytest.Mon
     provider._client = _Client()  # type: ignore[assignment]
 
     await provider.add_blocked_by(blocked_issue_id="I-blocked", blocker_issue_id="I-blocker")
+
+
+@pytest.mark.asyncio
+async def test_remove_sub_issue_missing_relation_error_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_sub_issues=True,
+    )
+
+    class _FakeGraphQLError(Exception):
+        pass
+
+    monkeypatch.setattr(_provider_module(), "GraphQLClientError", _FakeGraphQLError)
+
+    class _Client:
+        async def remove_sub_issue(self, *, parent_id: str, child_id: str) -> None:
+            _ = (parent_id, child_id)
+            raise _FakeGraphQLError("relation does not exist")
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    await provider.remove_sub_issue(child_issue_id="I-child", parent_issue_id="I-parent")
+
+
+@pytest.mark.asyncio
+async def test_remove_sub_issue_raises_when_capability_missing() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_sub_issues=False,
+    )
+
+    with pytest.raises(ProviderCapabilityError, match="sub-issues"):
+        await provider.remove_sub_issue(child_issue_id="I-child", parent_issue_id="I-parent")
+
+
+@pytest.mark.asyncio
+async def test_remove_blocked_by_missing_relation_error_is_ignored(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_blocked_by=True,
+    )
+
+    class _FakeGraphQLError(Exception):
+        pass
+
+    monkeypatch.setattr(_provider_module(), "GraphQLClientError", _FakeGraphQLError)
+
+    class _Client:
+        async def remove_blocked_by(self, *, blocked_id: str, blocker_id: str) -> None:
+            _ = (blocked_id, blocker_id)
+            raise _FakeGraphQLError("not found")
+
+    provider._client = _Client()  # type: ignore[assignment]
+
+    await provider.remove_blocked_by(blocked_issue_id="I-blocked", blocker_issue_id="I-blocker")
+
+
+@pytest.mark.asyncio
+async def test_remove_blocked_by_raises_when_capability_missing() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        supports_blocked_by=False,
+    )
+
+    with pytest.raises(ProviderCapabilityError, match="blocked-by"):
+        await provider.remove_blocked_by(blocked_issue_id="I-blocked", blocker_issue_id="I-blocker")
+
+
+def test_extract_relations_from_node_ignores_non_string_ids() -> None:
+    node = SimpleNamespace(
+        parent=SimpleNamespace(id=123),
+        blocked_by=SimpleNamespace(nodes=[SimpleNamespace(id="B1"), SimpleNamespace(id=999)]),
+    )
+
+    parent_id, blocker_ids = GitHubProvider._extract_relations_from_node(node)
+
+    assert parent_id is None
+    assert blocker_ids == {"B1"}
 
 
 def test_is_duplicate_relation_error_returns_false_for_other_messages() -> None:

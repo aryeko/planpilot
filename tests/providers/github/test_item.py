@@ -203,3 +203,44 @@ async def test_reconcile_relations_raises_when_blocked_by_capability_missing() -
 
     with pytest.raises(ProviderCapabilityError, match="blocked-by"):
         await child.reconcile_relations(parent=None, blockers=[blocker])
+
+
+@pytest.mark.asyncio
+async def test_reconcile_relations_noop_when_state_already_matches() -> None:
+    provider = _StubProvider()
+    provider.current_parent_id = "I-parent"
+    provider.current_blocker_ids = {"I-blocker"}
+    parent = GitHubItem(
+        provider=provider,
+        issue_id="I-parent",
+        number=1,
+        title="P",
+        body="",
+        item_type=PlanItemType.EPIC,
+        url="u",
+    )
+    blocker = GitHubItem(
+        provider=provider,
+        issue_id="I-blocker",
+        number=2,
+        title="B",
+        body="",
+        item_type=PlanItemType.TASK,
+        url="u",
+    )
+    child = GitHubItem(
+        provider=provider,
+        issue_id="I-child",
+        number=3,
+        title="C",
+        body="",
+        item_type=PlanItemType.STORY,
+        url="u",
+    )
+
+    await child.reconcile_relations(parent=parent, blockers=[blocker])
+
+    assert provider.parent_remove_calls == []
+    assert provider.parent_calls == []
+    assert provider.dep_remove_calls == []
+    assert provider.dep_calls == []

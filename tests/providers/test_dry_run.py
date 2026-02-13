@@ -51,6 +51,24 @@ async def test_dry_run_item_relations_are_logged_with_monotonic_sequence() -> No
 
 
 @pytest.mark.asyncio
+async def test_dry_run_item_reconcile_relations_logs_parent_and_blockers() -> None:
+    provider = DryRunProvider()
+    parent = await provider.create_item(CreateItemInput(title="Parent", body="", item_type=PlanItemType.EPIC))
+    blocker_a = await provider.create_item(CreateItemInput(title="A", body="", item_type=PlanItemType.TASK))
+    blocker_b = await provider.create_item(CreateItemInput(title="B", body="", item_type=PlanItemType.TASK))
+    child = await provider.create_item(CreateItemInput(title="Child", body="", item_type=PlanItemType.STORY))
+
+    await child.reconcile_relations(parent=parent, blockers=[blocker_b, blocker_a])
+
+    assert provider.operations[-1].name == "reconcile_relations"
+    assert provider.operations[-1].item_id == child.id
+    assert provider.operations[-1].payload == {
+        "parent_id": parent.id,
+        "blocker_ids": f"{blocker_a.id},{blocker_b.id}",
+    }
+
+
+@pytest.mark.asyncio
 async def test_dry_run_provider_search_is_empty_and_delete_is_noop() -> None:
     provider = DryRunProvider()
 
