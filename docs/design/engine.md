@@ -83,7 +83,7 @@ flowchart TB
     Discovery --> Upsert --> Enrich --> Relations --> Result
 ```
 
-In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The SDK persists dry-run output to `<sync_path>.dry-run`.
+In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The engine returns `SyncResult` and does not persist local files; persistence is caller-owned. In the CLI flow, dry-run output is written to `<sync_path>.dry-run` via `planpilot.cli.persistence.*`.
 
 ## Phase 1: Discovery
 

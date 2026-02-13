@@ -8,6 +8,7 @@ from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, Up
 from planpilot.core.contracts.plan import PlanItemType
 from planpilot.core.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
 from planpilot.core.providers.github.models import GitHubProviderContext, ResolvedField
+from planpilot.core.providers.github.ops import relations as relations_ops
 from planpilot.core.providers.github.provider import GitHubProvider
 
 
@@ -446,7 +447,7 @@ async def test_update_item_reconciles_type_labels_when_labels_omitted(monkeypatc
         issue_type_ids={},
         project_owner_type="org",
         create_type_strategy="label",
-        create_type_map={"TASK": "type:task"},
+        create_type_map={"TASK": "type:task", "EPIC": "type:epic"},
     )
 
     async def fake_get_item(item_id: str):
@@ -520,6 +521,108 @@ async def test_reconcile_managed_labels_removes_stale_managed_labels(monkeypatch
 
     assert added == [["type:task"]]
     assert removed == [["id-old"]]
+
+
+@pytest.mark.asyncio
+async def test_reconcile_managed_labels_preserves_discovery_label_when_not_explicit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        create_type_strategy="label",
+        create_type_map={"TASK": "type:task", "EPIC": "type:epic"},
+    )
+
+    async def fake_get_label_name_to_id(item_id: str) -> dict[str, str]:
+        assert item_id == "I1"
+        return {
+            "planpilot": "id-planpilot",
+            "type:epic": "id-epic",
+        }
+
+    added: list[list[str]] = []
+    removed: list[list[str]] = []
+
+    async def fake_ensure_discovery_labels(item_id: str, labels: list[str]) -> None:
+        assert item_id == "I1"
+        added.append(labels)
+
+    async def fake_remove_labels_by_ids(item_id: str, label_ids: list[str]) -> None:
+        assert item_id == "I1"
+        removed.append(label_ids)
+
+    monkeypatch.setattr(provider, "_get_item_label_name_to_id", fake_get_label_name_to_id)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_ensure_discovery_labels)
+    monkeypatch.setattr(provider, "_remove_labels_by_ids", fake_remove_labels_by_ids)
+
+    await provider._reconcile_managed_labels(item_id="I1", item_type=PlanItemType.TASK, labels=[])
+
+    assert added == [["type:task"]]
+    assert removed == [["id-epic"]]
+
+
+@pytest.mark.asyncio
+async def test_update_item_label_strategy_keeps_discovery_label_in_project_fields(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        project_id="P1",
+        create_type_strategy="label",
+        create_type_map={"TASK": "type:task"},
+    )
+
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
+
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(id=item_id, number=2, url="u", title=update_input.title or "old", body="old")
+
+    seen_labels: list[list[str]] = []
+
+    async def fake_reconcile_labels(*, item_id: str, item_type: PlanItemType | None, labels: list[str]) -> None:
+        _ = (item_id, item_type, labels)
+
+    async def fake_project_item(item_id: str) -> str:
+        _ = item_id
+        return "PVTI_1"
+
+    async def fake_project_fields(project_item_id: str, create_input: CreateItemInput) -> None:
+        _ = project_item_id
+        seen_labels.append(create_input.labels)
+
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+    monkeypatch.setattr(provider, "_reconcile_managed_labels", fake_reconcile_labels)
+    monkeypatch.setattr(provider, "_ensure_project_item", fake_project_item)
+    monkeypatch.setattr(provider, "_ensure_project_fields", fake_project_fields)
+
+    await provider.update_item(
+        "I1",
+        UpdateItemInput(title="new", item_type=PlanItemType.TASK, labels=["triage"], size="M"),
+    )
+
+    assert seen_labels == [["planpilot", "triage", "type:task"]]
 
 
 @pytest.mark.asyncio
@@ -609,6 +712,15 @@ def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
     strategy, mapping = provider._resolve_create_type_policy("user")
     assert strategy == "label"
     assert mapping["EPIC"] == "Epic"
+
+
+def test_is_missing_relation_error_detects_absent_relation_messages() -> None:
+    class _FakeGraphQLError(Exception):
+        pass
+
+    assert relations_ops.is_missing_relation_error(_FakeGraphQLError("not found"))
+    assert relations_ops.is_missing_relation_error(_FakeGraphQLError("Relation does not exist"))
+    assert not relations_ops.is_missing_relation_error(_FakeGraphQLError("already exists"))
 
 
 @pytest.mark.asyncio

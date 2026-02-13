@@ -151,3 +151,55 @@ async def test_reconcile_relations_removes_stale_and_adds_missing() -> None:
     assert provider.parent_calls == [("I-child", "I-parent")]
     assert provider.dep_remove_calls == [("I-child", "I-old-blocker")]
     assert provider.dep_calls == [("I-child", "I-new")]
+
+
+@pytest.mark.asyncio
+async def test_reconcile_relations_raises_when_sub_issues_capability_missing() -> None:
+    provider = _StubProvider(supports_sub_issues=False)
+    parent = GitHubItem(
+        provider=provider,
+        issue_id="I-parent",
+        number=1,
+        title="P",
+        body="",
+        item_type=PlanItemType.EPIC,
+        url="u",
+    )
+    child = GitHubItem(
+        provider=provider,
+        issue_id="I-child",
+        number=2,
+        title="C",
+        body="",
+        item_type=PlanItemType.STORY,
+        url="u",
+    )
+
+    with pytest.raises(ProviderCapabilityError, match="sub-issues"):
+        await child.reconcile_relations(parent=parent, blockers=[])
+
+
+@pytest.mark.asyncio
+async def test_reconcile_relations_raises_when_blocked_by_capability_missing() -> None:
+    provider = _StubProvider(supports_blocked_by=False)
+    blocker = GitHubItem(
+        provider=provider,
+        issue_id="I-blocker",
+        number=1,
+        title="B",
+        body="",
+        item_type=PlanItemType.TASK,
+        url="u",
+    )
+    child = GitHubItem(
+        provider=provider,
+        issue_id="I-child",
+        number=2,
+        title="C",
+        body="",
+        item_type=PlanItemType.STORY,
+        url="u",
+    )
+
+    with pytest.raises(ProviderCapabilityError, match="blocked-by"):
+        await child.reconcile_relations(parent=None, blockers=[blocker])

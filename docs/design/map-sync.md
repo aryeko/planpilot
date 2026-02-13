@@ -9,10 +9,10 @@
 ```mermaid
 flowchart TD
     A[Discover candidate PLAN_ID values] --> B{plan-id selected?}
-    B -- explicit -- C[Use --plan-id value]
-    B -- implicit single candidate -- D[Auto-select]
-    B -- multiple + TTY -- E[Interactive selection]
-    B -- multiple + non-TTY -- F[Fail with guidance]
+    B -- explicit --> C[Use --plan-id value]
+    B -- implicit single candidate --> D[Auto-select]
+    B -- multiple + TTY --> E[Interactive selection]
+    B -- multiple + non-TTY --> F[Fail with guidance]
     C --> G[Run SDK map_sync(plan_id)]
     D --> G
     E --> G

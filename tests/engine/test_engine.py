@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.config import FieldConfig, PlanPaths, PlanPilotConfig
 from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
 from planpilot.core.contracts.item import CreateItemInput, Item
 from planpilot.core.contracts.plan import Estimate, Plan, PlanItem, PlanItemType
@@ -68,6 +68,22 @@ def test_parse_metadata_block_requires_end_marker() -> None:
     body = "\n".join(["PLANPILOT_META_V1", "PLAN_ID:plan-1", "ITEM_ID:E1"])
 
     assert parse_metadata_block(body) == {}
+
+
+def test_desired_labels_include_type_label_for_label_strategy(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path).model_copy(
+        update={
+            "field_config": FieldConfig(
+                create_type_strategy="label",
+                create_type_map={"TASK": "type:task"},
+            )
+        }
+    )
+    engine = SyncEngine(provider, renderer, config)
+
+    assert engine._desired_labels_for_item(PlanItemType.TASK) == ["planpilot", "type:task"]
 
 
 @pytest.mark.parametrize(

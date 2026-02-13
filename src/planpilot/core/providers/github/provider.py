@@ -192,10 +192,12 @@ class GitHubProvider(Provider):
             )
 
         effective_labels = list(input.labels or [])
-        if input.item_type is not None and self.context.create_type_strategy == "label":
-            mapped = self.context.create_type_map.get(input.item_type.value)
-            if mapped:
-                effective_labels = sorted(set(effective_labels).union({mapped}))
+        if self.context.create_type_strategy == "label":
+            effective_labels = sorted(set(effective_labels).union({self._label}))
+            if input.item_type is not None:
+                mapped = self.context.create_type_map.get(input.item_type.value)
+                if mapped:
+                    effective_labels = sorted(set(effective_labels).union({mapped}))
         if input.size is not None and self.context.project_id is not None:
             project_item_id = await self._ensure_project_item(item_id)
             await self._ensure_project_fields(
@@ -423,6 +425,7 @@ class GitHubProvider(Provider):
         labels: list[str],
     ) -> None:
         desired_labels = set(labels)
+        desired_labels.add(self._label)
         if item_type is not None and self.context.create_type_strategy == "label":
             mapped = self.context.create_type_map.get(item_type.value)
             if mapped:
