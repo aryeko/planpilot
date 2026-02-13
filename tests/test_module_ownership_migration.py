@@ -4,6 +4,8 @@ import ast
 from importlib import import_module
 from pathlib import Path
 
+import pytest
+
 
 def test_legacy_metadata_module_is_compatibility_shim() -> None:
     legacy_module = import_module("planpilot.metadata")
@@ -55,29 +57,23 @@ def test_legacy_init_auth_module_is_compatibility_shim() -> None:
     assert legacy_module.validate_github_auth_for_init is new_module.validate_github_auth_for_init
 
 
-def test_legacy_map_sync_package_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.map_sync")
-    new_module = import_module("planpilot.core.map_sync")
+def test_legacy_map_sync_modules_are_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.map_sync.parser")
 
-    assert legacy_module.MapSyncReconciler is new_module.MapSyncReconciler
-    assert legacy_module.RemotePlanParser is new_module.RemotePlanParser
-    assert legacy_module.load_sync_map is new_module.load_sync_map
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.map_sync.reconciler")
+
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.map_sync.persistence")
 
 
-def test_legacy_persistence_package_is_compatibility_shim() -> None:
-    legacy_sync_module = import_module("planpilot.persistence.sync_map")
-    legacy_remote_plan_module = import_module("planpilot.persistence.remote_plan")
-    new_sync_module = import_module("planpilot.cli.persistence.sync_map")
-    new_remote_plan_module = import_module("planpilot.cli.persistence.remote_plan")
+def test_legacy_persistence_modules_are_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.persistence.sync_map")
 
-    assert callable(legacy_sync_module.persist_sync_map)
-    assert callable(new_sync_module.persist_sync_map)
-    assert callable(legacy_sync_module.load_sync_map)
-    assert callable(new_sync_module.load_sync_map)
-    assert callable(legacy_sync_module.output_sync_path)
-    assert callable(new_sync_module.output_sync_path)
-    assert callable(legacy_remote_plan_module.persist_plan_from_remote)
-    assert callable(new_remote_plan_module.persist_plan_from_remote)
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.persistence.remote_plan")
 
 
 def test_legacy_targets_module_is_compatibility_shim() -> None:
