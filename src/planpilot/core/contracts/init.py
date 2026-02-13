@@ -6,8 +6,11 @@ from typing import Protocol
 
 
 class InitProgress(Protocol):
-    def phase_start(self, phase: str, total: int | None = None) -> None: ...
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        pass
 
-    def phase_done(self, phase: str) -> None: ...
+    def phase_done(self, phase: str) -> None:
+        pass
 
-    def phase_error(self, phase: str, error: BaseException) -> None: ...
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        pass
