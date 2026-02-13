@@ -97,7 +97,10 @@ class PlanPilotConfig(BaseModel):
     """Plan validation: "strict" or "partial"."""
 
     sync_path: Path = Path("sync-map.json")
-    """Path for apply-mode sync map. Dry-run writes to <sync_path>.dry-run."""
+    """Path for apply-mode sync map. Dry-run writes to <sync_path>.dry-run.
+
+    Note: `init` scaffolding defaults this to `.plans/sync-map.json` for new project configs.
+    """
 
     label: str = "planpilot"
     """Label to apply to all created items."""

@@ -54,6 +54,23 @@ planpilot follows a layered SDK-first architecture:
 
 To add a new provider (for example Jira), implement the `Provider` ABC in `src/planpilot/core/providers/jira/` and wire it in `src/planpilot/core/providers/factory.py`.
 
+## Documentation update policy
+
+For any user-visible behavior or architecture change, update docs in the same PR.
+
+Primary references:
+
+- `docs/README.md` — docs index and navigation
+- `docs/design/documentation-architecture.md` — ownership map and update rules
+
+Quick mapping:
+
+- CLI changes -> `README.md`, `docs/modules/cli.md`, `docs/how-it-works.md`
+- Engine/sync semantics -> `docs/design/engine.md`, `docs/how-it-works.md`, `docs/modules/sdk.md`
+- Provider behavior -> `docs/modules/providers.md`, `docs/modules/github-provider.md`, `docs/design/contracts.md`
+- Config/schema changes -> `README.md`, `docs/modules/config.md`, `docs/reference/plan-schemas.md`
+- CI/release changes -> `RELEASE.md` and relevant workflow docs
+
 ## Commit messages
 
 We use [Conventional Commits](https://www.conventionalcommits.org/) to drive automated versioning and changelog generation. All commits must follow this format:

@@ -75,12 +75,10 @@ async def run_map_sync(args: argparse.Namespace) -> MapSyncResult:
         with RichSyncProgress() as progress:
             pp = await cli.PlanPilot.from_config(config, progress=progress)
             candidate_plan_ids = await pp.discover_remote_plan_ids()
-        selected_plan_id = cli._resolve_selected_plan_id(
-            explicit_plan_id=args.plan_id,
-            candidate_plan_ids=candidate_plan_ids,
-        )
-        with RichSyncProgress() as progress:
-            pp = await cli.PlanPilot.from_config(config, progress=progress)
+            selected_plan_id = cli._resolve_selected_plan_id(
+                explicit_plan_id=args.plan_id,
+                candidate_plan_ids=candidate_plan_ids,
+            )
             result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
     else:
         pp = await cli.PlanPilot.from_config(config)

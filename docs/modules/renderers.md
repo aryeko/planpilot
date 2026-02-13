@@ -27,6 +27,8 @@ Sections are included only when the field has content:
 PLANPILOT_META_V1
 PLAN_ID:{context.plan_id}
 ITEM_ID:{item.id}
+ITEM_TYPE:{item.type}
+PARENT_ID:{item.parent_id or ''}
 END_PLANPILOT_META
 
 ## Goal

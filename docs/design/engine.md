@@ -83,7 +83,7 @@ flowchart TB
     Discovery --> Upsert --> Enrich --> Relations --> Result
 ```
 
-In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The SDK persists dry-run output to `<sync_path>.dry-run`.
+In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The engine returns `SyncResult` and does not persist local files; persistence is caller-owned. In the CLI flow, dry-run output is written to `<sync_path>.dry-run` via `planpilot.cli.persistence.*`.
 
 ## Phase 1: Discovery
 
@@ -215,6 +215,7 @@ async with asyncio.TaskGroup() as tg:
 ```
 
 Only resolved relations are dispatched. In `validation_mode=partial`, unresolved references are skipped with warnings (not errors).
+Relation handling is reconciliation-based: stale parent/dependency links are removed when no longer present in the desired plan state.
 
 **Roll-up logic:** If a child in parent A depends on a child in parent B (A != B), then parent A is blocked by parent B. This rolls up recursively (task deps -> story level, story deps -> epic level). Cyclic edges are de-duplicated and skipped with warnings.
 
@@ -222,13 +223,14 @@ Only resolved relations are dispatched. In `validation_mode=partial`, unresolved
 
 ## Phase 5: Result
 
-The engine returns `SyncResult` and does **not** persist the sync map to disk — that is the SDK's responsibility.
+The engine returns `SyncResult` and does **not** persist local files.
 
 ```python
 return SyncResult(sync_map=sync_map, items_created=counters, dry_run=self._dry_run)
 ```
 
-Sync map persistence (apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`) is handled by the SDK.
+Sync map persistence (apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`) is caller-owned.
+In the CLI, persistence is handled by `planpilot.cli.persistence.*`.
 
 ## Sync Map Lifecycle
 
@@ -239,7 +241,7 @@ stateDiagram-v2
     Populated --> Updated: Upsert adds new entries
     Updated --> Enriched: Enrich updates bodies with cross-refs
     Enriched --> Returned: engine returns SyncResult
-    Returned --> Persisted: SDK writes to disk
+    Returned --> Persisted: CLI/caller writes to disk
 ```
 
 ## Internal Utilities

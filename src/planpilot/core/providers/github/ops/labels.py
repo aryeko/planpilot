@@ -35,6 +35,13 @@ async def ensure_discovery_labels(provider: Any, issue_id: str, labels: list[str
         await client.add_labels(labelable_id=issue_id, label_ids=label_ids)
 
 
+async def remove_labels_by_ids(provider: Any, issue_id: str, label_ids: list[str]) -> None:  # pragma: no cover
+    if not label_ids:
+        return
+    client = provider._require_client()
+    await client.remove_labels(labelable_id=issue_id, label_ids=label_ids)
+
+
 async def resolve_label_ids(provider: Any, label_names: list[str]) -> list[str]:  # pragma: no cover
     ids: list[str] = []
     for name in label_names:

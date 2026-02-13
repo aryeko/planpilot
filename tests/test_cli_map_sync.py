@@ -128,7 +128,7 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123"]
-    assert len(from_config_calls) == 2
+    assert len(from_config_calls) == 1
 
 
 @pytest.mark.asyncio
@@ -182,7 +182,7 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
 
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123", "zzz999"]
-    assert len(from_config_calls) == 2
+    assert len(from_config_calls) == 1
     assert persisted_sync_map == [(False, config.sync_path)]
     assert persisted_plans == [0]
 

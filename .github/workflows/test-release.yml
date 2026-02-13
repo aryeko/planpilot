@@ -10,12 +10,12 @@ jobs:
   dry-run:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - run: pipx install poetry==1.8.5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.12"
           cache: "poetry"
@@ -27,7 +27,7 @@ jobs:
         run: poetry run pytest -v
 
       - name: Semantic Release (dry-run)
-        uses: python-semantic-release/python-semantic-release@v10.5.3
+        uses: python-semantic-release/python-semantic-release@754a065a2ea187da71977ada6630a8ec0f98e380 # v10.5.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           no_operation_mode: true

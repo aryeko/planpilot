@@ -1,7 +1,7 @@
 import pytest
 
 from planpilot.core.contracts.exceptions import ProviderError
-from planpilot.core.contracts.item import CreateItemInput, UpdateItemInput
+from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
 from planpilot.core.contracts.plan import PlanItemType
 from planpilot.core.providers.dry_run import DryRunItem, DryRunProvider
 
@@ -51,6 +51,24 @@ async def test_dry_run_item_relations_are_logged_with_monotonic_sequence() -> No
 
 
 @pytest.mark.asyncio
+async def test_dry_run_item_reconcile_relations_logs_parent_and_blockers() -> None:
+    provider = DryRunProvider()
+    parent = await provider.create_item(CreateItemInput(title="Parent", body="", item_type=PlanItemType.EPIC))
+    blocker_a = await provider.create_item(CreateItemInput(title="A", body="", item_type=PlanItemType.TASK))
+    blocker_b = await provider.create_item(CreateItemInput(title="B", body="", item_type=PlanItemType.TASK))
+    child = await provider.create_item(CreateItemInput(title="Child", body="", item_type=PlanItemType.STORY))
+
+    await child.reconcile_relations(parent=parent, blockers=[blocker_b, blocker_a])
+
+    assert provider.operations[-1].name == "reconcile_relations"
+    assert provider.operations[-1].item_id == child.id
+    assert provider.operations[-1].payload == {
+        "parent_id": parent.id,
+        "blocker_ids": f"{blocker_a.id},{blocker_b.id}",
+    }
+
+
+@pytest.mark.asyncio
 async def test_dry_run_provider_search_is_empty_and_delete_is_noop() -> None:
     provider = DryRunProvider()
 
@@ -58,6 +76,26 @@ async def test_dry_run_provider_search_is_empty_and_delete_is_noop() -> None:
     assert matched == []
 
     await provider.delete_item("missing")
+
+
+@pytest.mark.asyncio
+async def test_dry_run_provider_search_filters_by_body_and_labels() -> None:
+    provider = DryRunProvider()
+    first = await provider.create_item(
+        CreateItemInput(title="one", body="contains alpha", item_type=PlanItemType.TASK, labels=["planpilot", "x"])
+    )
+    _ = await provider.create_item(
+        CreateItemInput(title="two", body="contains beta", item_type=PlanItemType.TASK, labels=["planpilot"])
+    )
+
+    body_only = await provider.search_items(filters=ItemSearchFilters(labels=[], body_contains="alpha"))
+    assert [item.id for item in body_only] == [first.id]
+
+    labels_only = await provider.search_items(filters=ItemSearchFilters(labels=["planpilot", "x"], body_contains=""))
+    assert [item.id for item in labels_only] == [first.id]
+
+    both = await provider.search_items(filters=ItemSearchFilters(labels=["planpilot", "x"], body_contains="alpha"))
+    assert [item.id for item in both] == [first.id]
 
 
 @pytest.mark.asyncio

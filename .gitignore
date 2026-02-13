@@ -9,6 +9,7 @@ __pycache__/
 dist/
 .coverage/
 .env
+planpilot.json
 .DS_Store
 .idea/
 .vscode/

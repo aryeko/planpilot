@@ -34,6 +34,9 @@ class DummyItem(Item):
     async def add_dependency(self, blocker: Item) -> None:
         return None
 
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        return None
+
 
 def test_to_sync_entry_maps_provider_item_fields() -> None:
     entry = to_sync_entry(DummyItem())

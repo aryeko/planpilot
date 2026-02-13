@@ -74,3 +74,28 @@ class GitHubItem(Item):
         if not self.provider.context.supports_blocked_by:
             raise ProviderCapabilityError("GitHub provider does not support blocked-by.", capability="blocked-by")
         await self.provider.add_blocked_by(blocked_issue_id=self.id, blocker_issue_id=blocker.id)
+
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        desired_parent_id = parent.id if parent is not None else None
+        desired_blocker_ids = {blocker.id for blocker in blockers}
+
+        if desired_parent_id is not None and not self.provider.context.supports_sub_issues:
+            raise ProviderCapabilityError("GitHub provider does not support sub-issues.", capability="sub-issues")
+        if desired_blocker_ids and not self.provider.context.supports_blocked_by:
+            raise ProviderCapabilityError("GitHub provider does not support blocked-by.", capability="blocked-by")
+
+        current_parent_id, current_blocker_ids = await self.provider.get_relations(issue_id=self.id)
+
+        if self.provider.context.supports_sub_issues:
+            if current_parent_id is not None and current_parent_id != desired_parent_id:
+                await self.provider.remove_sub_issue(child_issue_id=self.id, parent_issue_id=current_parent_id)
+            if desired_parent_id is not None and desired_parent_id != current_parent_id:
+                await self.provider.add_sub_issue(child_issue_id=self.id, parent_issue_id=desired_parent_id)
+
+        if self.provider.context.supports_blocked_by:
+            stale_blocker_ids = current_blocker_ids.difference(desired_blocker_ids)
+            missing_blocker_ids = desired_blocker_ids.difference(current_blocker_ids)
+            for blocker_id in sorted(stale_blocker_ids):
+                await self.provider.remove_blocked_by(blocked_issue_id=self.id, blocker_issue_id=blocker_id)
+            for blocker_id in sorted(missing_blocker_ids):
+                await self.provider.add_blocked_by(blocked_issue_id=self.id, blocker_issue_id=blocker_id)

@@ -82,6 +82,14 @@ class DryRunItem(Item):
         if self._record_operation is not None:
             self._record_operation("add_dependency", self.id, {"blocker_id": blocker.id})
 
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        if self._record_operation is not None:
+            payload = {
+                "parent_id": parent.id if parent is not None else "",
+                "blocker_ids": ",".join(sorted(blocker.id for blocker in blockers)),
+            }
+            self._record_operation("reconcile_relations", self.id, payload)
+
 
 class DryRunProvider(Provider):
     """Provider that returns deterministic placeholders without network calls."""
