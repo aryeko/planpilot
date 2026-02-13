@@ -26,6 +26,7 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 - **[Exit Codes](./reference/exit-codes.md)** — stable process-exit mapping and troubleshooting links
 - **[Workflows Reference](./reference/workflows-reference.md)** — CI, release, security, and CodeQL automation map
 - **[Developer Workflow](./reference/developer-workflow.md)** — local verification sequence and pre-PR checklist
+- **[Docs Inventory](./reference/docs-inventory.md)** — complete docs file inventory and ownership map
 - **[Troubleshooting](./guides/troubleshooting.md)** — common failures and practical fixes
 
 ### Navigation flow
@@ -69,6 +70,10 @@ flowchart LR
 
 - [plans/](./plans/) contains historical execution plans and review artifacts.
 - Treat files in `docs/plans/` as implementation logs, not primary product documentation.
+
+### Internal references
+
+- [Agent Context](./AGENTS.md) — docs knowledge base used by coding agents
 
 ## Locked v2 Decisions
 

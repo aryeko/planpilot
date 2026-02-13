@@ -223,6 +223,7 @@ A complete working example is in the [examples/](examples/) directory, including
   - [Exit Codes](docs/reference/exit-codes.md)
   - [Workflows Reference](docs/reference/workflows-reference.md)
   - [Developer Workflow](docs/reference/developer-workflow.md)
+  - [Docs Inventory](docs/reference/docs-inventory.md)
   - [Troubleshooting](docs/guides/troubleshooting.md)
 - Architecture and behavior:
   - [How It Works](docs/how-it-works.md)
