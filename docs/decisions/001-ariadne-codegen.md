@@ -80,7 +80,7 @@ ariadne-codegen is **not** a Poetry dev dependency. It conflicts with `python-se
 ```toml
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
+shell = "rm -rf src/planpilot/core/providers/github/github_gql src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
 ```
 
 The `rm -rf` prefix ensures stale files from removed operations are cleaned before regeneration.
@@ -124,7 +124,7 @@ Regenerates the entire `github_gql/` package from the current schema and operati
 poe gen-client
 ```
 
-**Output:** Regenerates `src/planpilot/providers/github/github_gql/` with all typed models and the `GitHubGraphQLClient` class.
+**Output:** Regenerates `src/planpilot/core/providers/github/github_gql/` with all typed models and the `GitHubGraphQLClient` class.
 
 **When to run:**
 - After adding, modifying, or removing any `.graphql` file in `operations/`

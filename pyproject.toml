@@ -77,7 +77,7 @@ shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ari
 
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot/providers/github/github_gql && ruff format src/planpilot/providers/github/github_gql"
+shell = "rm -rf src/planpilot/core/providers/github/github_gql src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot/core/providers/github/github_gql && ruff format src/planpilot/core/providers/github/github_gql"
 
 [tool.poe.tasks.gen-gql]
 help = "Download schema and generate GraphQL client"
@@ -98,7 +98,7 @@ source = ["planpilot"]
 branch = true
 data_file = ".coverage/coverage.db"
 omit = [
-    "src/planpilot/providers/github/github_gql/*",
+    "src/planpilot/core/providers/github/github_gql/*",
 ]
 
 [tool.coverage.report]
@@ -127,7 +127,7 @@ select = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"src/planpilot/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
+"src/planpilot/core/providers/github/github_gql/*" = ["F401", "RUF022", "UP042", "UP045", "E501"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["planpilot"]
@@ -138,7 +138,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
-exclude = "(^src/planpilot/providers/github/github_gql/)"
+exclude = "(^src/planpilot/core/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
@@ -166,7 +166,7 @@ type = "github"
 schema_path = "src/planpilot/providers/github/schema.graphql"
 queries_path = "src/planpilot/providers/github/operations"
 target_package_name = "github_gql"
-target_package_path = "src/planpilot/providers/github"
+target_package_path = "src/planpilot/core/providers/github"
 client_name = "GitHubGraphQLClient"
 client_file_name = "client"
 async_client = true

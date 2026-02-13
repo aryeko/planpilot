@@ -160,11 +160,15 @@ def test_cli_commands_use_cli_owned_progress_and_persistence_helpers() -> None:
     assert not missing, f"cli commands should use cli-owned helpers: {missing}"
 
 
-def test_core_github_gql_wrappers_are_importable() -> None:
-    legacy_client_module = import_module("planpilot.core.providers.github.github_gql.client")
+def test_core_github_gql_modules_are_importable_and_legacy_path_removed() -> None:
     core_client_module = import_module("planpilot.core.providers.github.github_gql.client")
-    legacy_exceptions_module = import_module("planpilot.core.providers.github.github_gql.exceptions")
     core_exceptions_module = import_module("planpilot.core.providers.github.github_gql.exceptions")
 
-    assert core_client_module.GitHubGraphQLClient is legacy_client_module.GitHubGraphQLClient
-    assert core_exceptions_module.GraphQLClientError is legacy_exceptions_module.GraphQLClientError
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.providers.github.github_gql.client")
+
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.providers.github.github_gql.exceptions")
+
+    assert core_client_module.GitHubGraphQLClient.__name__ == "GitHubGraphQLClient"
+    assert core_exceptions_module.GraphQLClientError.__name__ == "GraphQLClientError"
