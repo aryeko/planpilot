@@ -275,8 +275,8 @@ def test_package_version_handles_missing_distribution(monkeypatch: pytest.Monkey
     class _PkgNotFound(Exception):
         pass
 
-    monkeypatch.setattr("planpilot.cli.version", lambda _name: (_ for _ in ()).throw(_PkgNotFound()))
-    monkeypatch.setattr("planpilot.cli.PackageNotFoundError", _PkgNotFound)
+    monkeypatch.setattr("planpilot.cli.parser.version", lambda _name: (_ for _ in ()).throw(_PkgNotFound()))
+    monkeypatch.setattr("planpilot.cli.parser.PackageNotFoundError", _PkgNotFound)
 
     assert _package_version() == "0.0.0"
 

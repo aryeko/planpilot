@@ -349,6 +349,23 @@ async def test_sync_persist_write_error_is_wrapped_as_sync_error(
 
 
 @pytest.mark.asyncio
+async def test_sync_uses_persist_sync_map_compatibility_hook(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
+) -> None:
+    sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
+    calls: list[bool] = []
+
+    def _spy(_sync_map, *, dry_run: bool) -> None:
+        calls.append(dry_run)
+
+    monkeypatch.setattr(sdk, "_persist_sync_map", _spy)
+
+    await sdk.sync(sample_plan, dry_run=True)
+
+    assert calls == [True]
+
+
+@pytest.mark.asyncio
 async def test_clean_dry_run_discovers_but_does_not_delete(tmp_path: Path) -> None:
     config, plan_id = _write_plan_and_get_id(tmp_path)
     provider = SpyProvider()

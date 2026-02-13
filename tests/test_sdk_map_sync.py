@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Iterable
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from planpilot.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.contracts.exceptions import ConfigError, ProviderError, SyncError
 from planpilot.contracts.item import CreateItemInput
 from planpilot.contracts.plan import Plan, PlanItemType
+from planpilot.contracts.sync import SyncMap
 from planpilot.engine.progress import SyncProgress
 from planpilot.sdk import PlanPilot
 from tests.fakes.provider import FakeProvider
@@ -259,6 +261,53 @@ async def test_map_sync_apply_plan_persist_write_error_raises_sync_error(
 
     with pytest.raises(SyncError, match="failed to persist plan files"):
         await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
+
+
+@pytest.mark.asyncio
+async def test_map_sync_uses_load_sync_map_compatibility_hook(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    sample_plan: Plan,
+) -> None:
+    provider = FakeProvider()
+    config = _make_config(tmp_path)
+    _write_plan(config, sample_plan)
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+    sync_result = await sdk.sync(sample_plan)
+
+    loaded_plan_ids: list[str] = []
+
+    def _spy(*, plan_id: str) -> SyncMap:
+        loaded_plan_ids.append(plan_id)
+        return SyncMap(plan_id=plan_id, target=config.target, board_url=config.board_url, entries={})
+
+    monkeypatch.setattr(sdk, "_load_sync_map", _spy)
+    await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=True)
+
+    assert loaded_plan_ids == [sync_result.sync_map.plan_id]
+
+
+@pytest.mark.asyncio
+async def test_map_sync_uses_persist_plan_from_remote_compatibility_hook(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    sample_plan: Plan,
+) -> None:
+    provider = FakeProvider()
+    config = _make_config(tmp_path)
+    _write_plan(config, sample_plan)
+    sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
+    sync_result = await sdk.sync(sample_plan)
+
+    persisted_counts: list[int] = []
+
+    def _spy(*, items: Iterable[object]) -> None:
+        persisted_counts.append(len(list(items)))
+
+    monkeypatch.setattr(sdk, "_persist_plan_from_remote", _spy)
+    await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
+
+    assert persisted_counts == [len(sample_plan.items)]
 
 
 @pytest.mark.asyncio
