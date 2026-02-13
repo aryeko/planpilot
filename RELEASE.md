@@ -79,6 +79,8 @@ No packages are published, no tags are created.
 Before merging a release-worthy PR:
 
 ```bash
+poetry run poe docs-links
+poetry run poe workflow-lint
 poetry run pytest -v
 poetry run ruff check .
 poetry run ruff format --check .

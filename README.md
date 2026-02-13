@@ -221,6 +221,8 @@ A complete working example is in the [examples/](examples/) directory, including
   - [SDK Reference](docs/reference/sdk-reference.md)
   - [Config Reference](docs/reference/config-reference.md)
   - [Exit Codes](docs/reference/exit-codes.md)
+  - [Workflows Reference](docs/reference/workflows-reference.md)
+  - [Developer Workflow](docs/reference/developer-workflow.md)
   - [Troubleshooting](docs/guides/troubleshooting.md)
 - Architecture and behavior:
   - [How It Works](docs/how-it-works.md)

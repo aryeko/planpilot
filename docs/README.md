@@ -24,6 +24,8 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 - **[SDK Reference](./reference/sdk-reference.md)** — API lookup for SDK entrypoints and result objects
 - **[Config Reference](./reference/config-reference.md)** — canonical config fields, validation, and examples
 - **[Exit Codes](./reference/exit-codes.md)** — stable process-exit mapping and troubleshooting links
+- **[Workflows Reference](./reference/workflows-reference.md)** — CI, release, security, and CodeQL automation map
+- **[Developer Workflow](./reference/developer-workflow.md)** — local verification sequence and pre-PR checklist
 - **[Troubleshooting](./guides/troubleshooting.md)** — common failures and practical fixes
 
 ### Navigation flow
@@ -35,6 +37,8 @@ flowchart LR
     B -->|Use SDK| D[reference/sdk-reference.md]
     B -->|Configure runtime| H[reference/config-reference.md]
     B -->|Interpret failures| I[reference/exit-codes.md]
+    B -->|Understand CI/release| J[reference/workflows-reference.md]
+    B -->|Contribute safely| K[reference/developer-workflow.md]
     B -->|Understand architecture| E[design/*.md]
     B -->|Change implementation| F[modules/*.md]
     B -->|Debug failure| G[guides/troubleshooting.md]

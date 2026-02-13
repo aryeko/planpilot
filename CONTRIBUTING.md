@@ -24,6 +24,7 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe lint` | Run ruff linter (`ruff check .`) |
 | `poe format` | Auto-format code (`ruff format .`) |
 | `poe format-check` | Check formatting without changes (`ruff format --check .`) |
+| `poe docs-links` | Validate local markdown links in `README.md` and `docs/` |
 | `poe workflow-lint` | Lint GitHub Actions workflows (`./scripts/actionlint.sh`) |
 | `poe test` | Run non-E2E tests (`pytest -v --ignore=tests/e2e`) |
 | `poe test-e2e` | Run offline E2E suite (`pytest -v tests/e2e/test_cli_e2e.py`) |
@@ -32,7 +33,9 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe check` | Run lint + format-check + typecheck + non-E2E tests |
 
 ```bash
-# Quick check before pushing
+# Quick checks before pushing
+poe docs-links
+poe workflow-lint
 poe check
 
 # Verify CLI
@@ -124,6 +127,7 @@ flowchart LR
 - Use Conventional Commit format for all commits (enforced by CI).
 - Include rationale and verification steps.
 - Ensure `poe check` passes (lint + format-check + typecheck + non-E2E tests).
+- Ensure `poe docs-links` and `poe workflow-lint` pass.
 - PRs require at least 1 approving review and all CI checks to pass.
 - Prefer dry-run examples in docs for sync operations.
 
