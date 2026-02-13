@@ -219,3 +219,8 @@ src/planpilot/
 ├── core/config/scaffold.py       # scaffold + detect helpers
 └── core/contracts/exceptions.py  # ConfigError
 ```
+
+## Related
+
+- [Config Reference](../reference/config-reference.md)
+- [CLI Reference](../reference/cli-reference.md)

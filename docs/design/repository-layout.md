@@ -68,3 +68,8 @@ Rules:
 | Extend provider behavior | `src/planpilot/core/providers/` |
 | Extend markdown rendering | `src/planpilot/core/renderers/markdown.py` |
 | Update SDK public methods | `src/planpilot/sdk.py` |
+
+## Related
+
+- [Runtime Code Map](./codemap.md)
+- [Architecture](./architecture.md)

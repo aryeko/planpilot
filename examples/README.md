@@ -32,11 +32,13 @@ To generate your own config interactively, use `planpilot init` instead of creat
 planpilot sync --config examples/planpilot.json --dry-run
 ```
 
-### Apply (create issues, requires `gh` auth)
+### Apply (create issues)
 
 ```bash
 planpilot sync --config examples/planpilot.json --apply
 ```
+
+Use any supported auth mode from config (`gh-cli`, `env`, or `token`). `gh` CLI is only required when `auth` is `gh-cli`.
 
 To use these examples in your own repo, copy the `examples/` directory and update `planpilot.json` with your `target` and `board_url`.
 
@@ -73,7 +75,7 @@ In dry-run mode, no GitHub issues are created and the sync map is written to `<s
 
 After running with `--apply`, planpilot creates:
 
-1. **6 GitHub Issues** — 1 epic, 2 stories, 3 tasks, each with issue type set
+1. **6 GitHub Issues** — 1 epic, 2 stories, 3 tasks, with type assignment based on `create_type_strategy` (issue type or labels)
 2. **Sub-issue hierarchy** — stories linked under the epic, tasks under their stories
 3. **Blocked-by relations** — T-2 and T-3 blocked by T-1, S-2 blocked by S-1 (roll-up)
 4. **Project board items** — all issues added to the project with status, priority, iteration, and size fields set

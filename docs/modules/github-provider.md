@@ -64,6 +64,26 @@ All operations are GraphQL. Discovery uses the GraphQL `search` query (full-text
 
 ## Key Optimizations
 
+### Operation flow (create/update)
+
+```mermaid
+flowchart TD
+    A[create_item input] --> B[create_issue]
+    B --> C{project configured?}
+    C -- yes --> D[ensure_project_item]
+    D --> E[ensure_project_fields]
+    C -- no --> F[return GitHubItem]
+    E --> F
+
+    G[update_item input] --> H[update_issue]
+    H --> I{label strategy?}
+    I -- label --> J[reconcile managed labels]
+    I -- issue-type --> K[ensure discovery labels]
+    J --> L[optional project field updates]
+    K --> L
+    L --> M[return GitHubItem]
+```
+
 ### Atomic Issue Creation
 
 `CreateIssueInput` supports `labelIds`, `projectV2Ids`, `issueTypeId`, and `parentIssueId` directly. The previous implementation required 5+ sequential API calls per new issue:
@@ -198,7 +218,7 @@ Token resolution is handled by the auth module (see [auth.md](auth.md) for `Toke
 | Org project metadata reads | Organization metadata/read access |
 | Discovery + relation queries/mutations | GraphQL access with above permissions |
 
-Provider startup must execute capability probes and return explicit missing-permission errors.
+Provider setup resolves repository/project context and validates required combinations (for example create-type strategy vs available issue types). Missing permissions still surface as explicit provider/auth errors.
 
 ## Codegen Setup
 
@@ -250,7 +270,7 @@ Any other URL shape is a `ProjectURLError`.
 
 ## Capability Gating for Relations
 
-Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable. Provider startup detects capabilities and caches booleans in context. Relation calls raise `ProviderCapabilityError` when unsupported.
+Relation mutations (`addSubIssue`, `addBlockedBy`) are gated through provider context capability flags. Relation calls raise `ProviderCapabilityError` when unsupported.
 
 ## Pagination Requirements
 

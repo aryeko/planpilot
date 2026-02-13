@@ -12,6 +12,7 @@ flowchart TD
     Root --> Guides[docs/guides/\nTroubleshooting and operator runbooks]
     Root --> Testing[docs/testing/\nVerification strategy]
     Root --> Decisions[docs/decisions/\nADR rationale]
+    Root --> Plans[docs/plans/\nHistorical execution plans]
 
     Design --> A1[architecture.md]
     Design --> A2[contracts.md]
@@ -19,6 +20,7 @@ flowchart TD
     Design --> A4[map-sync.md]
     Design --> A5[clean.md]
     Design --> A6[repository-layout.md]
+    Design --> A7[codemap.md]
 
     Modules --> M1[cli.md]
     Modules --> M2[sdk.md]
@@ -51,6 +53,7 @@ flowchart LR
 - Update `docs/README.md` whenever docs structure or navigation changes.
 - Update `docs/design/*.md` when behavior contracts or architecture constraints change.
 - Update `docs/modules/*.md` when implementation details change in the corresponding runtime module.
+- Update `docs/reference/*.md` when user-facing command/config/output contracts change.
 - Update `RELEASE.md` and workflow docs when release or CI semantics change.
 
 ## Docs Update Decision Flow

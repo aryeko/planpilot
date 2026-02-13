@@ -142,6 +142,8 @@ The `init` command calls the SDK scaffold functions (`detect_target`, `detect_pl
 | `5` | Sync/reconciliation failure |
 | `1` | Unexpected internal failure |
 
+Canonical table: [reference/exit-codes.md](../reference/exit-codes.md)
+
 ## Design Decisions
 
 | Decision | Rationale |

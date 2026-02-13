@@ -16,7 +16,7 @@ Providers must support discovery semantics used by the engine:
 - `search_items()` must use provider-native search semantics with mandatory pagination
 - `search_items()` may execute partitioned queries and must return the de-duplicated union
 - Discovery must fail fast if search limits/caps would truncate results (no silent partial discovery)
-- If a provider cannot satisfy these semantics, it must fail fast in `__aenter__` with `ProviderCapabilityError`
+- If a provider cannot satisfy these semantics, it must fail fast with a clear provider error during setup or discovery execution
 
 ## Partial Failure Error Contract
 
@@ -66,6 +66,19 @@ flowchart TB
 
 - **Labels:** Additive (`ensure label present`), not replace-all. Provider must preserve non-PlanPilot labels.
 - **Provider-authoritative after create:** `status`, `priority`, `iteration` from `field_config` are creation defaults, not continuously enforced.
+
+## Create-Type Strategy Flow
+
+```mermaid
+flowchart TD
+    A[Resolve board owner + repo capabilities] --> B{create_type_strategy}
+    B -->|issue-type| C{Issue types available?}
+    C -->|yes| D[Use issue-type mapping]
+    C -->|no| E[Fallback to label strategy]
+    B -->|label| E
+    D --> F[Create/update item]
+    E --> F
+```
 
 ## Concurrency and Retry Contract
 

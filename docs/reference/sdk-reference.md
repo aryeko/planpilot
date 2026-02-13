@@ -52,3 +52,8 @@ pp = await PlanPilot.from_config(config)
 result = await pp.sync(dry_run=True)
 print(result.sync_map.plan_id)
 ```
+
+## Related
+
+- [Config Reference](./config-reference.md)
+- [Exit Codes](./exit-codes.md)

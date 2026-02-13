@@ -51,11 +51,4 @@ Notes:
 
 ## Exit codes
 
-| Code | Meaning |
-|---|---|
-| `0` | Success |
-| `2` | Usage error / user abort |
-| `3` | Config or plan validation failure |
-| `4` | Auth/provider/network failure |
-| `5` | Sync/reconciliation failure |
-| `1` | Unexpected internal failure |
+See [Exit Codes](./exit-codes.md) for the canonical mapping and exception flow.

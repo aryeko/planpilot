@@ -14,7 +14,7 @@
 6. Upsert missing/changed items.
 7. Enrich bodies with context links/checklists.
 8. Apply relations (parent/dependency) when supported by provider.
-9. Persist sync map (`sync_path` for apply, `sync_path.dry-run` for dry-run).
+9. Persist sync map (`sync_path` for apply, `sync_path.dry-run` for dry-run) in CLI flows.
 
 ```mermaid
 flowchart TD
@@ -60,10 +60,4 @@ flowchart TD
 ## Output and exit codes
 
 - CLI summary is human-focused.
-- Exit codes:
-  - `0` success
-  - `2` argument parsing
-  - `3` config/plan validation
-  - `4` auth/provider/network
-  - `5` sync/reconciliation
-  - `1` unexpected internal error
+- See [reference/exit-codes.md](reference/exit-codes.md) for canonical process-exit mapping.

@@ -8,20 +8,22 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 
 1. **[Architecture](./design/architecture.md)** — Layers, dependency rules, UML class diagram, data flow
 2. **[Repository Layout](./design/repository-layout.md)** — Current package ownership (`core/`, `cli/`, `sdk.py`) and code map
-3. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
-4. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
-5. **[Map Sync Design](./design/map-sync.md)** — Plan ID discovery/selection and local reconciliation semantics
-6. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
-7. **[Documentation Architecture](./design/documentation-architecture.md)** — Doc IA, ownership map, and update rules
-8. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-9. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-10. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
-11. **[Docs Refresh Plan](./plans/2026-02-13-docs-refresh-execution-plan.md)** — Full docs-system review and execution plan
+3. **[Runtime Code Map](./design/codemap.md)** — Runtime package ownership and dependency boundaries
+4. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
+5. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
+6. **[Map Sync Design](./design/map-sync.md)** — Plan ID discovery/selection and local reconciliation semantics
+7. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
+8. **[Documentation Architecture](./design/documentation-architecture.md)** — Doc IA, ownership map, and update rules
+9. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+10. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+11. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Quick reference
 
 - **[CLI Reference](./reference/cli-reference.md)** — command/flag matrix and examples
 - **[SDK Reference](./reference/sdk-reference.md)** — API lookup for SDK entrypoints and result objects
+- **[Config Reference](./reference/config-reference.md)** — canonical config fields, validation, and examples
+- **[Exit Codes](./reference/exit-codes.md)** — stable process-exit mapping and troubleshooting links
 - **[Troubleshooting](./guides/troubleshooting.md)** — common failures and practical fixes
 
 ### Navigation flow
@@ -31,6 +33,8 @@ flowchart LR
     A[Start at docs/README.md] --> B{Need}
     B -->|Run CLI| C[reference/cli-reference.md]
     B -->|Use SDK| D[reference/sdk-reference.md]
+    B -->|Configure runtime| H[reference/config-reference.md]
+    B -->|Interpret failures| I[reference/exit-codes.md]
     B -->|Understand architecture| E[design/*.md]
     B -->|Change implementation| F[modules/*.md]
     B -->|Debug failure| G[guides/troubleshooting.md]
@@ -56,6 +60,11 @@ flowchart LR
 | ADR | Topic |
 |-----|-------|
 | [001](./decisions/001-ariadne-codegen.md) | Use ariadne-codegen for GitHub GraphQL client |
+
+### Archive and plans
+
+- [plans/](./plans/) contains historical execution plans and review artifacts.
+- Treat files in `docs/plans/` as implementation logs, not primary product documentation.
 
 ## Locked v2 Decisions
 

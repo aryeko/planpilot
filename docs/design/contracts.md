@@ -123,8 +123,16 @@ class Item(ABC):
 
     # Relation methods (implemented by provider subclasses)
     @abstractmethod
+    async def set_parent(self, parent: Item) -> None: ...
+
+    @abstractmethod
+    async def add_dependency(self, blocker: Item) -> None: ...
+
+    @abstractmethod
     async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None: ...
 ```
+
+`reconcile_relations(...)` is the orchestration path used by the engine. `set_parent(...)` and `add_dependency(...)` remain part of the contract for compatibility and provider-level relation helpers.
 
 **Dependencies:** Uses `PlanItemType` from plan domain.
 

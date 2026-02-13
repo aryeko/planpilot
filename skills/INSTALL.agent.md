@@ -79,7 +79,7 @@ mkdir -p ~/.agents/skills/roadmap-to-github-project
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
@@ -87,7 +87,7 @@ If `curl` is not available, try `wget`:
 
 ```bash
 wget -qO ~/.agents/skills/roadmap-to-github-project/SKILL.md \
-  "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md"
+  "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md"
 ```
 
 ## Step 6: Verify skill install
@@ -113,6 +113,6 @@ Tell the user:
 >
 > To update the skill later, re-run this install or run:
 > ```
-> curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+> curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
 >   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 > ```
