@@ -32,6 +32,14 @@ flowchart TD
     Modules --> M8[renderers.md]
     Modules --> M9[map-sync.md]
     Modules --> M10[clean.md]
+
+    Reference --> R1[cli-reference.md]
+    Reference --> R2[sdk-reference.md]
+    Reference --> R3[config-reference.md]
+    Reference --> R4[exit-codes.md]
+    Reference --> R5[plan-schemas.md]
+    Reference --> R6[workflows-reference.md]
+    Reference --> R7[developer-workflow.md]
 ```
 
 ## Code-to-Docs Ownership Map
@@ -54,7 +62,24 @@ flowchart LR
 - Update `docs/design/*.md` when behavior contracts or architecture constraints change.
 - Update `docs/modules/*.md` when implementation details change in the corresponding runtime module.
 - Update `docs/reference/*.md` when user-facing command/config/output contracts change.
+- Update `docs/reference/workflows-reference.md` when CI/release/security workflow behavior changes.
+- Update `docs/reference/developer-workflow.md` when local verification commands or contributor expectations change.
 - Update `RELEASE.md` and workflow docs when release or CI semantics change.
+
+## Docs Lifecycle
+
+```mermaid
+flowchart TD
+    A[Code/workflow change] --> B{What changed?}
+    B -->|Runtime behavior| C[Update docs/design + docs/modules]
+    B -->|User contract| D[Update docs/reference + README]
+    B -->|Automation/release| E[Update workflows-reference + RELEASE]
+    C --> F[Run docs-links and quality checks]
+    D --> F
+    E --> F
+    F --> G[Link from docs/README.md]
+    G --> H[Ship in same PR as code change]
+```
 
 ## Docs Update Decision Flow
 
@@ -83,11 +108,13 @@ flowchart TD
 | Clean behavior | `docs/design/clean.md`, `docs/modules/cli.md`, `docs/modules/sdk.md` |
 | Provider internals or capability model | `docs/modules/providers.md`, `docs/modules/github-provider.md`, `docs/design/contracts.md` |
 | Config schema or defaults | `README.md`, `docs/modules/config.md`, `docs/reference/plan-schemas.md` |
-| CI/release hardening | `README.md` (if user-visible), `RELEASE.md` |
+| CI/release hardening | `README.md` (if user-visible), `RELEASE.md`, `docs/reference/workflows-reference.md` |
+| Contributor verification flow | `CONTRIBUTING.md`, `docs/reference/developer-workflow.md` |
 
 ## Verification Checklist
 
 - `poe check` passes.
+- `poe docs-links` passes.
 - `poe test-e2e` passes when CLI behavior changes.
 - Local markdown links resolve.
 - New docs files are linked from `docs/README.md`.

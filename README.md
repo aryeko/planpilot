@@ -221,6 +221,9 @@ A complete working example is in the [examples/](examples/) directory, including
   - [SDK Reference](docs/reference/sdk-reference.md)
   - [Config Reference](docs/reference/config-reference.md)
   - [Exit Codes](docs/reference/exit-codes.md)
+  - [Workflows Reference](docs/reference/workflows-reference.md)
+  - [Developer Workflow](docs/reference/developer-workflow.md)
+  - [Docs Inventory](docs/reference/docs-inventory.md)
   - [Troubleshooting](docs/guides/troubleshooting.md)
 - Architecture and behavior:
   - [How It Works](docs/how-it-works.md)
@@ -255,6 +258,7 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 ```bash
 poe lint           # ruff check
 poe format         # ruff format
+poe docs-links     # validate local markdown links
 poe test           # pytest -v --ignore=tests/e2e
 poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
