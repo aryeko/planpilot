@@ -27,24 +27,24 @@ def _find_forbidden_imports(files: list[Path], forbidden_prefixes: tuple[str, ..
 
 def test_map_sync_does_not_import_engine_internals() -> None:
     root = Path(__file__).resolve().parents[1]
-    files = _collect_python_files(root / "src" / "planpilot" / "map_sync")
-    violations = _find_forbidden_imports(files, ("planpilot.engine",))
+    files = _collect_python_files(root / "src" / "planpilot" / "core" / "map_sync")
+    violations = _find_forbidden_imports(files, ("planpilot.core.engine",))
     assert not violations, f"map_sync imports forbidden engine internals: {violations}"
 
 
 def test_config_and_init_do_not_import_provider_internals() -> None:
     root = Path(__file__).resolve().parents[1]
-    config_files = _collect_python_files(root / "src" / "planpilot" / "config")
-    init_files = _collect_python_files(root / "src" / "planpilot" / "init")
+    config_files = _collect_python_files(root / "src" / "planpilot" / "core" / "config")
+    init_files = _collect_python_files(root / "src" / "planpilot" / "core" / "init")
     files = config_files + init_files
-    violations = _find_forbidden_imports(files, ("planpilot.providers",))
+    violations = _find_forbidden_imports(files, ("planpilot.core.providers",))
     assert not violations, f"config/init import forbidden provider internals: {violations}"
 
 
 def test_sdk_does_not_import_github_provider_internals() -> None:
     root = Path(__file__).resolve().parents[1]
     files = [root / "src" / "planpilot" / "sdk.py"]
-    violations = _find_forbidden_imports(files, ("planpilot.providers.github",))
+    violations = _find_forbidden_imports(files, ("planpilot.core.providers.github",))
     assert not violations, f"sdk imports forbidden github provider internals: {violations}"
 
 

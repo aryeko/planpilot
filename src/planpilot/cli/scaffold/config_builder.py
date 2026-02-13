@@ -1,6 +1,6 @@
 """CLI scaffolding compatibility exports."""
 
-from planpilot.core.config.scaffold import (
+from planpilot import (
     create_plan_stubs,
     detect_plan_paths,
     detect_target,

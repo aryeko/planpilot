@@ -55,21 +55,15 @@ planpilot - sync complete (dry-run)
   Target:    example-org/example-repo
   Board:     https://github.com/orgs/example-org/projects/1
 
-  Created:   1 epic(s), 2 story(s), 3 task(s)
+  Items:     6 total (1 epic, 2 stories, 3 tasks)
+  Created:   6 (1 epic, 2 stories, 3 tasks)
 
-  Epic   E-1     dry-run  dry-run
-  Story  S-1     dry-run  dry-run
-  Story  S-2     dry-run  dry-run
-  Task   T-1     dry-run  dry-run
-  Task   T-2     dry-run  dry-run
-  Task   T-3     dry-run  dry-run
-
-  Sync map:  examples/sync-map-sample.json.dry-run
+  Sync map:  /absolute/path/to/examples/sync-map-sample.json.dry-run
 
   [dry-run] No changes were made
 ```
 
-In dry-run mode, keys and URLs show `dry-run` since no GitHub issues are created. In `--apply` mode, these will be real issue numbers and URLs.
+In dry-run mode, no GitHub issues are created and the sync map is written to `<sync_path>.dry-run`.
 
 ### Sync map
 

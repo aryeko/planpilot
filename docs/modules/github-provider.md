@@ -47,6 +47,7 @@ The provider contains **zero inline GraphQL**. All operations are defined in `.g
 | Create issue | `CreateIssue` | Atomic: supports `labelIds`, `issueTypeId`, `projectV2Ids`, `parentIssueId` |
 | Update issue | `UpdateIssue` | Supports `issueTypeId`, `labelIds` in same mutation |
 | Close issue | `CloseIssue` | Soft delete with `stateReason` support |
+| Delete issue | `DeleteIssue` | Permanent delete for clean workflow |
 | Create label | `CreateLabel` | Bootstrap missing labels |
 | Add labels | `AddLabels` | `addLabelsToLabelable` |
 | Remove labels | `RemoveLabels` | `removeLabelsFromLabelable` |
@@ -57,7 +58,7 @@ The provider contains **zero inline GraphQL**. All operations are defined in `.g
 | Add blocked-by | `AddBlockedBy` | Set dependency relation |
 | Remove blocked-by | `RemoveBlockedBy` | Remove dependency relation |
 
-**Total: 9 queries + 12 mutations + 1 shared fragment = 22 `.graphql` files**
+**Total: 9 queries + 13 mutations + 1 shared fragment = 23 `.graphql` files**
 
 All operations are GraphQL. Discovery uses the GraphQL `search` query (full-text matching on titles and bodies; use `in:body` qualifier for body-only matches).
 

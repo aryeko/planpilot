@@ -7,12 +7,7 @@ from pathlib import Path
 def test_cli_imports_only_public_planpilot_api() -> None:
     cli_dir = Path(__file__).resolve().parents[1] / "src" / "planpilot" / "cli"
 
-    forbidden_prefixes = (
-        "planpilot.engine",
-        "planpilot.providers",
-        "planpilot.auth",
-        "planpilot.contracts",
-    )
+    forbidden_prefixes = ("planpilot.core",)
     violations: list[str] = []
 
     for cli_path in sorted(cli_dir.rglob("*.py")):
@@ -25,12 +20,6 @@ def test_cli_imports_only_public_planpilot_api() -> None:
                         violations.append(f"{cli_path}: {name}")
             elif isinstance(node, ast.ImportFrom):
                 if node.module is None:
-                    continue
-                if (
-                    cli_path.name == "rich.py"
-                    and "planpilot/cli/progress" in str(cli_path)
-                    and node.module == "planpilot.core.engine.progress"
-                ):
                     continue
                 if node.module.startswith(forbidden_prefixes):
                     violations.append(f"{cli_path}: {node.module}")

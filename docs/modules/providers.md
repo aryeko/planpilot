@@ -108,6 +108,7 @@ Provider transport clients must use connection pooling (e.g. httpx `AsyncClient`
 ```python
 PROVIDERS: dict[str, type[Provider]] = {
     "github": GitHubProvider,
+    "dry-run": DryRunProvider,
 }
 
 def create_provider(

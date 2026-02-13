@@ -5,10 +5,12 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   commitlint:
     runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
     steps:
       - uses: actions/checkout@v6
         with:
@@ -48,7 +50,12 @@ jobs:
       - name: Install dependencies
         run: poetry install --no-interaction
       - name: Run tests (excluding E2E)
-        run: poetry run poe test
+        run: |
+          if [ "${{ matrix.python-version }}" = "3.11" ]; then
+            poetry run pytest -v --ignore=tests/e2e --cov-fail-under=90
+          else
+            poetry run pytest -v --ignore=tests/e2e --no-cov
+          fi
       - name: Upload coverage
         if: matrix.python-version == '3.11'
         uses: codecov/codecov-action@v5
@@ -72,3 +79,21 @@ jobs:
         run: poetry install --no-interaction
       - name: Run E2E tests
         run: poetry run poe test-e2e
+
+  package:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - run: pipx install poetry
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: "poetry"
+      - name: Install dependencies
+        run: poetry install --no-interaction
+      - name: Build package
+        run: poetry build
+      - name: Validate package metadata
+        run: |
+          python -m pip install --upgrade twine
+          twine check dist/*

@@ -8,8 +8,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from planpilot.core.contracts.exceptions import ConfigError, SyncError
-from planpilot.core.contracts.sync import SyncMap
+from planpilot import ConfigError, SyncError, SyncMap
 
 
 def output_sync_path(*, sync_path: Path, dry_run: bool) -> Path:

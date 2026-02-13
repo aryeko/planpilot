@@ -31,6 +31,7 @@ from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.core.contracts.provider import Provider
 from planpilot.core.contracts.renderer import BodyRenderer, RenderContext
 from planpilot.core.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
+from planpilot.core.engine.progress import SyncProgress
 from planpilot.core.init import validate_board_url
 from planpilot.core.providers import create_provider
 from planpilot.core.renderers import create_renderer
@@ -59,6 +60,7 @@ __all__ = [
     "SyncEntry",
     "SyncError",
     "SyncMap",
+    "SyncProgress",
     "SyncResult",
     "__version__",
     "create_init_token_resolver",

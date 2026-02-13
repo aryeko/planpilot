@@ -81,7 +81,7 @@ pip install planpilot
 <summary>From source (Poetry)</summary>
 
 ```bash
-poetry add planpilot
+poetry install
 ```
 
 </details>
@@ -243,12 +243,12 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 ```bash
 poe lint           # ruff check
 poe format         # ruff format
-poe test           # pytest -v
+poe test           # pytest -v --ignore=tests/e2e
 poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
 poe coverage-e2e   # E2E-only coverage XML
 poe typecheck      # mypy
-poe check          # lint + format-check + tests (all-in-one)
+poe check          # lint + format-check + typecheck + tests
 ```
 
 ## Contributing

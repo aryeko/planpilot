@@ -6,8 +6,7 @@ import json
 from collections.abc import Iterable
 from typing import Any
 
-from planpilot.core.contracts.exceptions import SyncError
-from planpilot.core.contracts.plan import PlanItem, PlanItemType
+from planpilot import PlanItem, PlanItemType, SyncError
 
 
 class RemotePlanPersistence:

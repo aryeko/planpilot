@@ -29,6 +29,52 @@ def _make_issue_core(
     return IssueCore(id=id, number=number, url=url, title=title, body=body, labels=labels)
 
 
+def test_item_from_issue_core_parses_item_type_from_metadata() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+    )
+    issue = _make_issue_core(
+        body="\n".join(
+            [
+                "PLANPILOT_META_V1",
+                "PLAN_ID:abc123",
+                "ITEM_ID:T-1",
+                "ITEM_TYPE:TASK",
+                "END_PLANPILOT_META",
+            ]
+        )
+    )
+
+    item = provider._item_from_issue_core(issue)
+
+    assert item.item_type is PlanItemType.TASK
+
+
+def test_item_from_issue_core_ignores_invalid_item_type_metadata() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+    )
+    issue = _make_issue_core(
+        body="\n".join(
+            [
+                "PLANPILOT_META_V1",
+                "PLAN_ID:abc123",
+                "ITEM_ID:T-1",
+                "ITEM_TYPE:NOT_A_TYPE",
+                "END_PLANPILOT_META",
+            ]
+        )
+    )
+
+    item = provider._item_from_issue_core(issue)
+
+    assert item.item_type is None
+
+
 @pytest.mark.asyncio
 async def test_aenter_builds_context(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(

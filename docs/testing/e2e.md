@@ -77,6 +77,13 @@ Current E2E cases:
 20. Interactive overwrite declined -> exit code `2`, original file preserved.
 21. Interactive overwrite accepted -> `sync --dry-run` round-trip.
 
+**Clean and map-sync subcommands:**
+
+22. `clean --dry-run` and `clean --apply` summary/exit behavior with offline provider.
+23. `clean --all` path and no-op behavior when no matching items exist.
+24. `map sync --dry-run` and `map sync --apply` summary/exit behavior.
+25. `map sync` plan-id selection behavior (`--plan-id`, interactive, and non-interactive errors).
+
 ## DryRunProvider instrumentation
 
 `DryRunProvider` now records deterministic operation logs via `DryRunOperation`:
@@ -122,12 +129,11 @@ poetry run poe check
 
 ## Current baseline
 
-As of 2026-02-09:
+As of 2026-02-13:
 
-- `tests/e2e/test_cli_e2e.py`: 26 tests passing (16 sync + 10 init).
-- Full suite: 287 tests passing.
+- `tests/e2e/test_cli_e2e.py`: 31 tests passing.
 
-Treat these numbers as a moving baseline; update this section when adding/removing cases.
+Treat this number as a moving baseline; update this section when adding/removing cases.
 
 ## Extension guidelines
 

@@ -24,10 +24,11 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe lint` | Run ruff linter (`ruff check .`) |
 | `poe format` | Auto-format code (`ruff format .`) |
 | `poe format-check` | Check formatting without changes (`ruff format --check .`) |
-| `poe test` | Run tests with verbose output (`pytest -v`) |
+| `poe test` | Run non-E2E tests (`pytest -v --ignore=tests/e2e`) |
+| `poe test-e2e` | Run offline E2E suite (`pytest -v tests/e2e/test_cli_e2e.py`) |
 | `poe coverage` | Run tests and generate HTML coverage report |
 | `poe typecheck` | Run mypy type-checking (`mypy src/planpilot`) |
-| `poe check` | Run lint + format-check + tests in sequence |
+| `poe check` | Run lint + format-check + typecheck + non-E2E tests |
 
 ```bash
 # Quick check before pushing
@@ -102,7 +103,7 @@ flowchart LR
 - Keep changes focused and well-tested.
 - Use Conventional Commit format for all commits (enforced by CI).
 - Include rationale and verification steps.
-- Ensure `poe check` passes (lint + format + tests).
+- Ensure `poe check` passes (lint + format-check + typecheck + non-E2E tests).
 - PRs require at least 1 approving review and all CI checks to pass.
 - Prefer dry-run examples in docs for sync operations.
 
