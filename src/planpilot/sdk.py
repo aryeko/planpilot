@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable
 from pathlib import Path
 
 from pydantic import ValidationError
@@ -36,8 +35,7 @@ from planpilot.core.plan import PlanHasher as PlanHasher
 from planpilot.core.plan import PlanLoader, PlanValidator
 from planpilot.core.providers import DryRunProvider, create_provider
 from planpilot.core.renderers import create_renderer
-from planpilot.persistence.remote_plan import RemotePlanPersistence
-from planpilot.persistence.sync_map import load_sync_map, output_sync_path, persist_sync_map
+from planpilot.persistence.sync_map import load_sync_map
 
 
 def load_config(path: str | Path) -> PlanPilotConfig:
@@ -84,7 +82,6 @@ class PlanPilot:
         self._clean_planner = CleanDeletionPlanner()
         self._map_sync_parser = RemotePlanParser()
         self._map_sync_reconciler = MapSyncReconciler(parser=self._map_sync_parser)
-        self._map_sync_persistence = RemotePlanPersistence()
 
     @classmethod
     async def from_config(
@@ -215,15 +212,6 @@ class PlanPilot:
             dry_run=dry_run,
         )
         return result
-
-    def persist_sync_map(self, sync_map: SyncMap, *, dry_run: bool) -> None:
-        self._persist_sync_map(sync_map, dry_run=dry_run)
-
-    def load_sync_map(self, *, plan_id: str) -> SyncMap:
-        return self._load_sync_map(plan_id=plan_id)
-
-    def persist_plan_from_remote(self, *, items: Iterable[PlanItem]) -> None:
-        self._persist_plan_from_remote(items=items)
 
     async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
         """Discover and delete all issues belonging to a plan.
@@ -369,12 +357,6 @@ class PlanPilot:
         except ValueError as exc:
             raise ConfigError(str(exc)) from exc
 
-    def _persist_sync_map(self, sync_map: SyncMap, *, dry_run: bool) -> None:
-        persist_sync_map(sync_map=sync_map, sync_path=self._config.sync_path, dry_run=dry_run)
-
-    def _output_sync_path(self, *, dry_run: bool) -> Path:
-        return output_sync_path(sync_path=self._config.sync_path, dry_run=dry_run)
-
     def _load_sync_map(self, *, plan_id: str) -> SyncMap:
         return load_sync_map(
             sync_path=self._config.sync_path,
@@ -383,12 +365,13 @@ class PlanPilot:
             board_url=self._config.board_url,
         )
 
-    def _persist_plan_from_remote(self, *, items: Iterable[PlanItem]) -> None:
-        self._map_sync_persistence.persist_plan_from_remote(items=items, plan_paths=self._config.plan_paths)
-
     @staticmethod
     def _plan_type_rank(item_type: PlanItemType) -> int:
-        return RemotePlanPersistence.plan_type_rank(item_type)
+        if item_type is PlanItemType.EPIC:
+            return 0
+        if item_type is PlanItemType.STORY:
+            return 1
+        return 2
 
     def _plan_item_from_remote(self, *, item_id: str, metadata: dict[str, str], title: str, body: str) -> PlanItem:
         return self._map_sync_parser.plan_item_from_remote(item_id=item_id, metadata=metadata, title=title, body=body)

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
+from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError
 from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.engine.progress import SyncProgress
@@ -324,41 +324,12 @@ async def test_sync_provider_factory_value_error_is_wrapped_as_config_error(
         await sdk.sync(sample_plan)
 
 
-@pytest.mark.asyncio
-async def test_persist_sync_map_write_error_is_wrapped_as_sync_error(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
-) -> None:
+def test_sdk_no_longer_exposes_persistence_api(tmp_path: Path) -> None:
     sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
-    result = await sdk.sync(sample_plan)
-    original_write_text = Path.write_text
 
-    def _boom(self: Path, *args: object, **kwargs: object) -> int:
-        if self == sdk._config.sync_path:
-            raise OSError("disk full")
-        return original_write_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "write_text", _boom)
-
-    with pytest.raises(SyncError, match="failed to persist sync map"):
-        sdk.persist_sync_map(result.sync_map, dry_run=False)
-
-
-@pytest.mark.asyncio
-async def test_persist_sync_map_uses_persist_sync_map_compatibility_hook(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
-) -> None:
-    sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
-    result = await sdk.sync(sample_plan)
-    calls: list[bool] = []
-
-    def _spy(_sync_map, *, dry_run: bool) -> None:
-        calls.append(dry_run)
-
-    monkeypatch.setattr(sdk, "_persist_sync_map", _spy)
-
-    sdk.persist_sync_map(result.sync_map, dry_run=True)
-
-    assert calls == [True]
+    assert not hasattr(sdk, "persist_sync_map")
+    assert not hasattr(sdk, "persist_plan_from_remote")
+    assert not hasattr(sdk, "load_sync_map")
 
 
 @pytest.mark.asyncio
