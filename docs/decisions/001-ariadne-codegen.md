@@ -40,10 +40,10 @@ Use [ariadne-codegen](https://github.com/mirumee/ariadne-codegen) to generate a 
 ```toml
 # pyproject.toml
 [tool.ariadne-codegen]
-schema_path = "src/planpilot/providers/github/schema.graphql"
-queries_path = "src/planpilot/providers/github/operations"
+schema_path = "src/planpilot/core/providers/github/schema.graphql"
+queries_path = "src/planpilot/core/providers/github/operations"
 target_package_name = "github_gql"
-target_package_path = "src/planpilot/providers/github"
+target_package_path = "src/planpilot/core/providers/github"
 client_name = "GitHubGraphQLClient"
 client_file_name = "client"
 async_client = true
@@ -80,7 +80,7 @@ ariadne-codegen is **not** a Poetry dev dependency. It conflicts with `python-se
 ```toml
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot/core/providers/github/github_gql src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
+shell = "rm -rf src/planpilot/core/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen"
 ```
 
 The `rm -rf` prefix ensures stale files from removed operations are cleaned before regeneration.
@@ -112,7 +112,7 @@ Downloads the latest GitHub GraphQL schema via introspection. Requires the `gh` 
 poe gen-schema
 ```
 
-**Output:** Overwrites `src/planpilot/providers/github/schema.graphql`.
+**Output:** Overwrites `src/planpilot/core/providers/github/schema.graphql`.
 
 **When to run:** Only when you suspect the GitHub schema has changed (new fields, deprecated types). This is rare - GitHub's schema evolves slowly.
 
@@ -145,7 +145,7 @@ poe gen-gql
 
 ### Adding a new GraphQL operation
 
-1. Write a `.graphql` file in `src/planpilot/providers/github/operations/`
+1. Write a `.graphql` file in `src/planpilot/core/providers/github/operations/`
 2. Run `poe gen-client`
 3. Use the new typed method on `GitHubGraphQLClient` in provider code
 4. Run `poe typecheck` - mypy validates everything end-to-end

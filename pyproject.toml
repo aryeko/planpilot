@@ -77,7 +77,7 @@ shell = "export GITHUB_TOKEN=\"bearer $(gh auth token)\" && pipx run --spec 'ari
 
 [tool.poe.tasks.gen-client]
 help = "Generate typed GraphQL client from schema and operations"
-shell = "rm -rf src/planpilot/core/providers/github/github_gql src/planpilot/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot/core/providers/github/github_gql && ruff format src/planpilot/core/providers/github/github_gql"
+shell = "rm -rf src/planpilot/core/providers/github/github_gql && pipx run --spec 'ariadne-codegen>=0.17,<0.18' ariadne-codegen && ruff check --fix src/planpilot/core/providers/github/github_gql && ruff format src/planpilot/core/providers/github/github_gql"
 
 [tool.poe.tasks.gen-gql]
 help = "Download schema and generate GraphQL client"
@@ -163,8 +163,8 @@ mode = "update"
 type = "github"
 
 [tool.ariadne-codegen]
-schema_path = "src/planpilot/providers/github/schema.graphql"
-queries_path = "src/planpilot/providers/github/operations"
+schema_path = "src/planpilot/core/providers/github/schema.graphql"
+queries_path = "src/planpilot/core/providers/github/operations"
 target_package_name = "github_gql"
 target_package_path = "src/planpilot/core/providers/github"
 client_name = "GitHubGraphQLClient"

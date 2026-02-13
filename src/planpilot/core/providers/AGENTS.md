@@ -5,7 +5,7 @@ Provider integration layer: provider factory selection, dry-run provider behavio
 
 ## STRUCTURE
 ```text
-src/planpilot/providers/
+src/planpilot/core/providers/
 |- factory.py            # `create_provider()` mapping and instantiation policy
 |- dry_run.py            # Offline `DryRunProvider` + operation log model
 |- base.py               # ProviderContext base marker
@@ -16,10 +16,10 @@ src/planpilot/providers/
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Add provider type mapping | `src/planpilot/providers/factory.py` | Update `PROVIDERS` and constructor wiring |
-| Validate offline apply path | `src/planpilot/providers/dry_run.py` | Deterministic placeholders + operation tracing |
-| Understand provider state base | `src/planpilot/providers/base.py` | `ProviderContext` marker for resolved state |
-| GitHub provider internals | `src/planpilot/providers/github/provider.py` | Context resolution and provider CRUD |
+| Add provider type mapping | `src/planpilot/core/providers/factory.py` | Update `PROVIDERS` and constructor wiring |
+| Validate offline apply path | `src/planpilot/core/providers/dry_run.py` | Deterministic placeholders + operation tracing |
+| Understand provider state base | `src/planpilot/core/providers/base.py` | `ProviderContext` marker for resolved state |
+| GitHub provider internals | `src/planpilot/core/providers/github/provider.py` | Context resolution and provider CRUD |
 
 ## CONVENTIONS
 - Keep `factory.py` as the single provider-name to implementation map.

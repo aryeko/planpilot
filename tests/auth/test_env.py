@@ -1,6 +1,6 @@
 import pytest
 
-from planpilot.auth.resolvers.env import EnvTokenResolver
+from planpilot.core.auth.resolvers.env import EnvTokenResolver
 from planpilot.core.contracts.exceptions import AuthenticationError
 
 

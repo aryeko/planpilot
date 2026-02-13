@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from planpilot.auth.base import TokenResolver
+from planpilot.core.auth.base import TokenResolver
 from planpilot.core.contracts.exceptions import AuthenticationError
 
 

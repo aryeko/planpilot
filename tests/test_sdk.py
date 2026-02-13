@@ -10,7 +10,7 @@ from planpilot.core.contracts.exceptions import ConfigError, PlanLoadError, Plan
 from planpilot.core.contracts.item import CreateItemInput, Item, ItemSearchFilters
 from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.core.engine.progress import SyncProgress
-from planpilot.plan import PlanHasher
+from planpilot.core.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer

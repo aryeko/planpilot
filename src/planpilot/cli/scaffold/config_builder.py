@@ -9,9 +9,9 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from planpilot.cli.scaffold.targets.github_project import parse_project_url
 from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.core.contracts.exceptions import ConfigError, ProjectURLError
+from planpilot.core.targets.github_project import parse_project_url
 
 _SPLIT_DEFAULTS = {
     "epics": ".plans/epics.json",

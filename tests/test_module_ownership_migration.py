@@ -33,16 +33,9 @@ def test_legacy_config_scaffold_module_is_compatibility_shim() -> None:
     assert callable(new_module.create_plan_stubs)
 
 
-def test_legacy_init_validation_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.init.validation")
-    new_module = import_module("planpilot.cli.init.validation")
-
-    valid = "https://github.com/orgs/acme/projects/1"
-    invalid = "https://example.com/not-a-project"
-    assert legacy_module.validate_board_url(valid) is True
-    assert new_module.validate_board_url(valid) is True
-    assert legacy_module.validate_board_url(invalid) is False
-    assert new_module.validate_board_url(invalid) is False
+def test_legacy_init_validation_module_is_removed() -> None:
+    with pytest.raises(ModuleNotFoundError):
+        import_module("planpilot.init.validation")
 
 
 def test_legacy_map_sync_modules_are_removed() -> None:
@@ -69,6 +62,11 @@ def test_legacy_persistence_modules_are_removed() -> None:
     [
         "planpilot.metadata",
         "planpilot.progress",
+        "planpilot.auth.base",
+        "planpilot.auth.factory",
+        "planpilot.auth.resolvers.env",
+        "planpilot.auth.resolvers.gh_cli",
+        "planpilot.auth.resolvers.static",
         "planpilot.init.auth",
         "planpilot.clean.deletion_planner",
         "planpilot.engine.engine",
@@ -100,20 +98,12 @@ def test_legacy_persistence_modules_are_removed() -> None:
         "planpilot.contracts.provider",
         "planpilot.contracts.renderer",
         "planpilot.contracts.sync",
+        "planpilot.targets.github_project",
     ],
 )
 def test_legacy_shim_modules_are_removed(module_name: str) -> None:
     with pytest.raises(ModuleNotFoundError):
         import_module(module_name)
-
-
-def test_legacy_targets_module_is_compatibility_shim() -> None:
-    legacy_module = import_module("planpilot.targets.github_project")
-    new_module = import_module("planpilot.cli.scaffold.targets.github_project")
-
-    url = "https://github.com/orgs/acme/projects/7"
-    assert legacy_module.parse_project_url(url) == ("org", "acme", 7)
-    assert new_module.parse_project_url(url) == ("org", "acme", 7)
 
 
 def test_sdk_imports_core_modules_for_owned_domains() -> None:
@@ -123,6 +113,7 @@ def test_sdk_imports_core_modules_for_owned_domains() -> None:
         node.module for node in ast.walk(module) if isinstance(node, ast.ImportFrom) and node.module is not None
     }
 
+    assert "planpilot.core.auth" in imported_modules
     assert "planpilot.core.metadata" in imported_modules
     assert "planpilot.core.map_sync" in imported_modules
     assert "planpilot.core.clean" in imported_modules

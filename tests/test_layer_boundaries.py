@@ -89,7 +89,7 @@ def test_cli_sync_commands_import_persistence_helpers() -> None:
 
 def test_github_ops_do_not_import_cli_sdk_or_engine_layers() -> None:
     root = Path(__file__).resolve().parents[1]
-    files = _collect_python_files(root / "src" / "planpilot" / "providers" / "github" / "ops")
+    files = _collect_python_files(root / "src" / "planpilot" / "core" / "providers" / "github" / "ops")
     violations = _find_forbidden_imports(
         files,
         (
@@ -115,7 +115,6 @@ def test_cli_owned_modules_do_not_import_legacy_paths() -> None:
         root / "src" / "planpilot" / "cli" / "persistence" / "sync_map.py",
         root / "src" / "planpilot" / "cli" / "persistence" / "remote_plan.py",
         root / "src" / "planpilot" / "cli" / "scaffold" / "config_builder.py",
-        root / "src" / "planpilot" / "cli" / "scaffold" / "targets" / "github_project.py",
         root / "src" / "planpilot" / "cli" / "init" / "validation.py",
     ]
     violations = _find_forbidden_imports(

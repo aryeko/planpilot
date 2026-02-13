@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from urllib.parse import urlparse
 
-from planpilot.auth.base import TokenResolver
-from planpilot.auth.resolvers.env import EnvTokenResolver
-from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
-from planpilot.auth.resolvers.static import StaticTokenResolver
+from planpilot.core.auth.base import TokenResolver
+from planpilot.core.auth.resolvers.env import EnvTokenResolver
+from planpilot.core.auth.resolvers.gh_cli import GhCliTokenResolver
+from planpilot.core.auth.resolvers.static import StaticTokenResolver
 from planpilot.core.contracts.config import PlanPilotConfig
 from planpilot.core.contracts.exceptions import ConfigError
 

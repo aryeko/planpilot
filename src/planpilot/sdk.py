@@ -6,8 +6,8 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from planpilot.auth import create_token_resolver
 from planpilot.config.loader import load_config as _load_config
+from planpilot.core.auth import create_token_resolver
 from planpilot.core.clean import CleanDeletionPlanner
 from planpilot.core.contracts import (
     BodyRenderer,

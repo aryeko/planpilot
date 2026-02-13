@@ -6,11 +6,11 @@ GitHub adapter layer: project/repo context resolution, issue CRUD, relations, an
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
-| Main adapter behavior | `src/planpilot/providers/github/provider.py` | `GitHubProvider` context manager + provider contract methods |
-| Item wrapper behavior | `src/planpilot/providers/github/item.py` | `Item` implementation for relations |
-| URL/field mapping | `src/planpilot/providers/github/mapper.py` | project URL parsing + option resolution |
-| Provider context models | `src/planpilot/providers/github/models.py` | resolved field/context state |
-| GraphQL operations source | `src/planpilot/providers/github/operations/` | `.graphql` operation definitions |
+| Main adapter behavior | `src/planpilot/core/providers/github/provider.py` | `GitHubProvider` context manager + provider contract methods |
+| Item wrapper behavior | `src/planpilot/core/providers/github/item.py` | `Item` implementation for relations |
+| URL/field mapping | `src/planpilot/core/providers/github/mapper.py` | project URL parsing + option resolution |
+| Provider context models | `src/planpilot/core/providers/github/models.py` | resolved field/context state |
+| GraphQL operations source | `src/planpilot/core/providers/github/operations/` | `.graphql` operation definitions |
 | Generated typed client | `src/planpilot/core/providers/github/github_gql/` | ariadne-codegen output |
 
 ## CONVENTIONS
