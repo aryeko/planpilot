@@ -41,11 +41,11 @@ def test_config_and_init_do_not_import_provider_internals() -> None:
     assert not violations, f"config/init import forbidden provider internals: {violations}"
 
 
-def test_sdk_ops_do_not_import_github_provider_internals() -> None:
+def test_sdk_does_not_import_github_provider_internals() -> None:
     root = Path(__file__).resolve().parents[1]
-    files = _collect_python_files(root / "src" / "planpilot" / "sdk_ops")
+    files = [root / "src" / "planpilot" / "sdk.py"]
     violations = _find_forbidden_imports(files, ("planpilot.providers.github",))
-    assert not violations, f"sdk_ops import forbidden github provider internals: {violations}"
+    assert not violations, f"sdk imports forbidden github provider internals: {violations}"
 
 
 def test_github_ops_do_not_import_cli_sdk_or_engine_layers() -> None:
