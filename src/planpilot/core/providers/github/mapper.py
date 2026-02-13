@@ -2,20 +2,7 @@
 
 from __future__ import annotations
 
-import re
-
-from planpilot.core.contracts.exceptions import ProjectURLError
-
-_PROJECT_RE = re.compile(r"^https://github\.com/(orgs|users)/([^/]+)/projects/(\d+)/?$")
-
-
-def parse_project_url(url: str) -> tuple[str, str, int]:
-    match = _PROJECT_RE.match(url.strip())
-    if match is None:
-        raise ProjectURLError(f"Unsupported project URL: {url}")
-    owner_segment, owner, project_number_text = match.groups()
-    owner_type = "org" if owner_segment == "orgs" else "user"
-    return owner_type, owner, int(project_number_text)
+from planpilot.core.targets.github_project import parse_project_url
 
 
 def resolve_option_id(options: list[dict[str, str]], name: str) -> str | None:
@@ -61,3 +48,6 @@ def build_blocked_by_map(data: dict) -> dict[str, set[str]]:
         if blockers:
             mapping[node_id] = blockers
     return mapping
+
+
+__all__ = ["build_blocked_by_map", "build_parent_map", "parse_project_url", "resolve_option_id"]

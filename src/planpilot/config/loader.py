@@ -10,7 +10,7 @@ from pydantic import ValidationError
 
 from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
 from planpilot.core.contracts.exceptions import ConfigError, ProjectURLError
-from planpilot.targets.github_project import parse_project_url
+from planpilot.core.targets.github_project import parse_project_url
 
 
 def _resolve_path(value: Path | None, *, base_dir: Path) -> Path | None:

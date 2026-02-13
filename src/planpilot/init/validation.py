@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from planpilot.core.contracts.exceptions import ProjectURLError
-from planpilot.targets.github_project import parse_project_url
+from planpilot.core.targets.github_project import parse_project_url
 
 
 def validate_board_url(value: str) -> bool:

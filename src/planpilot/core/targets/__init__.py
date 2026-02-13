@@ -1,4 +1,4 @@
-"""Target parsing utilities."""
+"""Core target parsing utilities."""
 
 from planpilot.core.targets.github_project import parse_project_url
 
