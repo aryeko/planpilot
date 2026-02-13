@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from planpilot.contracts.plan import PlanItem
-from planpilot.contracts.renderer import BodyRenderer, RenderContext
+from planpilot.core.contracts.plan import PlanItem
+from planpilot.core.contracts.renderer import BodyRenderer, RenderContext
 
 
 class FakeRenderer(BodyRenderer):

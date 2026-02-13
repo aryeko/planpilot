@@ -26,7 +26,7 @@ from planpilot import (
     SyncResult,
 )
 from planpilot.cli import _format_clean_summary, _format_summary, _run_clean, _run_init, _run_sync, build_parser, main
-from planpilot.contracts.config import PlanPaths
+from planpilot.core.contracts.config import PlanPaths
 
 
 @pytest.fixture(autouse=True)
@@ -149,10 +149,18 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    persisted: list[tuple[bool, Path]] = []
+
+    def _fake_persist_sync_map(*, sync_map: SyncMap, sync_path: Path, dry_run: bool) -> None:
+        del sync_map
+        persisted.append((dry_run, sync_path))
+
+    monkeypatch.setattr("planpilot.cli.sync_command.persist_sync_map", _fake_persist_sync_map)
 
     actual = await _run_sync(args)
 
     assert actual == result
+    assert persisted == [(True, config.sync_path)]
 
 
 @pytest.mark.asyncio
@@ -173,10 +181,18 @@ async def test_run_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, 
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    persisted: list[tuple[bool, Path]] = []
+
+    def _fake_persist_sync_map(*, sync_map: SyncMap, sync_path: Path, dry_run: bool) -> None:
+        del sync_map
+        persisted.append((dry_run, sync_path))
+
+    monkeypatch.setattr("planpilot.cli.sync_command.persist_sync_map", _fake_persist_sync_map)
 
     actual = await _run_sync(args)
 
     assert actual == result
+    assert persisted == [(True, config.sync_path)]
 
 
 def test_main_returns_zero_on_success(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -784,7 +800,7 @@ def test_init_interactive_github_preflight_uses_progress_when_stderr_tty(
     monkeypatch.setattr("planpilot.cli._resolve_init_token", lambda **_kw: "resolved")
     monkeypatch.setattr("planpilot.cli._validate_github_auth_for_init", _fake_validate_github_auth_for_init)
     monkeypatch.setattr(sys.stderr, "isatty", lambda: True)
-    monkeypatch.setattr("planpilot.progress.RichSyncProgress", _FakeRichProgress)
+    monkeypatch.setattr("planpilot.cli.progress.rich.RichSyncProgress", _FakeRichProgress)
     monkeypatch.setitem(sys.modules, "questionary", fake_q)
 
     args = argparse.Namespace(command="init", output=str(output), defaults=False)

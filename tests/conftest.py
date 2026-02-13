@@ -2,8 +2,8 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
 
 
 @pytest.fixture

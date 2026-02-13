@@ -1,4 +1,4 @@
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
 
 
 def test_plan_item_type_enum_values() -> None:

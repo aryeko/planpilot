@@ -1,8 +1,8 @@
 import pytest
 
-from planpilot.providers.dry_run import DryRunProvider
-from planpilot.providers.factory import create_provider
-from planpilot.providers.github.provider import GitHubProvider
+from planpilot.core.providers.dry_run import DryRunProvider
+from planpilot.core.providers.factory import create_provider
+from planpilot.core.providers.github.provider import GitHubProvider
 
 
 def test_create_provider_for_github() -> None:

@@ -46,7 +46,7 @@ jobs:
       - name: Checkout main at CI-tested commit
         uses: actions/checkout@v6
         with:
-          ref: main
+          ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
@@ -149,6 +149,12 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+
+      - name: Download dist
+        uses: actions/download-artifact@v7
+        with:
+          name: dist
+          path: dist/
 
       - name: Create GitHub Release + upload assets
         uses: python-semantic-release/publish-action@v10.5.3

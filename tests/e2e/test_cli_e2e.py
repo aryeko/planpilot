@@ -11,7 +11,7 @@ import pytest
 
 from planpilot import AuthenticationError, ConfigError, ProviderError, SyncError
 from planpilot.cli import main
-from planpilot.providers.dry_run import DryRunProvider
+from planpilot.core.providers.dry_run import DryRunProvider
 
 FIXTURES_ROOT = Path(__file__).parent / "fixtures" / "plans"
 

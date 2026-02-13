@@ -1,12 +1,12 @@
 import pytest
 
-from planpilot.contracts.config import FieldConfig
-from planpilot.contracts.exceptions import CreateItemPartialFailureError, ProviderError
-from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
-from planpilot.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
-from planpilot.providers.github.models import GitHubProviderContext, ResolvedField
-from planpilot.providers.github.provider import GitHubProvider
+from planpilot.core.contracts.config import FieldConfig
+from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError
+from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.providers.github.github_gql.fragments import IssueCore, IssueCoreLabels, IssueCoreLabelsNodes
+from planpilot.core.providers.github.models import GitHubProviderContext, ResolvedField
+from planpilot.core.providers.github.provider import GitHubProvider
 
 
 def _provider_module() -> object:
@@ -27,6 +27,52 @@ def _make_issue_core(
     """Build a typed IssueCore instance for tests."""
     labels = IssueCoreLabels(nodes=[IssueCoreLabelsNodes(id=f"lbl-{n}", name=n) for n in (label_names or [])])
     return IssueCore(id=id, number=number, url=url, title=title, body=body, labels=labels)
+
+
+def test_item_from_issue_core_parses_item_type_from_metadata() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+    )
+    issue = _make_issue_core(
+        body="\n".join(
+            [
+                "PLANPILOT_META_V1",
+                "PLAN_ID:abc123",
+                "ITEM_ID:T-1",
+                "ITEM_TYPE:TASK",
+                "END_PLANPILOT_META",
+            ]
+        )
+    )
+
+    item = provider._item_from_issue_core(issue)
+
+    assert item.item_type is PlanItemType.TASK
+
+
+def test_item_from_issue_core_ignores_invalid_item_type_metadata() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+    )
+    issue = _make_issue_core(
+        body="\n".join(
+            [
+                "PLANPILOT_META_V1",
+                "PLAN_ID:abc123",
+                "ITEM_ID:T-1",
+                "ITEM_TYPE:NOT_A_TYPE",
+                "END_PLANPILOT_META",
+            ]
+        )
+    )
+
+    item = provider._item_from_issue_core(issue)
+
+    assert item.item_type is None
 
 
 @pytest.mark.asyncio

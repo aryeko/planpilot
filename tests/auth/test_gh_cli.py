@@ -4,8 +4,8 @@ from typing import Any
 
 import pytest
 
-from planpilot.auth.resolvers.gh_cli import GhCliTokenResolver
-from planpilot.contracts.exceptions import AuthenticationError
+from planpilot.core.auth.resolvers.gh_cli import GhCliTokenResolver
+from planpilot.core.contracts.exceptions import AuthenticationError
 
 
 class _MockProcess:

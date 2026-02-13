@@ -1,9 +1,9 @@
 import pytest
 
-from planpilot.contracts.exceptions import ProviderError
-from planpilot.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
-from planpilot.contracts.provider import Provider
+from planpilot.core.contracts.exceptions import ProviderError
+from planpilot.core.contracts.item import CreateItemInput, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.contracts.provider import Provider
 from tests.fakes.provider import FakeProvider
 
 

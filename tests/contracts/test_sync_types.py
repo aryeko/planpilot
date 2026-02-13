@@ -1,6 +1,6 @@
-from planpilot.contracts.item import Item
-from planpilot.contracts.plan import PlanItemType
-from planpilot.contracts.sync import SyncMap, to_sync_entry
+from planpilot.core.contracts.item import Item
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.contracts.sync import SyncMap, to_sync_entry
 
 
 class DummyItem(Item):

@@ -1,7 +1,7 @@
 import pytest
 
-from planpilot.auth.resolvers.static import StaticTokenResolver
-from planpilot.contracts.exceptions import AuthenticationError
+from planpilot.core.auth.resolvers.static import StaticTokenResolver
+from planpilot.core.contracts.exceptions import AuthenticationError
 
 
 @pytest.mark.asyncio

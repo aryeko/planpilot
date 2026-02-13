@@ -1,4 +1,4 @@
-from planpilot.contracts.exceptions import (
+from planpilot.core.contracts.exceptions import (
     AuthenticationError,
     ConfigError,
     CreateItemPartialFailureError,

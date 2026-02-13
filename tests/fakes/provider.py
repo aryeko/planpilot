@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from planpilot.contracts.exceptions import ProviderError
-from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
-from planpilot.contracts.provider import Provider
+from planpilot.core.contracts.exceptions import ProviderError
+from planpilot.core.contracts.item import CreateItemInput, Item, ItemSearchFilters, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.contracts.provider import Provider
 
 
 @dataclass

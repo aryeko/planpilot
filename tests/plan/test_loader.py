@@ -5,10 +5,10 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths
-from planpilot.contracts.exceptions import PlanLoadError
-from planpilot.contracts.plan import PlanItemType
-from planpilot.plan.loader import PlanLoader
+from planpilot.core.contracts.config import PlanPaths
+from planpilot.core.contracts.exceptions import PlanLoadError
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.plan.loader import PlanLoader
 
 
 def test_load_unified_plan(tmp_path) -> None:

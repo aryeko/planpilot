@@ -3,4 +3,4 @@ name: "PlanPilot CodeQL Config"
 # Exclude generated GraphQL client code from analysis to avoid
 # noise from machine-generated imports and wrappers.
 paths-ignore:
-  - src/planpilot/providers/github/github_gql/**
+  - src/planpilot/core/providers/github/github_gql/**

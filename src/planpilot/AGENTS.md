@@ -6,29 +6,24 @@ Runtime package for SDK composition, sync orchestration, contracts, plan loading
 ## STRUCTURE
 ```text
 src/planpilot/
-|- cli.py                    # CLI entry and output formatting
+|- cli/                      # CLI package (parser/app/commands)
 |- sdk.py                    # Public facade and runtime composition
-|- engine/                   # 5-phase orchestration pipeline
-|- contracts/                # Provider-agnostic models + ABCs + errors
-|- providers/                # Provider factory and implementations
-|- plan/                     # Plan loader/validator/hasher
-|- renderers/                # Body rendering implementations
-`- auth/                     # Token resolver strategy + factory
+`- core/                     # Runtime domains (auth/contracts/engine/plan/providers/renderers)
 ```
 
 ## WHERE TO LOOK
 | Task | Location | Notes |
 |------|----------|-------|
 | Compose runtime from config | `src/planpilot/sdk.py` | `load_config()`, `PlanPilot.from_config()`, `sync()` |
-| CLI behavior and exits | `src/planpilot/cli.py` | `build_parser()`, `_format_summary()`, `main()` |
-| Sync ordering/concurrency | `src/planpilot/engine/engine.py` | discovery -> upsert -> enrich -> relations |
-| Provider contract | `src/planpilot/contracts/provider.py` | Single boundary engine depends on |
-| Domain schemas | `src/planpilot/contracts/plan.py`, `src/planpilot/contracts/sync.py` | Typed plan/sync payloads |
-| Plan semantics | `src/planpilot/plan/validator.py` | strict vs partial behaviors |
-| Renderer metadata | `src/planpilot/renderers/markdown.py` | idempotency markers in issue body |
+| CLI behavior and exits | `src/planpilot/cli/app.py`, `src/planpilot/cli/parser.py` | `main()`, `build_parser()` |
+| Sync ordering/concurrency | `src/planpilot/core/engine/engine.py` | discovery -> upsert -> enrich -> relations |
+| Provider contract | `src/planpilot/core/contracts/provider.py` | Single boundary engine depends on |
+| Domain schemas | `src/planpilot/core/contracts/plan.py`, `src/planpilot/core/contracts/sync.py` | Typed plan/sync payloads |
+| Plan semantics | `src/planpilot/core/plan/validator.py` | strict vs partial behaviors |
+| Renderer metadata | `src/planpilot/core/renderers/markdown.py` | idempotency markers in issue body |
 
 ## CONVENTIONS
-- Keep engine orchestration-only; no provider-specific API calls outside `providers/`.
+- Keep engine orchestration-only; no provider-specific API calls outside `core/providers/`.
 - Keep SDK as composition root; avoid wiring providers/renderers directly in unrelated modules.
 - Preserve strict typing (`disallow_untyped_defs = true`) for runtime code.
 - Keep provider-facing data in contracts; provider internals stay provider-local.

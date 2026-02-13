@@ -8,8 +8,9 @@ Documentation hub for architecture decisions, module specs, operational workflow
 docs/
 |- README.md               # Docs index + locked v2 decisions
 |- how-it-works.md         # End-to-end behavior and semantics
-|- e2e-testing.md          # Offline E2E strategy and coverage map
 |- modules/                # Module-level specs (CLI/SDK/providers/etc.)
+|- testing/                # Testing guides (E2E and verification)
+|- reference/              # User-facing reference docs (schemas, contracts)
 |- design/                 # Architecture and layer dependency rules
 `- decisions/              # ADRs (codegen and related rationale)
 ```
@@ -21,8 +22,8 @@ docs/
 | Sync semantics | `docs/how-it-works.md` | Discovery/idempotency/dry-run behavior |
 | Provider design | `docs/modules/providers.md` | Provider contract, retries, extension path |
 | GitHub adapter details | `docs/modules/github-provider.md` | Operations and implementation notes |
-| Test strategy | `docs/e2e-testing.md` | Offline E2E scope + extension guidelines |
-| Plan schema examples | `docs/schemas.md` | Input model shape and examples |
+| Test strategy | `docs/testing/e2e.md` | Offline E2E scope + extension guidelines |
+| Plan schema examples | `docs/reference/plan-schemas.md` | Input model shape and examples |
 | Release mechanics | `RELEASE.md`, `.github/workflows/release.yml` | TestPyPI gate + publish pipeline |
 
 ## CONVENTIONS

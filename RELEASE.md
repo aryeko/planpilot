@@ -9,7 +9,7 @@ flowchart TD
     A[Push to main] --> CI
     subgraph CI_workflow [CI Workflow]
         lint[Lint — ruff]
-        test[Test — pytest ×4 versions]
+        test[Test — pytest ×3 versions]
         commitlint[Commit lint]
     end
     CI_workflow -->|success| GUARD{"chore(release):\ncommit?"}

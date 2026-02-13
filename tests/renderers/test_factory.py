@@ -1,7 +1,7 @@
 import pytest
 
-from planpilot.renderers.factory import create_renderer
-from planpilot.renderers.markdown import MarkdownRenderer
+from planpilot.core.renderers.factory import create_renderer
+from planpilot.core.renderers.markdown import MarkdownRenderer
 
 
 def test_create_renderer_returns_markdown_renderer() -> None:

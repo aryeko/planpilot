@@ -1,6 +1,6 @@
 # Renderers Module Spec
 
-The renderers module (`renderers/`) contains concrete implementations of the `BodyRenderer` ABC and a factory for instantiation by name. Each renderer transforms a `PlanItem` + `RenderContext` into a formatted body string for a specific markup language.
+The renderers module (`core/renderers/`) contains concrete implementations of the `BodyRenderer` ABC and a factory for instantiation by name. Each renderer transforms a `PlanItem` + `RenderContext` into a formatted body string for a specific markup language.
 
 This is a Core module. It depends only on the Contracts layer (see [contracts.md](../design/contracts.md) for `BodyRenderer`, `RenderContext`, and `PlanItem` definitions).
 
@@ -169,7 +169,7 @@ def create_renderer(name: str, **kwargs: object) -> BodyRenderer:
 ## File Structure
 
 ```
-renderers/
+src/planpilot/core/renderers/
 ├── __init__.py
 ├── factory.py          # create_renderer factory
 ├── markdown.py         # MarkdownRenderer + helpers

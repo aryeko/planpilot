@@ -5,11 +5,14 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput
-from planpilot.contracts.plan import Plan, PlanItemType
-from planpilot.engine.progress import SyncProgress
+from planpilot.cli.persistence.remote_plan import persist_plan_from_remote
+from planpilot.cli.persistence.sync_map import persist_sync_map
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, ProviderError, SyncError
+from planpilot.core.contracts.item import CreateItemInput
+from planpilot.core.contracts.plan import Plan, PlanItemType
+from planpilot.core.engine.progress import SyncProgress
+from planpilot.core.map_sync import RemotePlanParser
 from planpilot.sdk import PlanPilot
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer
@@ -95,6 +98,7 @@ async def test_map_sync_dry_run_reconciles_without_writing(tmp_path: Path, sampl
     _write_plan(config, sample_plan)
     sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
     sync_result = await sdk.sync(sample_plan)
+    persist_sync_map(sync_map=sync_result.sync_map, sync_path=config.sync_path, dry_run=False)
     config.sync_path.unlink()
 
     result = await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=True)
@@ -113,6 +117,7 @@ async def test_map_sync_apply_reconciles_added_updated_removed(tmp_path: Path, s
     _write_plan(config, sample_plan)
     sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
     sync_result = await sdk.sync(sample_plan)
+    persist_sync_map(sync_map=sync_result.sync_map, sync_path=config.sync_path, dry_run=False)
     plan_id = sync_result.sync_map.plan_id
 
     # Tamper local sync map: drop T1 and add stale Z9
@@ -132,13 +137,7 @@ async def test_map_sync_apply_reconciles_added_updated_removed(tmp_path: Path, s
     assert sorted(result.added) == ["T1"]
     assert sorted(result.removed) == ["Z9"]
     assert sorted(result.updated) == ["E1"]
-
-    persisted = _load_json(config.sync_path)
-    persisted_entries = persisted["entries"]
-    assert isinstance(persisted_entries, dict)
-    assert sorted(persisted_entries.keys()) == ["E1", "S1", "T1"]
-    assert persisted_entries["E1"]["key"] == "#4242"
-    assert persisted_entries["E1"]["url"] == "https://fake/issues/4242"
+    assert config.sync_path.exists()
 
 
 @pytest.mark.asyncio
@@ -210,7 +209,7 @@ async def test_map_sync_skips_partial_or_mismatched_metadata(tmp_path: Path, sam
 
 
 @pytest.mark.asyncio
-async def test_map_sync_apply_persists_split_plan_files(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_map_sync_apply_does_not_persist_split_plan_files(tmp_path: Path, sample_plan: Plan) -> None:
     provider = FakeProvider()
     config = _make_split_config(tmp_path)
     sdk = PlanPilot(provider=provider, renderer=FakeRenderer(), config=config)
@@ -219,21 +218,13 @@ async def test_map_sync_apply_persists_split_plan_files(tmp_path: Path, sample_p
     result = await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
 
     assert result.plan_items_synced == len(sample_plan.items)
-    assert config.plan_paths.epics is not None and config.plan_paths.epics.exists()
-    assert config.plan_paths.stories is not None and config.plan_paths.stories.exists()
-    assert config.plan_paths.tasks is not None and config.plan_paths.tasks.exists()
-
-    epic_payload = json.loads(config.plan_paths.epics.read_text(encoding="utf-8"))
-    story_payload = json.loads(config.plan_paths.stories.read_text(encoding="utf-8"))
-    task_payload = json.loads(config.plan_paths.tasks.read_text(encoding="utf-8"))
-
-    assert len(epic_payload) + len(story_payload) + len(task_payload) == len(sample_plan.items)
-    merged = {item["id"]: item for item in [*epic_payload, *story_payload, *task_payload]}
-    assert sorted(merged.keys()) == ["E1", "S1", "T1"]
+    assert config.plan_paths.epics is not None and config.plan_paths.epics.exists() is False
+    assert config.plan_paths.stories is not None and config.plan_paths.stories.exists() is False
+    assert config.plan_paths.tasks is not None and config.plan_paths.tasks.exists() is False
 
 
 @pytest.mark.asyncio
-async def test_map_sync_apply_plan_persist_write_error_raises_sync_error(
+async def test_persist_plan_from_remote_write_error_raises_sync_error(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     sample_plan: Plan,
@@ -258,7 +249,8 @@ async def test_map_sync_apply_plan_persist_write_error_raises_sync_error(
     monkeypatch.setattr(Path, "write_text", _boom)
 
     with pytest.raises(SyncError, match="failed to persist plan files"):
-        await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
+        result = await sdk.map_sync(plan_id=sync_result.sync_map.plan_id, dry_run=False)
+        persist_plan_from_remote(items=result.remote_plan_items, plan_paths=config.plan_paths)
 
 
 @pytest.mark.asyncio
@@ -373,28 +365,28 @@ def test_persist_plan_from_remote_builds_sub_item_ids_and_skips_missing_split_pa
         ),
         sync_path=tmp_path / "sync-map.json",
     )
-    sdk = PlanPilot(provider=FakeProvider(), renderer=FakeRenderer(), config=config)
+    parser = RemotePlanParser()
 
-    epic = sdk._plan_item_from_remote(
+    epic = parser.plan_item_from_remote(
         item_id="E1",
         metadata={"ITEM_TYPE": "EPIC"},
         title="Epic",
         body="## Goal\n- g\n## Requirements\n- r\n## Acceptance Criteria\n- a\n",
     )
-    story = sdk._plan_item_from_remote(
+    story = parser.plan_item_from_remote(
         item_id="S1",
         metadata={"ITEM_TYPE": "STORY", "PARENT_ID": "E1"},
         title="Story",
         body="## Goal\n- g\n## Requirements\n- r\n## Acceptance Criteria\n- a\n",
     )
-    task = sdk._plan_item_from_remote(
+    task = parser.plan_item_from_remote(
         item_id="T1",
         metadata={"ITEM_TYPE": "TASK", "PARENT_ID": "S1"},
         title="Task",
         body="## Goal\n- g\n## Requirements\n- r\n## Acceptance Criteria\n- a\n",
     )
 
-    sdk._persist_plan_from_remote(items=[task, story, epic])
+    persist_plan_from_remote(items=[task, story, epic], plan_paths=config.plan_paths)
 
     assert config.plan_paths.epics is not None and config.plan_paths.epics.exists()
     assert config.plan_paths.tasks is not None and config.plan_paths.tasks.exists()
@@ -405,22 +397,16 @@ def test_persist_plan_from_remote_builds_sub_item_ids_and_skips_missing_split_pa
 
 
 def test_plan_type_rank_and_remote_item_type_fallbacks(tmp_path: Path) -> None:
-    sdk = PlanPilot(provider=FakeProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
-
-    assert sdk._plan_type_rank(PlanItemType.EPIC) == 0
-    assert sdk._plan_type_rank(PlanItemType.STORY) == 1
-    assert sdk._plan_type_rank(PlanItemType.TASK) == 2
-
-    assert sdk._resolve_remote_item_type(item_id="x", metadata={"ITEM_TYPE": "epic"}) is PlanItemType.EPIC
-    assert sdk._resolve_remote_item_type(item_id="epic-1", metadata={}) is PlanItemType.EPIC
-    assert sdk._resolve_remote_item_type(item_id="story-1", metadata={}) is PlanItemType.STORY
-    assert sdk._resolve_remote_item_type(item_id="task-1", metadata={}) is PlanItemType.TASK
+    assert RemotePlanParser.resolve_remote_item_type(item_id="x", metadata={"ITEM_TYPE": "epic"}) is PlanItemType.EPIC
+    assert RemotePlanParser.resolve_remote_item_type(item_id="epic-1", metadata={}) is PlanItemType.EPIC
+    assert RemotePlanParser.resolve_remote_item_type(item_id="story-1", metadata={}) is PlanItemType.STORY
+    assert RemotePlanParser.resolve_remote_item_type(item_id="task-1", metadata={}) is PlanItemType.TASK
 
 
-def test_plan_item_from_remote_defaults_and_markdown_parsers(tmp_path: Path) -> None:
-    sdk = PlanPilot(provider=FakeProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
+def test_plan_item_from_remote_defaults_and_markdown_parsers() -> None:
+    parser = RemotePlanParser()
 
-    item = sdk._plan_item_from_remote(
+    item = parser.plan_item_from_remote(
         item_id="task-1",
         metadata={},
         title="No sections",
@@ -431,10 +417,10 @@ def test_plan_item_from_remote_defaults_and_markdown_parsers(tmp_path: Path) -> 
     assert item.requirements == ["(migrated from remote)"]
     assert item.acceptance_criteria == ["(migrated from remote)"]
 
-    sections = sdk._extract_markdown_sections("## Goal\nline\n\n## Requirements\n- first\nplain")
+    sections = RemotePlanParser.extract_markdown_sections("## Goal\nline\n\n## Requirements\n- first\nplain")
     assert sections["Goal"] == "line"
     assert sections["Requirements"] == "- first\nplain"
 
-    assert sdk._parse_bullets(None) == []
-    assert sdk._parse_bullets("\n") == []
-    assert sdk._parse_bullets("- one\n* two\nthree") == ["one", "two", "three"]
+    assert RemotePlanParser.parse_bullets(None) == []
+    assert RemotePlanParser.parse_bullets("\n") == []
+    assert RemotePlanParser.parse_bullets("- one\n* two\nthree") == ["one", "two", "three"]

@@ -1,9 +1,9 @@
 import pytest
 
-from planpilot.contracts.exceptions import ProviderCapabilityError
-from planpilot.contracts.plan import PlanItemType
-from planpilot.providers.github.item import GitHubItem
-from planpilot.providers.github.models import GitHubProviderContext
+from planpilot.core.contracts.exceptions import ProviderCapabilityError
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.providers.github.item import GitHubItem
+from planpilot.core.providers.github.models import GitHubProviderContext
 
 
 class _StubProvider:

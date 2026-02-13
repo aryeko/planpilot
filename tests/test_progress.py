@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from planpilot.engine.progress import NullSyncProgress, SyncProgress
-from planpilot.progress import RichSyncProgress
+from planpilot.cli.progress.rich import RichSyncProgress
+from planpilot.core.engine.progress import NullSyncProgress, SyncProgress
 
 
 class TestNullSyncProgress:

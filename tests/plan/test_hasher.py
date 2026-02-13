@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import re
 
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType, Scope, Verification
-from planpilot.plan.hasher import PlanHasher
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType, Scope, Verification
+from planpilot.core.plan.hasher import PlanHasher
 
 
 def _plan_items_in_default_order() -> list[PlanItem]:

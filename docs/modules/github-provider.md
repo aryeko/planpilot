@@ -19,7 +19,7 @@ flowchart TD
         Models["Typed Pydantic models"]
     end
 
-    subgraph provider_pkg ["providers/github/"]
+    subgraph provider_pkg ["core/providers/github/"]
         Provider
         Transport
     end
@@ -47,6 +47,7 @@ The provider contains **zero inline GraphQL**. All operations are defined in `.g
 | Create issue | `CreateIssue` | Atomic: supports `labelIds`, `issueTypeId`, `projectV2Ids`, `parentIssueId` |
 | Update issue | `UpdateIssue` | Supports `issueTypeId`, `labelIds` in same mutation |
 | Close issue | `CloseIssue` | Soft delete with `stateReason` support |
+| Delete issue | `DeleteIssue` | Permanent delete for clean workflow |
 | Create label | `CreateLabel` | Bootstrap missing labels |
 | Add labels | `AddLabels` | `addLabelsToLabelable` |
 | Remove labels | `RemoveLabels` | `removeLabelsFromLabelable` |
@@ -57,7 +58,7 @@ The provider contains **zero inline GraphQL**. All operations are defined in `.g
 | Add blocked-by | `AddBlockedBy` | Set dependency relation |
 | Remove blocked-by | `RemoveBlockedBy` | Remove dependency relation |
 
-**Total: 9 queries + 12 mutations + 1 shared fragment = 22 `.graphql` files**
+**Total: 9 queries + 13 mutations + 1 shared fragment = 23 `.graphql` files**
 
 All operations are GraphQL. Discovery uses the GraphQL `search` query (full-text matching on titles and bodies; use `in:body` qualifier for body-only matches).
 
@@ -210,7 +211,7 @@ Uses ariadne-codegen (see [ADR-001](../decisions/001-ariadne-codegen.md) for rat
 
 **Adding a new operation:**
 
-1. Write a `.graphql` file in `operations/`
+1. Write a `.graphql` file in `core/providers/github/operations/`
 2. Run `poe gen-client`
 3. Use the new typed method on `GitHubGraphQLClient` in provider code
 4. Run `poe typecheck` - mypy validates end-to-end
@@ -274,7 +275,7 @@ Metadata parsing (`PLAN_ID`/`ITEM_ID`) is **not** a provider concern - it is an 
 ## File Structure
 
 ```
-providers/github/
+src/planpilot/core/providers/github/
 ├── __init__.py
 ├── provider.py                  # GitHubProvider (thin adapter)
 ├── item.py                      # GitHubItem

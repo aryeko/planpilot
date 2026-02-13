@@ -3,6 +3,9 @@ name: Test Release (dry-run)
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   dry-run:
     runs-on: ubuntu-latest

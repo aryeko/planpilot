@@ -1,8 +1,8 @@
 # CLI Module Spec
 
-The CLI module (`cli.py`) is a thin shell wrapper around the SDK. It handles argument parsing, output formatting, and the async runtime boundary. No business logic — everything delegates to the SDK's public API.
+The CLI module (`src/planpilot/cli/`) is a thin shell wrapper around the SDK. It handles argument parsing, output formatting, command routing, and process exit behavior. It also owns when local artifacts are persisted via `planpilot.cli.persistence` helpers.
 
-**CLI (L4)** — depends only on the SDK's public API (`from planpilot import ...`).
+**CLI (L4)** — depends on SDK public API (`from planpilot import ...`) plus approved persistence helpers (`planpilot.cli.persistence.*`).
 
 ## Command Structure
 
@@ -38,7 +38,8 @@ flowchart TB
     SetDebug --> LoadConfig["config = load_config(args.config)"]
     LoadConfig --> SDKBuild["pp = await PlanPilot.from_config(config)"]
     SDKBuild --> Sync["result = await pp.sync(dry_run=args.dry_run)"]
-    Sync --> Format["print summary"]
+    Sync --> Persist["persist sync-map using persistence helper"]
+    Persist --> Format["print summary"]
     Format --> Exit["exit 0"]
 ```
 
@@ -79,7 +80,7 @@ Reconcile local `sync-map.json` entries from provider metadata without mutating 
 |----------|------|----------|---------|-------------|
 | `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |
 | `--dry-run` | flag | One of | — | Preview reconciliation only (no writes) |
-| `--apply` | flag | these | — | Persist reconciled sync-map locally |
+| `--apply` | flag | these | — | Persist reconciled sync-map and local plan files |
 | `--plan-id` | `str` | No | auto | Explicit remote plan ID to reconcile |
 | `--verbose`, `-v` | flag | No | `False` | Enable debug-level logging to stderr |
 
@@ -157,7 +158,9 @@ The `init` command calls the SDK scaffold functions (`detect_target`, `detect_pl
 
 ```
 src/planpilot/
-├── cli.py                 # build_parser, main, _run_sync, _run_init, _format_summary
-├── scaffold.py            # detect_target, detect_plan_paths, scaffold_config, write_config, create_plan_stubs
+├── cli/parser.py          # build_parser()
+├── cli/app.py             # main() routing and exit code mapping
+├── cli/commands/*.py      # sync, clean, init, map-sync command handlers
+├── cli/persistence/*.py   # local sync-map and remote-plan persistence helpers
 └── __main__.py            # python -m planpilot support
 ```

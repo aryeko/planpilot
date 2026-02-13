@@ -38,18 +38,13 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 
 ```text
 src/planpilot/
-├── contracts/       # Core types, ABCs, and exception hierarchy
-├── plan/            # Plan loading, validation, and hashing
-├── auth/            # Token resolver strategy + factory
-├── renderers/       # Body rendering implementations
-├── engine/          # 5-phase sync orchestration
-├── providers/       # Provider adapter layer
-│   └── github/      # GitHub GraphQL adapter + generated client
-├── sdk.py           # Composition root and config loading
-└── cli.py           # CLI entry point
+├── core/            # Runtime domains (auth/config/contracts/engine/plan/providers/renderers)
+├── cli/             # CLI parser/app/commands and persistence helpers
+├── sdk.py           # SDK composition root and public facade
+└── __init__.py      # Public API exports
 ```
 
-Core modules depend on contracts, and the SDK composes the runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
+Core domains provide business logic, and the SDK composes runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
 
 See [docs/design/architecture.md](docs/design/architecture.md) for the full architecture guide.
 
@@ -86,7 +81,7 @@ pip install planpilot
 <summary>From source (Poetry)</summary>
 
 ```bash
-poetry add planpilot
+poetry install
 ```
 
 </details>
@@ -214,7 +209,7 @@ Full CLI reference: [docs/modules/cli.md](docs/modules/cli.md)
 
 ## Plan file schemas
 
-See [docs/schemas.md](docs/schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
+See [docs/reference/plan-schemas.md](docs/reference/plan-schemas.md) for plan schema examples and [docs/modules/plan.md](docs/modules/plan.md) for validation behavior.
 
 A complete working example is in the [examples/](examples/) directory, including sample rendered issue bodies and a sync-map output.
 
@@ -222,8 +217,8 @@ A complete working example is in the [examples/](examples/) directory, including
 
 - [Docs Index](docs/README.md) -- v2 documentation hub
 - [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
-- [E2E Testing](docs/e2e-testing.md) -- offline end-to-end test design, coverage, and usage
-- [Plan Schemas](docs/schemas.md) -- plan JSON shapes and examples
+- [E2E Testing](docs/testing/e2e.md) -- offline end-to-end test design, coverage, and usage
+- [Plan Schemas](docs/reference/plan-schemas.md) -- plan JSON shapes and examples
 - [Architecture](docs/design/architecture.md) -- layer rules and data flow
 - [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
 - [Engine](docs/design/engine.md) -- sync pipeline behavior
@@ -248,12 +243,12 @@ Development tasks use [poethepoet](https://github.com/nat-n/poethepoet):
 ```bash
 poe lint           # ruff check
 poe format         # ruff format
-poe test           # pytest -v
+poe test           # pytest -v --ignore=tests/e2e
 poe test-e2e       # run offline E2E suite
 poe coverage       # pytest + HTML coverage report
 poe coverage-e2e   # E2E-only coverage XML
 poe typecheck      # mypy
-poe check          # lint + format-check + tests (all-in-one)
+poe check          # lint + format-check + typecheck + tests
 ```
 
 ## Contributing

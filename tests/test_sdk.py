@@ -5,12 +5,12 @@ from pathlib import Path
 
 import pytest
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError, SyncError
-from planpilot.contracts.item import CreateItemInput, Item, ItemSearchFilters
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.engine.progress import SyncProgress
-from planpilot.plan import PlanHasher
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, PlanLoadError, PlanValidationError, ProviderError
+from planpilot.core.contracts.item import CreateItemInput, Item, ItemSearchFilters
+from planpilot.core.contracts.plan import Plan, PlanItem, PlanItemType
+from planpilot.core.engine.progress import SyncProgress
+from planpilot.core.plan import PlanHasher
 from planpilot.sdk import PlanPilot, load_config, load_plan
 from tests.fakes.provider import FakeProvider
 from tests.fakes.renderer import FakeRenderer
@@ -192,7 +192,7 @@ async def test_from_config_unknown_renderer_raises_config_error(
 
 
 @pytest.mark.asyncio
-async def test_sync_happy_path_persists_sync_map(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_sync_happy_path_does_not_persist_sync_map(tmp_path: Path, sample_plan: Plan) -> None:
     provider = SpyProvider()
     renderer = FakeRenderer()
     config = _make_config(tmp_path)
@@ -204,11 +204,7 @@ async def test_sync_happy_path_persists_sync_map(tmp_path: Path, sample_plan: Pl
     assert provider.enter_calls == 1
     assert provider.exit_calls == 1
 
-    assert config.sync_path.exists()
-    persisted = json.loads(config.sync_path.read_text(encoding="utf-8"))
-    assert persisted["target"] == config.target
-    assert persisted["board_url"] == config.board_url
-    assert len(persisted["entries"]) == len(sample_plan.items)
+    assert config.sync_path.exists() is False
 
 
 @pytest.mark.asyncio
@@ -241,7 +237,7 @@ async def test_sync_loads_plan_from_config_when_not_provided(tmp_path: Path) -> 
 
 
 @pytest.mark.asyncio
-async def test_sync_dry_run_uses_dry_run_provider_and_persists_dry_run_map(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_sync_dry_run_uses_dry_run_provider_without_persisting_map(tmp_path: Path, sample_plan: Plan) -> None:
     provider = SpyProvider()
     config = _make_config(tmp_path)
 
@@ -253,9 +249,7 @@ async def test_sync_dry_run_uses_dry_run_provider_and_persists_dry_run_map(tmp_p
     assert provider.exit_calls == 0
 
     dry_run_path = Path(f"{config.sync_path}.dry-run")
-    assert dry_run_path.exists()
-    persisted = json.loads(dry_run_path.read_text(encoding="utf-8"))
-    assert persisted["entries"]["E1"]["id"].startswith("dry-run-")
+    assert dry_run_path.exists() is False
 
 
 @pytest.mark.asyncio
@@ -330,22 +324,12 @@ async def test_sync_provider_factory_value_error_is_wrapped_as_config_error(
         await sdk.sync(sample_plan)
 
 
-@pytest.mark.asyncio
-async def test_sync_persist_write_error_is_wrapped_as_sync_error(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
-) -> None:
+def test_sdk_no_longer_exposes_persistence_api(tmp_path: Path) -> None:
     sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
-    original_write_text = Path.write_text
 
-    def _boom(self: Path, *args: object, **kwargs: object) -> int:
-        if self == sdk._config.sync_path:
-            raise OSError("disk full")
-        return original_write_text(self, *args, **kwargs)
-
-    monkeypatch.setattr(Path, "write_text", _boom)
-
-    with pytest.raises(SyncError, match="failed to persist sync map"):
-        await sdk.sync(sample_plan)
+    assert not hasattr(sdk, "persist_sync_map")
+    assert not hasattr(sdk, "persist_plan_from_remote")
+    assert not hasattr(sdk, "load_sync_map")
 
 
 @pytest.mark.asyncio
@@ -874,7 +858,7 @@ def test_load_config_does_not_wrap_unexpected_url_parser_errors(
     def _boom(_: str) -> tuple[str, str, int]:
         raise RuntimeError("unexpected parser failure")
 
-    monkeypatch.setattr("planpilot.sdk.parse_project_url", _boom)
+    monkeypatch.setattr("planpilot.core.config.loader.parse_project_url", _boom)
 
     with pytest.raises(RuntimeError, match="unexpected parser failure"):
         load_config(config_path)

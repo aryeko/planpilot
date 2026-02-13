@@ -1,9 +1,9 @@
 import pytest
 
-from planpilot.contracts.exceptions import ProviderError
-from planpilot.contracts.item import CreateItemInput, UpdateItemInput
-from planpilot.contracts.plan import PlanItemType
-from planpilot.providers.dry_run import DryRunItem, DryRunProvider
+from planpilot.core.contracts.exceptions import ProviderError
+from planpilot.core.contracts.item import CreateItemInput, UpdateItemInput
+from planpilot.core.contracts.plan import PlanItemType
+from planpilot.core.providers.dry_run import DryRunItem, DryRunProvider
 
 
 @pytest.mark.asyncio
