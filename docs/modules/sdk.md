@@ -288,3 +288,8 @@ src/planpilot/
 ├── core/config/loader.py  # load_config() implementation
 └── core/config/scaffold.py # detect_target(), detect_plan_paths(), scaffold_config(), write_config(), create_plan_stubs()
 ```
+
+## Related docs
+
+- [SDK Reference](../reference/sdk-reference.md) — concise API lookup for SDK entrypoints and result objects
+- [Troubleshooting](../guides/troubleshooting.md) — common runtime/config/auth failure paths

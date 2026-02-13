@@ -60,6 +60,25 @@ sequenceDiagram
 
 Token resolution happens in the SDK's apply-mode sync path, before the provider is constructed. Dry-run does not resolve tokens. The provider never knows which resolver was used.
 
+## Init Auth Preflight Flow
+
+`planpilot init` runs preflight checks for GitHub targets before writing config so users catch auth/permission issues early.
+
+```mermaid
+sequenceDiagram
+    participant CLI as init command
+    participant Resolver as InitTokenResolver
+    participant GH as GitHub API
+
+    CLI->>Resolver: resolve token from selected auth mode
+    Resolver-->>CLI: token
+    CLI->>GH: GET /user
+    CLI->>GH: GET /repos/{owner}/{repo}
+    CLI->>GH: POST /graphql (projects capability probe)
+    CLI->>GH: GET /users/{owner}
+    GH-->>CLI: owner type (org/user)
+```
+
 ## Token Resolver Factory
 
 ```python

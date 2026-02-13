@@ -169,3 +169,5 @@ src/planpilot/
 
 - [Map Sync Design](../design/map-sync.md) — candidate plan ID discovery/selection and reconciliation flow
 - [Clean Workflow Design](../design/clean.md) — metadata-scoped discovery and deletion ordering semantics
+- [CLI Reference](../reference/cli-reference.md) — concise command/flag lookup with examples
+- [Troubleshooting](../guides/troubleshooting.md) — common failures and fixes

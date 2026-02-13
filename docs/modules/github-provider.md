@@ -153,11 +153,8 @@ class GitHubProvider(Provider):
 
 ```python
 class GitHubItem(Item):
-    async def set_parent(self, parent: Item) -> None:
-        """Idempotent. Raises ProviderCapabilityError if unavailable."""
-
-    async def add_dependency(self, blocker: Item) -> None:
-        """Idempotent. Raises ProviderCapabilityError if unavailable."""
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        """Reconcile parent/blocker relations (add missing, remove stale)."""
 ```
 
 ### GitHubProviderContext
@@ -283,7 +280,7 @@ src/planpilot/core/providers/github/
 ├── mapper.py                    # Utility functions
 ├── _retrying_transport.py       # httpx transport with retry/rate-limit
 ├── schema.graphql               # Vendored GitHub schema
-├── operations/                  # .graphql operation files (22 files)
+├── operations/                  # .graphql operation files (23 files)
 │   ├── fragments.graphql        # Shared IssueCore fragment
 │   ├── fetch_repo.graphql
 │   ├── fetch_org_project.graphql
@@ -297,6 +294,7 @@ src/planpilot/core/providers/github/
 │   ├── create_issue.graphql
 │   ├── update_issue.graphql
 │   ├── close_issue.graphql
+│   ├── delete_issue.graphql
 │   ├── create_label.graphql
 │   ├── add_labels.graphql
 │   ├── remove_labels.graphql

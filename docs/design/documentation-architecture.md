@@ -9,6 +9,7 @@ flowchart TD
     Root[docs/README.md\nNavigation hub] --> Design[docs/design/\nArchitecture and behavior contracts]
     Root --> Modules[docs/modules/\nModule-level specs]
     Root --> Reference[docs/reference/\nSchemas and user-facing formats]
+    Root --> Guides[docs/guides/\nTroubleshooting and operator runbooks]
     Root --> Testing[docs/testing/\nVerification strategy]
     Root --> Decisions[docs/decisions/\nADR rationale]
 
@@ -27,6 +28,8 @@ flowchart TD
     Modules --> M6[config.md]
     Modules --> M7[auth.md]
     Modules --> M8[renderers.md]
+    Modules --> M9[map-sync.md]
+    Modules --> M10[clean.md]
 ```
 
 ## Code-to-Docs Ownership Map

@@ -142,7 +142,7 @@ See [github-provider.md](github-provider.md) for full implementation details: co
 
 1. Create `core/providers/jira/` package
 2. Implement `JiraProvider(Provider)` with all abstract methods
-3. Implement `JiraItem(Item)` with `set_parent()` and `add_dependency()`
+3. Implement `JiraItem(Item)` with `reconcile_relations(parent, blockers)`
 4. Create API transport client
 5. Add to factory mapping in `core/providers/factory.py`
 

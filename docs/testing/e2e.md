@@ -131,7 +131,7 @@ poetry run poe check
 
 As of 2026-02-13:
 
-- `tests/e2e/test_cli_e2e.py`: 31 tests passing.
+- `tests/e2e/test_cli_e2e.py`: 26 tests passing.
 
 Treat this number as a moving baseline; update this section when adding/removing cases.
 

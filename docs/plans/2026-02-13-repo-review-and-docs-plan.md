@@ -1,4 +1,6 @@
-# Repo Review and Docs Plan (2026-02-13)
+# Repo Review and Docs Plan (2026-02-13) [Historical]
+
+> Superseded by `docs/plans/2026-02-13-docs-refresh-execution-plan.md`.
 
 ## Scope
 

@@ -63,6 +63,7 @@ Primary references:
 
 - `docs/README.md` — docs index and navigation
 - `docs/design/documentation-architecture.md` — ownership map and update rules
+- `docs/plans/2026-02-13-docs-refresh-execution-plan.md` — docs inventory and update strategy
 
 Quick mapping:
 
@@ -71,6 +72,7 @@ Quick mapping:
 - Provider behavior -> `docs/modules/providers.md`, `docs/modules/github-provider.md`, `docs/design/contracts.md`
 - Config/schema changes -> `README.md`, `docs/modules/config.md`, `docs/reference/plan-schemas.md`
 - CI/release changes -> `RELEASE.md` and relevant workflow docs
+- Operator guidance/troubleshooting -> `docs/guides/troubleshooting.md`
 
 ## Commit messages
 

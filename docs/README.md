@@ -1,6 +1,6 @@
-# PlanPilot v2 Architecture
+# PlanPilot v2 Docs
 
-A complete redesign focused on SDK-first development with clean layered architecture. See [Architecture](./design/architecture.md) for design principles and layer rules.
+Documentation hub for architecture, module contracts, operator workflows, and reference material.
 
 ## Documentation
 
@@ -16,7 +16,25 @@ A complete redesign focused on SDK-first development with clean layered architec
 8. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
 9. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
 10. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
-11. **[Planning Artifacts](./plans/2026-02-13-repo-review-and-docs-plan.md)** — Review notes and doc maintenance execution plan
+11. **[Docs Refresh Plan](./plans/2026-02-13-docs-refresh-execution-plan.md)** — Full docs-system review and execution plan
+
+### Quick reference
+
+- **[CLI Reference](./reference/cli-reference.md)** — command/flag matrix and examples
+- **[SDK Reference](./reference/sdk-reference.md)** — API lookup for SDK entrypoints and result objects
+- **[Troubleshooting](./guides/troubleshooting.md)** — common failures and practical fixes
+
+### Navigation flow
+
+```mermaid
+flowchart LR
+    A[Start at docs/README.md] --> B{Need}
+    B -->|Run CLI| C[reference/cli-reference.md]
+    B -->|Use SDK| D[reference/sdk-reference.md]
+    B -->|Understand architecture| E[design/*.md]
+    B -->|Change implementation| F[modules/*.md]
+    B -->|Debug failure| G[guides/troubleshooting.md]
+```
 
 ### Module specs
 
@@ -30,6 +48,8 @@ A complete redesign focused on SDK-first development with clean layered architec
 | Config | [modules/config.md](./modules/config.md) | Config models, JSON schema, validation rules |
 | SDK | [modules/sdk.md](./modules/sdk.md) | Public API facade, lifecycle, load_config |
 | CLI | [modules/cli.md](./modules/cli.md) | Args, output format, exit codes |
+| Map Sync | [modules/map-sync.md](./modules/map-sync.md) | Reconciliation internals in `core/map_sync/*` |
+| Clean | [modules/clean.md](./modules/clean.md) | Deletion planner internals in `core/clean/*` |
 
 ### Decisions
 
@@ -48,7 +68,7 @@ A complete redesign focused on SDK-first development with clean layered architec
 - Exit codes are differentiated (`0`, `2`, `3`, `4`, `5`, `1`)
 - SDK is the composition root via `PlanPilot.from_config(...)`
 - Dry-run uses a `DryRunProvider` (no auth/network calls, no provider mutations)
-- Dry-run sync maps are persisted to `<sync_path>.dry-run`
+- SDK returns result objects only; local artifact persistence is caller-owned
 - Engine owns dispatch concurrency (`max_concurrent`); provider owns per-call retries and rate-limit coordination
 
 ## Docs Maintenance
@@ -84,7 +104,7 @@ A complete redesign focused on SDK-first development with clean layered architec
 | Engine knows about `RepoContext`, `ProjectContext`, field resolution | Provider handles all setup in `__aenter__` | Engine doesn't know provider internals |
 | Engine calls `set_issue_type()`, `add_to_project()`, `set_project_field()` | `create_item()` handles as idempotent multi-step | Simpler engine, provider owns platform setup |
 | Engine builds `#123` refs using `issue_number` | Engine uses `SyncEntry.key` (provider-agnostic) | Works for any provider |
-| Relations use `node_id` and `get_issue_relations()` | `Item.set_parent()` and `Item.add_dependency()` handle idempotency | Complexity moves to provider |
+| Relations use `node_id` and `get_issue_relations()` | `Item.reconcile_relations(parent, blockers)` handles add/remove convergence | Complexity moves to provider while keeping engine provider-agnostic |
 
 ### Plan
 

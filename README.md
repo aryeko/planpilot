@@ -215,6 +215,12 @@ A complete working example is in the [examples/](examples/) directory, including
 
 ## Documentation
 
+- Start here:
+  - [Docs Index](docs/README.md)
+  - [CLI Reference](docs/reference/cli-reference.md)
+  - [SDK Reference](docs/reference/sdk-reference.md)
+  - [Troubleshooting](docs/guides/troubleshooting.md)
+
 - [Docs Index](docs/README.md) -- v2 documentation hub
 - [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
 - [E2E Testing](docs/testing/e2e.md) -- offline end-to-end test design, coverage, and usage
@@ -225,7 +231,7 @@ A complete working example is in the [examples/](examples/) directory, including
 - [Engine](docs/design/engine.md) -- sync pipeline behavior
 - [Map Sync Design](docs/design/map-sync.md) -- remote plan discovery and local reconciliation flow
 - [Clean Workflow Design](docs/design/clean.md) -- safe deletion strategy and apply/dry-run semantics
-- [Repo Review Plan](docs/plans/2026-02-13-repo-review-and-docs-plan.md) -- repo-wide review findings and docs execution plan
+- [Docs Refresh Plan](docs/plans/2026-02-13-docs-refresh-execution-plan.md) -- full docs-system review and execution plan
 - [CLI](docs/modules/cli.md) -- command structure, output, and exit codes
 - [SDK](docs/modules/sdk.md) -- public API and composition root
 - [Providers](docs/modules/providers.md) -- provider model and extension guide

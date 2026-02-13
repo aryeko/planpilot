@@ -123,9 +123,7 @@ class Item(ABC):
 
     # Relation methods (implemented by provider subclasses)
     @abstractmethod
-    async def set_parent(self, parent: Item) -> None: ...
-    @abstractmethod
-    async def add_dependency(self, blocker: Item) -> None: ...
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None: ...
 ```
 
 **Dependencies:** Uses `PlanItemType` from plan domain.

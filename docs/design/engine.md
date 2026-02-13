@@ -71,8 +71,8 @@ flowchart TB
 
     subgraph Relations["Phase 4: Relations"]
         R1["all relations concurrent (semaphore-gated)"]
-        R2["item.set_parent / item.add_dependency"]
-        R3["includes parent roll-ups"]
+        R2["item.reconcile_relations(parent, blockers)"]
+        R3["adds missing and removes stale relations"]
         R1 --> R2 --> R3
     end
 
@@ -204,14 +204,14 @@ async def _enrich_item(self, plan_item: PlanItem, plan_id: str) -> None:
 
 **Goal:** Set up parent/child hierarchy and blocked-by dependency links.
 
-Relation calls are dispatched concurrently (gated by `max_concurrent`). Parent and dependency relations are independent and can be set in any order.
+Relation reconciliation calls are dispatched concurrently (gated by `max_concurrent`).
 
 ```python
 async with asyncio.TaskGroup() as tg:
-    for item, parent_item in parent_pairs:
-        tg.create_task(self._guarded(item.set_parent(parent_item)))
-    for item, blocker_item in dependency_pairs:
-        tg.create_task(self._guarded(item.add_dependency(blocker_item)))
+    for item in relation_targets:
+        tg.create_task(self._guarded(
+            item.reconcile_relations(parent=desired_parent.get(item.id), blockers=desired_blockers.get(item.id, []))
+        ))
 ```
 
 Only resolved relations are dispatched. In `validation_mode=partial`, unresolved references are skipped with warnings (not errors).
