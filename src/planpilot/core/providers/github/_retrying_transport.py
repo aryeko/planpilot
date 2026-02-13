@@ -54,9 +54,9 @@ class RetryingTransport(httpx.AsyncBaseTransport):
 
             if response.status_code == 429:
                 retry_after = self._parse_retry_after(response)
-                await response.aclose()
-                await self._apply_rate_limit_pause(retry_after)
                 if attempt < self._max_retries:
+                    await response.aclose()
+                    await self._apply_rate_limit_pause(retry_after)
                     await self._sleep_backoff(attempt)
                     continue
                 return response

@@ -138,9 +138,11 @@ def scaffold_config(
 
 def write_config(config: dict[str, Any], path: Path) -> None:
     import json
+    import os
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
 
 
 def create_plan_stubs(plan_paths: dict[str, str], *, base: Path | None = None) -> list[Path]:

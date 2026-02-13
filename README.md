@@ -139,7 +139,7 @@ cat > planpilot.json <<'JSON'
     "stories": ".plans/stories.json",
     "tasks": ".plans/tasks.json"
   },
-  "sync_path": ".plans/github-sync-map.json"
+  "sync_path": ".plans/sync-map.json"
 }
 JSON
 ```

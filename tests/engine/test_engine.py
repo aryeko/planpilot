@@ -543,6 +543,64 @@ async def test_set_relations_processes_pairs_when_nothing_touched(tmp_path: Path
 
 
 @pytest.mark.asyncio
+async def test_set_relations_removes_stale_parent_and_dependencies(tmp_path: Path) -> None:
+    provider = FakeProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+
+    story = await provider.create_item(
+        CreateItemInput(title="Story", body="body", item_type=PlanItemType.STORY, labels=[config.label])
+    )
+    # Seed stale remote-only relations that are no longer present in the plan.
+    provider.parents[story.id] = "stale-parent"
+    provider.dependencies[story.id] = {"stale-blocker"}
+
+    await engine._set_relations(
+        plan,
+        item_objects={"S1": story},
+        created_ids=set(),
+        updated_ids=set(),
+    )
+
+    assert story.id not in provider.parents
+    assert provider.dependencies.get(story.id) is None
+
+
+@pytest.mark.asyncio
+async def test_set_relations_primes_cache_with_provider_ids(tmp_path: Path) -> None:
+    class PrimeAwareProvider(FakeProvider):
+        def __init__(self) -> None:
+            super().__init__()
+            self.primed_issue_ids: list[str] = []
+
+        async def prime_relations_cache(self, issue_ids: list[str]) -> None:
+            self.primed_issue_ids = issue_ids
+
+    provider = PrimeAwareProvider()
+    renderer = FakeRenderer()
+    config = make_config(tmp_path)
+    engine = SyncEngine(provider, renderer, config)
+
+    plan = Plan(items=[PlanItem(id="S1", type=PlanItemType.STORY, title="Story")])
+
+    story = await provider.create_item(
+        CreateItemInput(title="Story", body="body", item_type=PlanItemType.STORY, labels=[config.label])
+    )
+
+    await engine._set_relations(
+        plan,
+        item_objects={"S1": story},
+        created_ids=set(),
+        updated_ids=set(),
+    )
+
+    assert provider.primed_issue_ids == [story.id]
+
+
+@pytest.mark.asyncio
 async def test_sync_strict_mode_raises_on_unresolved_parent(tmp_path: Path) -> None:
     provider = FakeProvider()
     renderer = FakeRenderer()
@@ -720,13 +778,14 @@ async def test_build_context_ignores_unresolved_internal_parent(tmp_path: Path) 
 
 
 class FailingRelationItem(FakeItem):
-    """FakeItem whose set_parent / add_dependency raise ProviderError."""
+    """FakeItem whose relation reconciliation raises ProviderError."""
 
-    async def set_parent(self, parent: Item) -> None:
-        raise ProviderError("sub-issues not supported")
-
-    async def add_dependency(self, blocker: Item) -> None:
-        raise ProviderError("blocked-by not supported")
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        if parent is not None:
+            raise ProviderError("sub-issues not supported")
+        if blockers:
+            raise ProviderError("blocked-by not supported")
+        await super().reconcile_relations(parent=parent, blockers=blockers)
 
 
 class FailingRelationProvider(FakeProvider):

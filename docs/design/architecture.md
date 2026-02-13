@@ -266,7 +266,7 @@ sequenceDiagram
     end
     SDK-->>CLI: SyncResult
     alt apply mode
-        CLI->>CLI: persist sync-map + local plan files
+        CLI->>CLI: persist sync-map
     else dry-run mode
         CLI->>CLI: persist dry-run sync-map only
     end

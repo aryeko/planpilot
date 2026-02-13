@@ -1,3 +1,5 @@
+from types import SimpleNamespace
+
 import pytest
 
 from planpilot.core.contracts.config import FieldConfig
@@ -389,9 +391,6 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
     async def fake_get_item(item_id: str):
         return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
 
-    async def fake_get_labels(item_id: str) -> list[str]:
-        return ["existing"]
-
     async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
         return _make_issue_core(
             id=item_id, number=2, url="u", title=update_input.title or "old", body=update_input.body or "old"
@@ -399,11 +398,11 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
 
     called: list[str] = []
 
-    async def fake_type_label(item_id: str, item_type: PlanItemType) -> None:
-        called.append("type_label")
-
-    async def fake_discovery(item_id: str, labels: list[str]) -> None:
-        called.append("discovery")
+    async def fake_reconcile_labels(*, item_id: str, item_type: PlanItemType | None, labels: list[str]) -> None:
+        assert item_id == "I1"
+        assert item_type == PlanItemType.TASK
+        assert labels == ["planpilot"]
+        called.append("labels")
 
     async def fake_project_item(item_id: str) -> str:
         called.append("project")
@@ -413,10 +412,8 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
         called.append("fields")
 
     monkeypatch.setattr(provider, "get_item", fake_get_item)
-    monkeypatch.setattr(provider, "_get_item_labels", fake_get_labels)
     monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
-    monkeypatch.setattr(provider, "_ensure_type_label", fake_type_label)
-    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_discovery)
+    monkeypatch.setattr(provider, "_reconcile_managed_labels", fake_reconcile_labels)
     monkeypatch.setattr(provider, "_ensure_project_item", fake_project_item)
     monkeypatch.setattr(provider, "_ensure_project_fields", fake_project_fields)
 
@@ -431,7 +428,98 @@ async def test_update_item_applies_optional_mutations(monkeypatch: pytest.Monkey
     )
 
     assert updated.title == "new"
-    assert called == ["type_label", "discovery", "project", "fields"]
+    assert called == ["labels", "project", "fields"]
+
+
+@pytest.mark.asyncio
+async def test_update_item_reconciles_type_labels_when_labels_omitted(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        create_type_strategy="label",
+        create_type_map={"TASK": "type:task"},
+    )
+
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
+
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(
+            id=item_id,
+            number=2,
+            url="u",
+            title=update_input.title or "old",
+            body=update_input.body or "old",
+        )
+
+    called: list[tuple[str, PlanItemType | None, list[str]]] = []
+
+    async def fake_reconcile_labels(*, item_id: str, item_type: PlanItemType | None, labels: list[str]) -> None:
+        called.append((item_id, item_type, labels))
+
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+    monkeypatch.setattr(provider, "_reconcile_managed_labels", fake_reconcile_labels)
+
+    await provider.update_item("I1", UpdateItemInput(title="new", item_type=PlanItemType.TASK))
+
+    assert called == [("I1", PlanItemType.TASK, ["planpilot"])]
+
+
+@pytest.mark.asyncio
+async def test_reconcile_managed_labels_removes_stale_managed_labels(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={},
+        project_owner_type="org",
+        create_type_strategy="label",
+        create_type_map={"EPIC": "type:epic", "TASK": "type:task"},
+    )
+
+    async def fake_get_label_name_to_id(item_id: str) -> dict[str, str]:
+        assert item_id == "I1"
+        return {
+            "planpilot": "id-planpilot",
+            "type:epic": "id-old",
+            "custom": "id-custom",
+        }
+
+    added: list[list[str]] = []
+    removed: list[list[str]] = []
+
+    async def fake_ensure_discovery_labels(item_id: str, labels: list[str]) -> None:
+        assert item_id == "I1"
+        added.append(labels)
+
+    async def fake_remove_labels_by_ids(item_id: str, label_ids: list[str]) -> None:
+        assert item_id == "I1"
+        removed.append(label_ids)
+
+    monkeypatch.setattr(provider, "_get_item_label_name_to_id", fake_get_label_name_to_id)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_ensure_discovery_labels)
+    monkeypatch.setattr(provider, "_remove_labels_by_ids", fake_remove_labels_by_ids)
+
+    await provider._reconcile_managed_labels(item_id="I1", item_type=PlanItemType.TASK, labels=["planpilot"])
+
+    assert added == [["type:task"]]
+    assert removed == [["id-old"]]
 
 
 @pytest.mark.asyncio
@@ -472,6 +560,43 @@ async def test_update_item_issue_type_strategy_sets_type_atomically(monkeypatch:
     assert update_calls[0][1].item_type == PlanItemType.TASK
 
 
+@pytest.mark.asyncio
+async def test_update_item_issue_type_strategy_applies_labels(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(create_type_strategy="issue-type"),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id",
+        label_id="label-id",
+        issue_type_ids={"TASK": "task-id"},
+        project_owner_type="org",
+        create_type_strategy="issue-type",
+    )
+
+    async def fake_get_item(item_id: str):
+        return provider._item_from_issue_core(_make_issue_core(id=item_id, number=2, url="u", title="old", body="old"))
+
+    async def fake_update_issue(item_id: str, update_input: UpdateItemInput) -> IssueCore:
+        return _make_issue_core(id=item_id, number=2, url="u", title=update_input.title or "old", body="old")
+
+    ensured: list[tuple[str, list[str]]] = []
+
+    async def fake_ensure_discovery_labels(issue_id: str, labels: list[str]) -> None:
+        ensured.append((issue_id, labels))
+
+    monkeypatch.setattr(provider, "get_item", fake_get_item)
+    monkeypatch.setattr(provider, "_update_issue", fake_update_issue)
+    monkeypatch.setattr(provider, "_ensure_discovery_labels", fake_ensure_discovery_labels)
+
+    await provider.update_item("I1", UpdateItemInput(title="new", labels=["planpilot", "triage"]))
+
+    assert ensured == [("I1", ["planpilot", "triage"])]
+
+
 def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -484,6 +609,52 @@ def test_resolve_create_type_policy_user_falls_back_to_label() -> None:
     strategy, mapping = provider._resolve_create_type_policy("user")
     assert strategy == "label"
     assert mapping["EPIC"] == "Epic"
+
+
+@pytest.mark.asyncio
+async def test_prime_relations_cache_avoids_per_item_fetches() -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+
+    class _Client:
+        def __init__(self) -> None:
+            self.calls: list[list[str]] = []
+
+        async def fetch_relations(self, *, ids: list[str]):
+            self.calls.append(ids)
+            return SimpleNamespace(
+                nodes=[
+                    SimpleNamespace(
+                        id="I1",
+                        parent=SimpleNamespace(id="P1"),
+                        blocked_by=SimpleNamespace(nodes=[SimpleNamespace(id="B1")]),
+                    ),
+                    SimpleNamespace(
+                        id="I2",
+                        parent=None,
+                        blocked_by=SimpleNamespace(nodes=[]),
+                    ),
+                ]
+            )
+
+    client = _Client()
+    provider._client = client  # type: ignore[assignment]
+
+    await provider.prime_relations_cache(["I1", "I2"])
+
+    parent1, blockers1 = await provider.get_relations(issue_id="I1")
+    parent2, blockers2 = await provider.get_relations(issue_id="I2")
+
+    assert client.calls == [["I1", "I2"]]
+    assert parent1 == "P1"
+    assert blockers1 == {"B1"}
+    assert parent2 is None
+    assert blockers2 == set()
 
 
 @pytest.mark.asyncio

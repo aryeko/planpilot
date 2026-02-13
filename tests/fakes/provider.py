@@ -61,6 +61,17 @@ class FakeItem(Item):
         deps = self._provider.dependencies.setdefault(self.id, set())
         deps.add(blocker.id)
 
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        if parent is None:
+            self._provider.parents.pop(self.id, None)
+        else:
+            self._provider.parents[self.id] = parent.id
+        blocker_ids = {blocker.id for blocker in blockers}
+        if blocker_ids:
+            self._provider.dependencies[self.id] = blocker_ids
+        else:
+            self._provider.dependencies.pop(self.id, None)
+
 
 class FakeProvider(Provider):
     """In-memory provider with deterministic IDs/keys and spy tracking."""

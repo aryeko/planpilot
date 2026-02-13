@@ -38,20 +38,20 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@29824e69f54612133e76f7eaac726eef6c875baf # v2
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
 
       - name: Checkout main at CI-tested commit
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           ref: ${{ github.event.workflow_run.head_sha }}
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - run: pipx install poetry==1.8.5
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.12"
           cache: "poetry"
@@ -61,7 +61,7 @@ jobs:
 
       - name: Python Semantic Release
         id: psr
-        uses: python-semantic-release/python-semantic-release@v10.5.3
+        uses: python-semantic-release/python-semantic-release@754a065a2ea187da71977ada6630a8ec0f98e380 # v10.5.3
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           vcs_release: "true"
@@ -74,7 +74,7 @@ jobs:
 
       - name: Upload dist artifacts
         if: steps.psr.outputs.released == 'true'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: dist
           path: dist/*
@@ -92,19 +92,19 @@ jobs:
 
     steps:
       - name: Checkout (for smoke-test script)
-        uses: actions/checkout@v6
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           sparse-checkout: scripts
           sparse-checkout-cone-mode: true
 
       - name: Download dist
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: dist
           path: dist/
 
       - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
         with:
           repository-url: https://test.pypi.org/legacy/
           attestations: true
@@ -126,13 +126,13 @@ jobs:
 
     steps:
       - name: Download dist
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: dist
           path: dist/
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
         with:
           attestations: true
 
@@ -146,18 +146,18 @@ jobs:
       contents: write
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
 
       - name: Download dist
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: dist
           path: dist/
 
       - name: Create GitHub Release + upload assets
-        uses: python-semantic-release/publish-action@v10.5.3
+        uses: python-semantic-release/publish-action@68eaac9f1f594e9ec4b985245d06355734f43eea # v10.5.3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           tag: ${{ needs.release.outputs.tag }}

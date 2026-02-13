@@ -34,6 +34,8 @@ flowchart TD
   - `PLANPILOT_META_V1`
   - `PLAN_ID:<id>`
   - `ITEM_ID:<id>`
+  - `ITEM_TYPE:<EPIC|STORY|TASK>`
+  - `PARENT_ID:<id or empty>`
   - `END_PLANPILOT_META`
 - Discovery matches these markers, so reruns update the same provider items instead of creating duplicates.
 
