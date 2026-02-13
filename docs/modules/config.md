@@ -1,9 +1,9 @@
 # Config Module Spec
 
-The config module provides configuration models and loading for PlanPilot sync runs:
+The config module provides configuration models and loading/scaffolding for PlanPilot runs:
 
 1. **Config domain (Contracts layer)** — Pure Pydantic data models: `PlanPilotConfig`, `PlanPaths`, `FieldConfig`
-2. **Config loader (SDK layer)** — `load_config()` function (see [sdk.md](sdk.md))
+2. **Config runtime helpers (Core layer)** — `core/config/loader.py` and `core/config/scaffold.py`
 
 The config domain has **no dependencies** on any other domain. See [contracts.md](../design/contracts.md) for where it fits in the domain hierarchy.
 
@@ -211,8 +211,8 @@ All paths are resolved relative to the config file's parent directory by `load_c
 
 ```
 src/planpilot/
-├── contracts/
-│   └── config.py          # PlanPilotConfig, PlanPaths, FieldConfig
-├── sdk.py                 # load_config() lives here
-└── exceptions.py          # ConfigError
+├── core/contracts/config.py      # PlanPilotConfig, PlanPaths, FieldConfig
+├── core/config/loader.py         # load_config()
+├── core/config/scaffold.py       # scaffold + detect helpers
+└── core/contracts/exceptions.py  # ConfigError
 ```

@@ -1,6 +1,6 @@
 # Plan Module Spec
 
-The plan module (`plan/`) handles loading, validating, and hashing plan files. It takes raw JSON files and produces validated `Plan` objects for the engine.
+The plan module (`core/plan/`) handles loading, validating, and hashing plan files. It takes raw JSON files and produces validated `Plan` objects for the engine.
 
 This is a Core module. It depends only on the Contracts layer (see [contracts.md](../design/contracts.md) for type definitions).
 

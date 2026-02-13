@@ -19,7 +19,7 @@ flowchart TD
         Models["Typed Pydantic models"]
     end
 
-    subgraph provider_pkg ["providers/github/"]
+    subgraph provider_pkg ["core/providers/github/"]
         Provider
         Transport
     end
@@ -210,7 +210,7 @@ Uses ariadne-codegen (see [ADR-001](../decisions/001-ariadne-codegen.md) for rat
 
 **Adding a new operation:**
 
-1. Write a `.graphql` file in `operations/`
+1. Write a `.graphql` file in `core/providers/github/operations/`
 2. Run `poe gen-client`
 3. Use the new typed method on `GitHubGraphQLClient` in provider code
 4. Run `poe typecheck` - mypy validates end-to-end
@@ -274,7 +274,7 @@ Metadata parsing (`PLAN_ID`/`ITEM_ID`) is **not** a provider concern - it is an 
 ## File Structure
 
 ```
-providers/github/
+src/planpilot/core/providers/github/
 ├── __init__.py
 ├── provider.py                  # GitHubProvider (thin adapter)
 ├── item.py                      # GitHubItem

@@ -27,32 +27,35 @@ flowchart TB
     end
 
     subgraph Core["Core Layer"]
-        Engine["engine/<br/>SyncEngine<br/>orchestration"]
-        PlanCore["plan/<br/>load, validate, hash"]
-        Providers["providers/<br/>concrete adapters<br/>+ factory"]
-        Renderers["renderers/<br/>concrete renderers<br/>+ factory"]
-        Auth["auth/<br/>token resolution<br/>+ factory"]
+        Engine["core/engine/<br/>SyncEngine<br/>orchestration"]
+        PlanCore["core/plan/<br/>load, validate, hash"]
+        Providers["core/providers/<br/>concrete adapters<br/>+ factory"]
+        Renderers["core/renderers/<br/>concrete renderers<br/>+ factory"]
+        Auth["core/auth/<br/>token resolution<br/>+ factory"]
+        CoreConfig["core/config/<br/>load + scaffold"]
     end
 
     subgraph SDK["SDK Layer"]
         PlanPilot["PlanPilot<br/>public API facade"]
     end
 
-    subgraph Persistence["CLI Persistence Layer"]
-        PersistenceHelpers["cli/persistence/<br/>sync_map + remote_plan helpers"]
-    end
-
     subgraph CLI["CLI Layer"]
-        CLIModule["cli.py<br/>arg parsing<br/>output formatting"]
+        CLIParser["cli/parser.py<br/>argument schema"]
+        CLIApp["cli/app.py<br/>routing + exits"]
+        CLICommands["cli/commands/*<br/>sync, clean, init, map sync"]
+        CLIPersistence["cli/persistence/*<br/>sync_map + remote_plan"]
     end
 
-    CLI --> SDK
-    CLI --> PersistenceHelpers
+    CLIParser --> CLIApp
+    CLIApp --> CLICommands
+    CLICommands --> SDK
+    CLICommands --> CLIPersistence
     SDK --> Engine
     SDK --> PlanCore
     SDK --> Providers
     SDK --> Renderers
     SDK --> Auth
+    SDK --> CoreConfig
     Engine --> ProviderDomain
     Engine --> RendererDomain
     Engine --> PlanDomain
@@ -75,17 +78,18 @@ Pure data types and abstract interfaces. Six domains with clear responsibilities
 
 ### Core
 
-Five peer modules containing all business logic. Each depends only on Contracts, never on each other.
+Core contains runtime business logic and provider integrations.
 
 | Module | Responsibility | Spec |
 |--------|---------------|------|
-| `engine/` | Sync orchestration (5-phase pipeline) | [engine.md](engine.md) |
-| `plan/` | Load, validate, hash plan files | [plan.md](../modules/plan.md) |
-| `providers/` | Concrete provider adapters + factory | [providers.md](../modules/providers.md) |
-| `renderers/` | Concrete renderer implementations + factory | [renderers.md](../modules/renderers.md) |
-| `auth/` | Token resolution strategies + factory | [auth.md](../modules/auth.md) |
+| `core/engine/` | Sync orchestration (5-phase pipeline) | [engine.md](engine.md) |
+| `core/plan/` | Load, validate, hash plan files | [plan.md](../modules/plan.md) |
+| `core/providers/` | Concrete provider adapters + factory | [providers.md](../modules/providers.md) |
+| `core/renderers/` | Concrete renderer implementations + factory | [renderers.md](../modules/renderers.md) |
+| `core/auth/` | Token resolution strategies + factory | [auth.md](../modules/auth.md) |
+| `core/config/` | Config loading and scaffold helpers | [config.md](../modules/config.md) |
 
-**Rules:** No imports between Core modules. Engine receives Provider and Renderer via dependency injection. Factories are Core utilities, not SDK concerns.
+**Rules:** Engine receives Provider and Renderer via dependency injection. Provider internals stay isolated under `core/providers/*`. Core modules must not import CLI modules.
 
 ### SDK
 
@@ -93,16 +97,16 @@ The composition root — the only place that sees all Core modules and wires the
 
 ### CLI
 
-Thin shell wrapper. Imports only from the SDK's public API surface. Could be deleted and SDK still works. See [cli.md](../modules/cli.md).
+Thin shell wrapper implemented as a package (`cli/parser.py`, `cli/app.py`, `cli/commands/*`). Commands import from the SDK public API and approved CLI persistence helpers. See [cli.md](../modules/cli.md).
 
 ## Dependency Rules
 
 | Layer | Can Import From | Cannot Import From |
 |-------|----------------|-------------------|
 | **Contracts** | Other Contract domains (downward only), stdlib, third-party | Core, SDK, CLI |
-| **Core** | Contracts only | Other Core modules, SDK, CLI |
+| **Core** | Contracts and approved Core peers/utilities, stdlib, third-party | CLI |
 | **SDK** | Core, Contracts (re-exports selected types publicly) | CLI, CLI persistence |
-| **CLI** | SDK public API (which re-exports selected Contracts types), approved CLI persistence helpers | Core, Contracts directly |
+| **CLI** | SDK public API (which re-exports selected Contracts types), approved CLI persistence helpers | Core directly, provider internals |
 
 The SDK re-exports Contracts types (e.g. `SyncResult`, `PlanPilotConfig`, `PlanItemType`) so that CLI and external callers access them through the SDK without importing Contracts directly.
 

@@ -1,6 +1,6 @@
 # Auth Module Spec
 
-The auth module (`auth/`) handles token resolution for provider authentication. It abstracts how tokens are obtained so that providers receive a resolved token string without caring about the source.
+The auth module (`core/auth/`) handles token resolution for provider authentication. It abstracts how tokens are obtained so providers receive a resolved token string without caring about source.
 
 This is a Core module. It depends only on the Contracts layer (see [contracts.md](../design/contracts.md) for `PlanPilotConfig`).
 
@@ -89,11 +89,13 @@ def create_token_resolver(config: PlanPilotConfig) -> TokenResolver:
 ## File Structure
 
 ```
-auth/
-├── __init__.py        # Package init
-├── base.py            # TokenResolver ABC
-├── factory.py         # create_token_resolver factory
-├── gh_cli.py          # GhCliTokenResolver
-├── env.py             # EnvTokenResolver
-└── static.py          # StaticTokenResolver
+src/planpilot/core/auth/
+├── __init__.py                # Public exports
+├── base.py                    # TokenResolver ABC
+├── factory.py                 # create_token_resolver factory
+├── preflight.py               # init auth checks and probes
+└── resolvers/
+    ├── env.py                 # EnvTokenResolver
+    ├── gh_cli.py              # GhCliTokenResolver
+    └── static.py              # StaticTokenResolver
 ```

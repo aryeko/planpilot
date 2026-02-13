@@ -38,18 +38,13 @@ planpilot follows SOLID principles with a modular, provider-agnostic design:
 
 ```text
 src/planpilot/
-├── contracts/       # Core types, ABCs, and exception hierarchy
-├── plan/            # Plan loading, validation, and hashing
-├── auth/            # Token resolver strategy + factory
-├── renderers/       # Body rendering implementations
-├── engine/          # 5-phase sync orchestration
-├── providers/       # Provider adapter layer
-│   └── github/      # GitHub GraphQL adapter + generated client
-├── sdk.py           # Composition root and config loading
-└── cli.py           # CLI entry point
+├── core/            # Runtime domains (auth/config/contracts/engine/plan/providers/renderers)
+├── cli/             # CLI parser/app/commands and persistence helpers
+├── sdk.py           # SDK composition root and public facade
+└── __init__.py      # Public API exports
 ```
 
-Core modules depend on contracts, and the SDK composes the runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
+Core domains provide business logic, and the SDK composes runtime pieces. This keeps provider and renderer implementations swappable without changing engine internals.
 
 See [docs/design/architecture.md](docs/design/architecture.md) for the full architecture guide.
 

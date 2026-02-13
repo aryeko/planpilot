@@ -107,7 +107,7 @@ def load_plan(*, unified: str | Path | None = None, epics: str | Path | None = N
 
 ## Scaffold Functions
 
-Config scaffolding and environment detection helpers, defined in `scaffold.py` and re-exported via the public API.
+Config scaffolding and environment detection helpers, defined in `core/config/scaffold.py` and re-exported via the public API.
 
 ### `detect_target() -> str | None`
 
@@ -191,5 +191,6 @@ write_config(config, Path("planpilot.json"))
 src/planpilot/
 ├── __init__.py            # Re-exports
 ├── sdk.py                 # PlanPilot, load_config(), load_plan()
-├── scaffold.py            # detect_target(), detect_plan_paths(), scaffold_config(), write_config(), create_plan_stubs()
+├── core/config/loader.py  # load_config() implementation
+└── core/config/scaffold.py # detect_target(), detect_plan_paths(), scaffold_config(), write_config(), create_plan_stubs()
 ```

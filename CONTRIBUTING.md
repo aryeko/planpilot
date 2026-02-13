@@ -39,17 +39,19 @@ poetry run planpilot --help
 
 ## Architecture
 
-planpilot follows SOLID principles with a modular, provider-agnostic design:
+planpilot follows a layered SDK-first architecture:
 
-- **`contracts/`** -- Core data models, ABCs, and exception hierarchy
-- **`plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
-- **`auth/`** -- Token resolvers and auth strategy factory
-- **`providers/`** -- `Provider` ABC defining the adapter interface; the GitHub provider (`providers/github/`) uses a generated GraphQL client (ariadne-codegen + httpx)
-- **`renderers/`** -- `BodyRenderer` implementations; `MarkdownRenderer` is the default
-- **`engine/`** -- `SyncEngine` 5-phase pipeline over Provider and Renderer abstractions
-- **`sdk.py`** -- Composition root (`PlanPilot.from_config`) and config/plan loading helpers
+- **`src/planpilot/core/contracts/`** -- Core data models, ABCs, and exception hierarchy
+- **`src/planpilot/core/plan/`** -- Plan loading from JSON, relational validation, deterministic hashing
+- **`src/planpilot/core/auth/`** -- Token resolvers and auth strategy factory
+- **`src/planpilot/core/providers/`** -- Provider implementations and factory (GitHub provider in `core/providers/github/`)
+- **`src/planpilot/core/renderers/`** -- `BodyRenderer` implementations; `MarkdownRenderer` is default
+- **`src/planpilot/core/engine/`** -- `SyncEngine` 5-phase pipeline over Provider and Renderer abstractions
+- **`src/planpilot/core/config/`** -- Config load/scaffold logic
+- **`src/planpilot/sdk.py`** -- Composition root (`PlanPilot.from_config`) and SDK facade
+- **`src/planpilot/cli/`** -- Parser/app/commands and persistence helpers
 
-To add a new provider (e.g. Jira), implement the `Provider` ABC in `providers/jira/` and wire it in `providers/factory.py` -- no engine changes needed.
+To add a new provider (for example Jira), implement the `Provider` ABC in `src/planpilot/core/providers/jira/` and wire it in `src/planpilot/core/providers/factory.py`.
 
 ## Commit messages
 
@@ -110,14 +112,14 @@ Tests mirror the source layout under `tests/`:
 
 ```text
 tests/
-├── contracts/        → src/planpilot/contracts/
-├── plan/             → src/planpilot/plan/
-├── auth/             → src/planpilot/auth/
-├── providers/github/ → src/planpilot/providers/github/
-├── renderers/        → src/planpilot/renderers/
-├── engine/           → src/planpilot/engine/
+├── contracts/        → src/planpilot/core/contracts/
+├── plan/             → src/planpilot/core/plan/
+├── auth/             → src/planpilot/core/auth/
+├── providers/github/ → src/planpilot/core/providers/github/
+├── renderers/        → src/planpilot/core/renderers/
+├── engine/           → src/planpilot/core/engine/
 ├── test_sdk.py       → src/planpilot/sdk.py
-└── test_cli.py       → src/planpilot/cli.py
+└── test_cli.py       → src/planpilot/cli/
 ```
 
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
@@ -129,9 +131,9 @@ tests/
 
 To add a new provider (e.g. Jira):
 
-1. Create `src/planpilot/providers/jira/` with `__init__.py`, `client.py`, and `provider.py`.
-2. Implement the `Provider` ABC from `providers/base.py`.
+1. Create `src/planpilot/core/providers/jira/` with `__init__.py`, `client.py`, and `provider.py`.
+2. Implement the `Provider` ABC from `src/planpilot/core/contracts/provider.py`.
 3. Add corresponding tests under `tests/providers/jira/`.
-4. Wire it into `cli.py` (e.g. via a `--provider` flag).
+4. Wire it into `src/planpilot/core/providers/factory.py`.
 
-No changes to `SyncEngine`, `BodyRenderer`, or plan modules are needed.
+No changes to `SyncEngine`, `BodyRenderer`, or plan modules are needed for a standard adapter.

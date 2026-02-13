@@ -7,11 +7,12 @@ A complete redesign focused on SDK-first development with clean layered architec
 ### Start here
 
 1. **[Architecture](./design/architecture.md)** — Layers, dependency rules, UML class diagram, data flow
-2. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
-3. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
-4. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-5. **[E2E Testing](./e2e-testing.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-6. **[Plan Schemas](./schemas.md)** — Plan file shapes and examples
+2. **[Repository Layout](./design/repository-layout.md)** — Current package ownership (`core/`, `cli/`, `sdk.py`) and code map
+3. **[Contracts](./design/contracts.md)** — All contract types in one place (plan, item, sync, config, provider, renderer, exceptions)
+4. **[Engine](./design/engine.md)** — Sync pipeline phases (Discovery -> Upsert -> Enrich -> Relations -> Result)
+5. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+6. **[E2E Testing](./e2e-testing.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+7. **[Plan Schemas](./schemas.md)** — Plan file shapes and examples
 
 ### Module specs
 

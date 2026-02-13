@@ -1,12 +1,12 @@
 # Providers Module Spec
 
-The providers module (`providers/`) contains concrete implementations of the `Provider` ABC and a factory for instantiation by name. Each provider adapts an external issue-tracking system (GitHub, Jira, Linear) to the provider contract.
+The providers module (`core/providers/`) contains concrete implementations of the `Provider` ABC and a factory for instantiation by name. Each provider adapts an external issue-tracking system (GitHub, Jira, Linear) to the provider contract.
 
-This is a Core module. It depends only on the Contracts layer (see [contracts.md](../design/contracts.md) for `Provider`, `Item`, and input/filter type definitions).
+This is a Core module. It primarily depends on Contracts (see [contracts.md](../design/contracts.md) for `Provider`, `Item`, and input/filter type definitions) plus approved Core utilities used by provider internals.
 
-Third-party/runtime dependencies (e.g. httpx, generated GraphQL client) are allowed; "depends only on Contracts" means no imports from other PlanPilot internal layers.
+Third-party/runtime dependencies (for example httpx and generated GraphQL client code) are expected in this module.
 
-**Module-level base class:** `ProviderContext` (defined in `providers/base.py`, Core layer) is a base class that concrete providers subclass to store resolved IDs, field mappings, and other provider-specific state. Opaque to the engine and SDK.
+**Module-level base class:** `ProviderContext` (defined in `core/providers/base.py`) is a base class concrete providers subclass to store resolved IDs, field mappings, and provider-specific state. Opaque to engine and SDK.
 
 ## Required Discovery Capabilities
 
@@ -139,10 +139,10 @@ See [github-provider.md](github-provider.md) for full implementation details: co
 
 ## Adding a New Provider
 
-1. Create `providers/jira/` package
+1. Create `core/providers/jira/` package
 2. Implement `JiraProvider(Provider)` with all abstract methods
 3. Implement `JiraItem(Item)` with `set_parent()` and `add_dependency()`
 4. Create API transport client
-5. Add to factory mapping in `providers/factory.py`
+5. Add to factory mapping in `core/providers/factory.py`
 
 No changes needed to engine, SDK, CLI, renderers, or any other module.

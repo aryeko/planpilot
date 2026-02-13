@@ -16,6 +16,18 @@
 8. Apply relations (parent/dependency) when supported by provider.
 9. Persist sync map (`sync_path` for apply, `sync_path.dry-run` for dry-run).
 
+```mermaid
+flowchart TD
+    A[Load config] --> B[Load plan files]
+    B --> C[Validate plan]
+    C --> D[Compute plan_id]
+    D --> E[Discover existing items by metadata]
+    E --> F[Upsert items]
+    F --> G[Enrich rendered bodies]
+    G --> H[Apply relations]
+    H --> I[Persist sync artifacts]
+```
+
 ## Idempotency model
 
 - Each rendered body includes:
