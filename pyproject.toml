@@ -38,7 +38,7 @@ exclude = ["skills"]
 planpilot = "planpilot.cli:main"
 
 [tool.poetry.dependencies]
-python = ">=3.11"
+python = ">=3.11,<4.0"
 pydantic = "^2.12.5"
 httpx = "^0.28"
 questionary = "^2.1"
@@ -64,6 +64,7 @@ build-backend = "poetry.core.masonry.api"
 lint = "ruff check ."
 format = "ruff format ."
 format-check = "ruff format --check ."
+workflow-lint = "./scripts/actionlint.sh"
 test = "pytest -v --ignore=tests/e2e"
 test-e2e = "pytest -v tests/e2e/test_cli_e2e.py"
 coverage = "pytest -v --cov-report=html:.coverage/html"
@@ -138,6 +139,7 @@ warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = true
 plugins = ["pydantic.mypy"]
+files = ["src/planpilot"]
 exclude = "(^src/planpilot/core/providers/github/github_gql/)"
 
 [tool.semantic_release]

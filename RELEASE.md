@@ -31,7 +31,7 @@ flowchart TD
 
 ### Gates
 
-1. **CI gate** — the release workflow only runs after lint, tests, and commitlint pass.
+1. **CI gate** — the release workflow only runs after CI succeeds on `main` (lint, tests, package checks; commitlint is enforced on PRs).
 2. **Recursion guard** — release commits (`chore(release): X.Y.Z`) are skipped to prevent infinite loops. This is defense-in-depth; `GITHUB_TOKEN` pushes don't trigger workflows by design.
 3. **TestPyPI gate** — if the package fails to publish or fails the smoke test, PyPI publish and GitHub Release are blocked.
 

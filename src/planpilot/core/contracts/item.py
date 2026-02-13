@@ -42,6 +42,10 @@ class Item(ABC):
     @abstractmethod
     async def add_dependency(self, blocker: Item) -> None: ...  # pragma: no cover
 
+    @abstractmethod
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:  # pragma: no cover
+        raise NotImplementedError
+
 
 class CreateItemInput(BaseModel):
     title: str

@@ -5,7 +5,7 @@
 
 ## Context
 
-PlanPilot v2's GitHub provider needs a GraphQL client for 21 operations (queries + mutations) against GitHub's API. All operations are GraphQL - no REST is needed. The client must be async, typed, and maintainable as GitHub's schema evolves.
+PlanPilot v2's GitHub provider needs a GraphQL client for 23 operations (queries + mutations) plus a shared fragment against GitHub's API. All operations are GraphQL - no REST is needed. The client must be async, typed, and maintainable as GitHub's schema evolves.
 
 ## Decision
 

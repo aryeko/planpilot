@@ -8,7 +8,7 @@ This installs the planpilot skill into the open discovery path used by agent pla
 
 Tell your agent:
 
-> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/refs/heads/main/skills/INSTALL.agent.md
+> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
 
 The agent will install both `planpilot` and the skill automatically.
 
@@ -90,11 +90,11 @@ cp skills/roadmap-to-github-project/SKILL.md \
 #### Option B: Fetch from GitHub raw URL
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-If your skill is on a branch, replace `main` with that branch name.
+Prefer pinned tags (for example `v2.3.0`) over mutable branches when fetching from GitHub.
 
 ### 5) Verify skill install
 
@@ -116,7 +116,7 @@ Expected frontmatter should include:
 Update (re-copy or re-fetch `SKILL.md`):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 

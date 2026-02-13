@@ -64,6 +64,26 @@ All operations are GraphQL. Discovery uses the GraphQL `search` query (full-text
 
 ## Key Optimizations
 
+### Operation flow (create/update)
+
+```mermaid
+flowchart TD
+    A[create_item input] --> B[create_issue]
+    B --> C{project configured?}
+    C -- yes --> D[ensure_project_item]
+    D --> E[ensure_project_fields]
+    C -- no --> F[return GitHubItem]
+    E --> F
+
+    G[update_item input] --> H[update_issue]
+    H --> I{label strategy?}
+    I -- label --> J[reconcile managed labels]
+    I -- issue-type --> K[ensure discovery labels]
+    J --> L[optional project field updates]
+    K --> L
+    L --> M[return GitHubItem]
+```
+
 ### Atomic Issue Creation
 
 `CreateIssueInput` supports `labelIds`, `projectV2Ids`, `issueTypeId`, and `parentIssueId` directly. The previous implementation required 5+ sequential API calls per new issue:
@@ -153,11 +173,8 @@ class GitHubProvider(Provider):
 
 ```python
 class GitHubItem(Item):
-    async def set_parent(self, parent: Item) -> None:
-        """Idempotent. Raises ProviderCapabilityError if unavailable."""
-
-    async def add_dependency(self, blocker: Item) -> None:
-        """Idempotent. Raises ProviderCapabilityError if unavailable."""
+    async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:
+        """Reconcile parent/blocker relations (add missing, remove stale)."""
 ```
 
 ### GitHubProviderContext
@@ -201,7 +218,7 @@ Token resolution is handled by the auth module (see [auth.md](auth.md) for `Toke
 | Org project metadata reads | Organization metadata/read access |
 | Discovery + relation queries/mutations | GraphQL access with above permissions |
 
-Provider startup must execute capability probes and return explicit missing-permission errors.
+Provider setup resolves repository/project context and validates required combinations (for example create-type strategy vs available issue types). Missing permissions still surface as explicit provider/auth errors.
 
 ## Codegen Setup
 
@@ -253,7 +270,7 @@ Any other URL shape is a `ProjectURLError`.
 
 ## Capability Gating for Relations
 
-Relation mutations (`addSubIssue`, `addBlockedBy`) may be unavailable. Provider startup detects capabilities and caches booleans in context. Relation calls raise `ProviderCapabilityError` when unsupported.
+Relation mutations (`addSubIssue`, `addBlockedBy`) are gated through provider context capability flags. Relation calls raise `ProviderCapabilityError` when unsupported.
 
 ## Pagination Requirements
 
@@ -283,7 +300,7 @@ src/planpilot/core/providers/github/
 ├── mapper.py                    # Utility functions
 ├── _retrying_transport.py       # httpx transport with retry/rate-limit
 ├── schema.graphql               # Vendored GitHub schema
-├── operations/                  # .graphql operation files (22 files)
+├── operations/                  # .graphql operation files (23 files)
 │   ├── fragments.graphql        # Shared IssueCore fragment
 │   ├── fetch_repo.graphql
 │   ├── fetch_org_project.graphql
@@ -297,6 +314,7 @@ src/planpilot/core/providers/github/
 │   ├── create_issue.graphql
 │   ├── update_issue.graphql
 │   ├── close_issue.graphql
+│   ├── delete_issue.graphql
 │   ├── create_label.graphql
 │   ├── add_labels.graphql
 │   ├── remove_labels.graphql

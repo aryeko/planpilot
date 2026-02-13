@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import warnings
-from collections.abc import Awaitable
+from collections.abc import Awaitable, Callable
 from typing import TypeVar
 
 from planpilot.core.contracts.config import PlanPilotConfig
@@ -193,7 +193,7 @@ class SyncEngine:
 
         context = self._build_context(plan, plan_item, plan_id, sync_map)
         body = self._renderer.render(plan_item, context)
-        desired_labels = [self._config.label]
+        desired_labels = self._desired_labels_for_item(plan_item.type)
         desired_size = plan_item.estimate.tshirt if plan_item.estimate is not None else None
 
         existing_item = item_objects.get(plan_item.id)
@@ -302,19 +302,32 @@ class SyncEngine:
             parent_pairs = {(c, p) for c, p in parent_pairs if c in touched_ids or p in touched_ids}
             dependency_pairs = {(b, k) for b, k in dependency_pairs if b in touched_ids or k in touched_ids}
 
-        total_relations = len(parent_pairs) + len(dependency_pairs)
+        desired_parent_by_id: dict[str, str] = {}
+        desired_blockers_by_id: dict[str, set[str]] = {}
+        for child_id, parent_id in parent_pairs:
+            desired_parent_by_id[child_id] = parent_id
+        for blocked_id, blocker_id in dependency_pairs:
+            blocked_dependencies = desired_blockers_by_id.setdefault(blocked_id, set())
+            blocked_dependencies.add(blocker_id)
+
+        relation_targets = set(item_objects.keys())
+        if touched_ids:
+            relation_targets = touched_ids.union(desired_parent_by_id).union(desired_blockers_by_id)
+
+        total_relations = len(relation_targets)
+        await self._prime_relation_cache(relation_targets, item_objects)
         self._progress.phase_start("Relations", total=total_relations)
         try:
             async with asyncio.TaskGroup() as tg:
-                for child_id, parent_id in parent_pairs:
-                    child = item_objects[child_id]
-                    parent = item_objects[parent_id]
-                    tg.create_task(self._set_parent_guarded(child, parent))
-
-                for blocked_id, blocker_id in dependency_pairs:
-                    blocked = item_objects[blocked_id]
-                    blocker = item_objects[blocker_id]
-                    tg.create_task(self._add_dependency_guarded(blocked, blocker))
+                for item_id in sorted(relation_targets):
+                    item = item_objects.get(item_id)
+                    if item is None:
+                        continue
+                    parent_item_id: str | None = desired_parent_by_id.get(item_id)
+                    parent = item_objects.get(parent_item_id) if parent_item_id is not None else None
+                    blocker_ids = sorted(desired_blockers_by_id.get(item_id, set()))
+                    blockers = [item_objects[blocker_id] for blocker_id in blocker_ids]
+                    tg.create_task(self._reconcile_relations_guarded(item, parent, blockers))
             self._progress.phase_done("Relations")
         except BaseException as exc:
             self._progress.phase_error("Relations", exc)
@@ -378,15 +391,27 @@ class SyncEngine:
         async with self._semaphore:
             return await op
 
-    async def _set_parent_guarded(self, child: Item, parent: Item) -> None:
+    async def _reconcile_relations_guarded(self, item: Item, parent: Item | None, blockers: list[Item]) -> None:
         async with self._semaphore:
-            await child.set_parent(parent)
+            await item.reconcile_relations(parent=parent, blockers=blockers)
         self._progress.item_done("Relations")
 
-    async def _add_dependency_guarded(self, blocked: Item, blocker: Item) -> None:
-        async with self._semaphore:
-            await blocked.add_dependency(blocker)
-        self._progress.item_done("Relations")
+    async def _prime_relation_cache(self, relation_targets: set[str], item_objects: dict[str, Item]) -> None:
+        prime: Callable[[list[str]], Awaitable[None]] | None = getattr(self._provider, "prime_relations_cache", None)
+        if not callable(prime):
+            return
+        provider_ids = sorted(
+            {item_objects[plan_item_id].id for plan_item_id in relation_targets if plan_item_id in item_objects}
+        )
+        await prime(provider_ids)
+
+    def _desired_labels_for_item(self, item_type: PlanItemType) -> list[str]:
+        labels = [self._config.label]
+        if self._config.field_config.create_type_strategy == "label":
+            mapped = self._config.field_config.create_type_map.get(item_type.value)
+            if mapped:
+                labels.append(mapped)
+        return sorted(set(labels))
 
     def _handle_unresolved_reference(self, *, source_item_id: str, reference_type: str, reference_id: str) -> None:
         message = f"Unresolved {reference_type} reference '{reference_id}' on item '{source_item_id}' during sync."

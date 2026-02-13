@@ -139,7 +139,7 @@ class TestRateLimit:
         self, mock_pause: AsyncMock, mock_backoff: AsyncMock
     ) -> None:
         inner = AsyncMock(spec=httpx.AsyncBaseTransport)
-        inner.handle_async_request.return_value = _make_response(429)
+        inner.handle_async_request.side_effect = [_make_response(429), _make_response(429)]
 
         transport = RetryingTransport(transport=inner, max_retries=1)
         response = await transport.handle_async_request(_make_request())

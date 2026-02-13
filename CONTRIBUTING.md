@@ -24,6 +24,7 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe lint` | Run ruff linter (`ruff check .`) |
 | `poe format` | Auto-format code (`ruff format .`) |
 | `poe format-check` | Check formatting without changes (`ruff format --check .`) |
+| `poe workflow-lint` | Lint GitHub Actions workflows (`./scripts/actionlint.sh`) |
 | `poe test` | Run non-E2E tests (`pytest -v --ignore=tests/e2e`) |
 | `poe test-e2e` | Run offline E2E suite (`pytest -v tests/e2e/test_cli_e2e.py`) |
 | `poe coverage` | Run tests and generate HTML coverage report |
@@ -53,6 +54,25 @@ planpilot follows a layered SDK-first architecture:
 - **`src/planpilot/cli/`** -- Parser/app/commands and persistence helpers
 
 To add a new provider (for example Jira), implement the `Provider` ABC in `src/planpilot/core/providers/jira/` and wire it in `src/planpilot/core/providers/factory.py`.
+
+## Documentation update policy
+
+For any user-visible behavior or architecture change, update docs in the same PR.
+
+Primary references:
+
+- `docs/README.md` — docs index and navigation
+- `docs/design/documentation-architecture.md` — ownership map and update rules
+- `docs/plans/2026-02-13-docs-refresh-execution-plan.md` — docs inventory and update strategy
+
+Quick mapping:
+
+- CLI changes -> `README.md`, `docs/modules/cli.md`, `docs/how-it-works.md`
+- Engine/sync semantics -> `docs/design/engine.md`, `docs/how-it-works.md`, `docs/modules/sdk.md`
+- Provider behavior -> `docs/modules/providers.md`, `docs/modules/github-provider.md`, `docs/design/contracts.md`
+- Config/schema changes -> `README.md`, `docs/modules/config.md`, `docs/reference/plan-schemas.md`
+- CI/release changes -> `RELEASE.md` and relevant workflow docs
+- Operator guidance/troubleshooting -> `docs/guides/troubleshooting.md`
 
 ## Commit messages
 
@@ -126,6 +146,7 @@ tests/
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
 - Shared fixtures live in `tests/conftest.py`.
 - Coverage target: 90%+ branch coverage (`poe test` reports coverage automatically).
+- Type-checking currently gates runtime code in `src/planpilot`; tests are not mypy-gated.
 - When adding a new module, create a matching test file in the same relative path.
 
 ## Adding a provider

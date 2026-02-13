@@ -39,7 +39,7 @@ def detect_target() -> str | None:
         if result.returncode != 0:
             return None
         url = result.stdout.strip()
-    except Exception:
+    except (OSError, subprocess.SubprocessError):
         return None
 
     for pattern in (_SSH_RE, _HTTPS_RE):
@@ -69,8 +69,8 @@ def detect_plan_paths(base: Path | None = None) -> PlanPaths | None:
             if existing >= _UNIFIED_FILES:
                 return PlanPaths(unified=Path(f"{dirname}/plan.json"))
 
-    except Exception:
-        pass
+    except OSError:
+        return None
     return None
 
 
@@ -138,9 +138,11 @@ def scaffold_config(
 
 def write_config(config: dict[str, Any], path: Path) -> None:
     import json
+    import os
 
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
+    os.chmod(path, 0o600)
 
 
 def create_plan_stubs(plan_paths: dict[str, str], *, base: Path | None = None) -> list[Path]:

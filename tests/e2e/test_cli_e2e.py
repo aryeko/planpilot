@@ -264,11 +264,11 @@ def test_cli_apply_with_dry_run_provider_records_pipeline_operations(
     assert names[0] == "search_items"
     assert names.count("create_item") == 3
     assert names.count("update_item") >= 2  # items whose body changed during enrich
-    assert names.count("set_parent") == 2
+    assert names.count("reconcile_relations") == 3
     create_sequences = [operation.sequence for operation in provider.operations if operation.name == "create_item"]
     update_sequences = [operation.sequence for operation in provider.operations if operation.name == "update_item"]
     relation_sequences = [
-        operation.sequence for operation in provider.operations if operation.name in {"set_parent", "add_dependency"}
+        operation.sequence for operation in provider.operations if operation.name == "reconcile_relations"
     ]
     assert max(create_sequences) < min(update_sequences)
     assert max(update_sequences) < min(relation_sequences)

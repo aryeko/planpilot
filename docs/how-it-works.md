@@ -14,7 +14,7 @@
 6. Upsert missing/changed items.
 7. Enrich bodies with context links/checklists.
 8. Apply relations (parent/dependency) when supported by provider.
-9. Persist sync map (`sync_path` for apply, `sync_path.dry-run` for dry-run).
+9. Persist sync map (`sync_path` for apply, `sync_path.dry-run` for dry-run) in CLI flows.
 
 ```mermaid
 flowchart TD
@@ -34,15 +34,18 @@ flowchart TD
   - `PLANPILOT_META_V1`
   - `PLAN_ID:<id>`
   - `ITEM_ID:<id>`
+  - `ITEM_TYPE:<EPIC|STORY|TASK>`
+  - `PARENT_ID:<id or empty>`
   - `END_PLANPILOT_META`
 - Discovery matches these markers, so reruns update the same provider items instead of creating duplicates.
 
 ## Dry-run behavior
 
-- `--dry-run` uses `DryRunProvider`:
+- `sync --dry-run` uses `DryRunProvider`:
   - no auth/network calls
   - no provider mutations
 - A dry-run sync map is still written to `<sync_path>.dry-run` for inspection.
+- `clean --dry-run` is discovery-only but still uses the real provider so deletion previews are accurate.
 
 ## Apply behavior
 
@@ -58,10 +61,4 @@ flowchart TD
 ## Output and exit codes
 
 - CLI summary is human-focused.
-- Exit codes:
-  - `0` success
-  - `2` argument parsing
-  - `3` config/plan validation
-  - `4` auth/provider/network
-  - `5` sync/reconciliation
-  - `1` unexpected internal error
+- See [reference/exit-codes.md](reference/exit-codes.md) for canonical process-exit mapping.

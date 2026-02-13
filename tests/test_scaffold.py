@@ -305,6 +305,14 @@ class TestWriteConfig:
 
         assert output.exists()
 
+    def test_writes_config_with_owner_only_permissions(self, tmp_path: Path) -> None:
+        output = tmp_path / "planpilot.json"
+
+        write_config({"provider": "github"}, output)
+
+        mode = output.stat().st_mode & 0o777
+        assert mode == 0o600
+
 
 # ---------------------------------------------------------------------------
 # create_plan_stubs

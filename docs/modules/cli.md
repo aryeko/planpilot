@@ -142,6 +142,8 @@ The `init` command calls the SDK scaffold functions (`detect_target`, `detect_pl
 | `5` | Sync/reconciliation failure |
 | `1` | Unexpected internal failure |
 
+Canonical table: [reference/exit-codes.md](../reference/exit-codes.md)
+
 ## Design Decisions
 
 | Decision | Rationale |
@@ -164,3 +166,10 @@ src/planpilot/
 ├── cli/persistence/*.py   # local sync-map and remote-plan persistence helpers
 └── __main__.py            # python -m planpilot support
 ```
+
+## Related docs
+
+- [Map Sync Design](../design/map-sync.md) — candidate plan ID discovery/selection and reconciliation flow
+- [Clean Workflow Design](../design/clean.md) — metadata-scoped discovery and deletion ordering semantics
+- [CLI Reference](../reference/cli-reference.md) — concise command/flag lookup with examples
+- [Troubleshooting](../guides/troubleshooting.md) — common failures and fixes

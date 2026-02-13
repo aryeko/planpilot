@@ -108,3 +108,14 @@ async def get_item_labels(provider: Any, item_id: str) -> list[str]:  # pragma: 
     if issue.labels and issue.labels.nodes:
         return [n.name for n in issue.labels.nodes if n]
     return []
+
+
+async def get_item_label_name_to_id(provider: Any, item_id: str) -> dict[str, str]:  # pragma: no cover
+    issue = await provider._get_issue(item_id)
+    name_to_id: dict[str, str] = {}
+    if issue.labels and issue.labels.nodes:
+        for node in issue.labels.nodes:
+            if node is None:
+                continue
+            name_to_id[node.name] = node.id
+    return name_to_id

@@ -153,8 +153,7 @@ classDiagram
         +str title
         +str body
         +PlanItemType? item_type
-        +set_parent(Item)*
-        +add_dependency(Item)*
+        +reconcile_relations(parent, blockers)*
     }
 
     class SyncResult {
@@ -255,10 +254,8 @@ sequenceDiagram
     Renderer-->>Engine: updated body strings
     Engine->>Provider: update_item(id, UpdateItemInput)
 
-    Engine->>Item: set_parent(parent)
-    Item->>Provider: internal relation API call
-    Engine->>Item: add_dependency(blocker)
-    Item->>Provider: internal relation API call
+    Engine->>Item: reconcile_relations(parent, blockers)
+    Item->>Provider: internal relation add/remove calls
 
     Engine-->>SDK: SyncResult
     alt apply mode
@@ -266,7 +263,7 @@ sequenceDiagram
     end
     SDK-->>CLI: SyncResult
     alt apply mode
-        CLI->>CLI: persist sync-map + local plan files
+        CLI->>CLI: persist sync-map
     else dry-run mode
         CLI->>CLI: persist dry-run sync-map only
     end
@@ -289,11 +286,11 @@ The interfaces define **what the system needs** from external adapters. They are
 
 ### Engine and Providers are Core peers
 
-The engine receives a `Provider` ABC and calls its methods. Concrete adapters implement `Provider` but don't know the engine exists. They communicate only through Contracts. This is dependency inversion.
+The engine receives a `Provider` ABC and calls its methods. Concrete adapters implement `Provider` but don't know the engine exists. They communicate only through Contracts. Relation convergence happens through `Item.reconcile_relations(...)`, which lets providers handle add/remove semantics internally.
 
 ### SDK is the composition root
 
-The SDK is the only place that sees all Core modules and wires them together. Core modules never import each other — they are assembled by the SDK.
+The SDK is the only place that sees all Core domains and wires them together. Core modules may import approved peer utilities within Core, but runtime composition and cross-domain assembly still happens in the SDK.
 
 ### CLI depends only on SDK
 

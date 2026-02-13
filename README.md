@@ -1,7 +1,7 @@
 # <img src="https://raw.githubusercontent.com/aryeko/planpilot/main/assets/branding/navigator/navigator-square-512.png" alt="planpilot logo" width="32" height="32" align="absmiddle" /> planpilot
 
 [![CI](https://github.com/aryeko/planpilot/actions/workflows/ci.yml/badge.svg)](https://github.com/aryeko/planpilot/actions/workflows/ci.yml)
-[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg?token=3I2A515YTI)](https://codecov.io/gh/aryeko/planpilot)
+[![codecov](https://codecov.io/gh/aryeko/planpilot/graph/badge.svg)](https://codecov.io/gh/aryeko/planpilot)
 [![PyPI](https://img.shields.io/pypi/v/planpilot)](https://pypi.org/project/planpilot/)
 [![Python](https://img.shields.io/pypi/pyversions/planpilot)](https://pypi.org/project/planpilot/)
 [![Downloads](https://static.pepy.tech/badge/planpilot)](https://pepy.tech/project/planpilot)
@@ -51,8 +51,8 @@ See [docs/design/architecture.md](docs/design/architecture.md) for the full arch
 ## Requirements
 
 - Python 3.11+
-- [`gh` CLI](https://cli.github.com/) installed and authenticated
-- GitHub token scopes: `repo`, `project`
+- GitHub token with `repo` and `project` scopes
+- [`gh` CLI](https://cli.github.com/) only when using `auth: "gh-cli"`
 
 ## Installation
 
@@ -93,7 +93,7 @@ poetry install
 Tell your agent:
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/refs/heads/main/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
 ```
 
 The agent will install both `planpilot` and the skill automatically.
@@ -105,7 +105,7 @@ Install the skill to the open discovery path used by agent platforms that suppor
 ```bash
 mkdir -p ~/.agents/skills/roadmap-to-github-project
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
@@ -139,7 +139,7 @@ cat > planpilot.json <<'JSON'
     "stories": ".plans/stories.json",
     "tasks": ".plans/tasks.json"
   },
-  "sync_path": ".plans/github-sync-map.json"
+  "sync_path": ".plans/sync-map.json"
 }
 JSON
 ```
@@ -215,17 +215,29 @@ A complete working example is in the [examples/](examples/) directory, including
 
 ## Documentation
 
-- [Docs Index](docs/README.md) -- v2 documentation hub
-- [How It Works](docs/how-it-works.md) -- end-to-end sync behavior
-- [E2E Testing](docs/testing/e2e.md) -- offline end-to-end test design, coverage, and usage
-- [Plan Schemas](docs/reference/plan-schemas.md) -- plan JSON shapes and examples
-- [Architecture](docs/design/architecture.md) -- layer rules and data flow
-- [Contracts](docs/design/contracts.md) -- core domain and adapter contracts
-- [Engine](docs/design/engine.md) -- sync pipeline behavior
-- [CLI](docs/modules/cli.md) -- command structure, output, and exit codes
-- [SDK](docs/modules/sdk.md) -- public API and composition root
-- [Providers](docs/modules/providers.md) -- provider model and extension guide
-- [Release Guide](RELEASE.md) -- automated versioning, publishing, and release pipeline
+- Start here:
+  - [Docs Index](docs/README.md)
+  - [CLI Reference](docs/reference/cli-reference.md)
+  - [SDK Reference](docs/reference/sdk-reference.md)
+  - [Config Reference](docs/reference/config-reference.md)
+  - [Exit Codes](docs/reference/exit-codes.md)
+  - [Troubleshooting](docs/guides/troubleshooting.md)
+- Architecture and behavior:
+  - [How It Works](docs/how-it-works.md)
+  - [Architecture](docs/design/architecture.md)
+  - [Contracts](docs/design/contracts.md)
+  - [Engine](docs/design/engine.md)
+  - [Map Sync Design](docs/design/map-sync.md)
+  - [Clean Workflow Design](docs/design/clean.md)
+  - [Code Map](docs/design/codemap.md)
+- Module implementation details:
+  - [CLI](docs/modules/cli.md)
+  - [SDK](docs/modules/sdk.md)
+  - [Providers](docs/modules/providers.md)
+  - [GitHub Provider](docs/modules/github-provider.md)
+- Operations:
+  - [E2E Testing](docs/testing/e2e.md)
+  - [Release Guide](RELEASE.md)
 
 ## Support
 

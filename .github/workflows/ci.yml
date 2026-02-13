@@ -8,22 +8,56 @@ on:
 permissions:
   contents: read
 
+env:
+  POETRY_VERSION: "2.3.2"
+
 jobs:
   commitlint:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
           fetch-depth: 0
-      - uses: opensource-nepal/commitlint@v1
+      - uses: opensource-nepal/commitlint@b475c5486b51a090474c55a8dd2eafc84bcd84ba # v1
+
+  actionlint:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          version="1.7.7"
+          arch="$(uname -m)"
+          checksum=""
+          case "$arch" in
+            x86_64)
+              artifact="actionlint_${version}_linux_amd64.tar.gz"
+              checksum="023070a287cd8cccd71515fedc843f1985bf96c436b7effaecce67290e7e0757"
+              ;;
+            aarch64|arm64)
+              artifact="actionlint_${version}_linux_arm64.tar.gz"
+              checksum="401942f9c24ed71e4fe71b76c7d638f66d8633575c4016efd2977ce7c28317d0"
+              ;;
+            *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+          esac
+          curl -fsSL -o "$artifact" "https://github.com/rhysd/actionlint/releases/download/v${version}/${artifact}"
+          printf "%s  %s\n" "$checksum" "$artifact" | sha256sum -c -
+          tar -xzf "$artifact" actionlint
+          sudo install -m 0755 actionlint /usr/local/bin/actionlint
+      - name: Lint workflows
+        run: actionlint
 
   lint:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: pipx install "poetry==${POETRY_VERSION}"
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.12"
           cache: "poetry"
@@ -38,13 +72,14 @@ jobs:
 
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       matrix:
         python-version: ["3.11", "3.12", "3.13"]
     steps:
-      - uses: actions/checkout@v6
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: pipx install "poetry==${POETRY_VERSION}"
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
@@ -59,7 +94,7 @@ jobs:
           fi
       - name: Upload coverage
         if: matrix.python-version == '3.11'
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
           files: .coverage/coverage.xml
           flags: unittests
@@ -69,10 +104,11 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: pipx install "poetry==${POETRY_VERSION}"
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.11"
           cache: "poetry"
@@ -83,10 +119,11 @@ jobs:
 
   package:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     steps:
-      - uses: actions/checkout@v6
-      - run: pipx install poetry
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - run: pipx install "poetry==${POETRY_VERSION}"
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.12"
           cache: "poetry"
@@ -96,10 +133,10 @@ jobs:
         run: poetry build
       - name: Validate package metadata
         run: |
-          python -m pip install --upgrade twine
+          python -m pip install --upgrade twine==6.1.0
           twine check dist/*
       - name: Upload dist artifact
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: dist
           path: dist/*

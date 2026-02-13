@@ -71,8 +71,8 @@ flowchart TB
 
     subgraph Relations["Phase 4: Relations"]
         R1["all relations concurrent (semaphore-gated)"]
-        R2["item.set_parent / item.add_dependency"]
-        R3["includes parent roll-ups"]
+        R2["item.reconcile_relations(parent, blockers)"]
+        R3["adds missing and removes stale relations"]
         R1 --> R2 --> R3
     end
 
@@ -83,7 +83,7 @@ flowchart TB
     Discovery --> Upsert --> Enrich --> Relations --> Result
 ```
 
-In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The SDK persists dry-run output to `<sync_path>.dry-run`.
+In dry-run mode, the same pipeline runs against `DryRunProvider` so rendering/context logic is exercised without external API calls. The engine returns `SyncResult` and does not persist local files; persistence is caller-owned. In the CLI flow, dry-run output is written to `<sync_path>.dry-run` via `planpilot.cli.persistence.*`.
 
 ## Phase 1: Discovery
 
@@ -204,17 +204,18 @@ async def _enrich_item(self, plan_item: PlanItem, plan_id: str) -> None:
 
 **Goal:** Set up parent/child hierarchy and blocked-by dependency links.
 
-Relation calls are dispatched concurrently (gated by `max_concurrent`). Parent and dependency relations are independent and can be set in any order.
+Relation reconciliation calls are dispatched concurrently (gated by `max_concurrent`).
 
 ```python
 async with asyncio.TaskGroup() as tg:
-    for item, parent_item in parent_pairs:
-        tg.create_task(self._guarded(item.set_parent(parent_item)))
-    for item, blocker_item in dependency_pairs:
-        tg.create_task(self._guarded(item.add_dependency(blocker_item)))
+    for item in relation_targets:
+        tg.create_task(self._guarded(
+            item.reconcile_relations(parent=desired_parent.get(item.id), blockers=desired_blockers.get(item.id, []))
+        ))
 ```
 
 Only resolved relations are dispatched. In `validation_mode=partial`, unresolved references are skipped with warnings (not errors).
+Relation handling is reconciliation-based: stale parent/dependency links are removed when no longer present in the desired plan state.
 
 **Roll-up logic:** If a child in parent A depends on a child in parent B (A != B), then parent A is blocked by parent B. This rolls up recursively (task deps -> story level, story deps -> epic level). Cyclic edges are de-duplicated and skipped with warnings.
 
@@ -222,13 +223,14 @@ Only resolved relations are dispatched. In `validation_mode=partial`, unresolved
 
 ## Phase 5: Result
 
-The engine returns `SyncResult` and does **not** persist the sync map to disk — that is the SDK's responsibility.
+The engine returns `SyncResult` and does **not** persist local files.
 
 ```python
 return SyncResult(sync_map=sync_map, items_created=counters, dry_run=self._dry_run)
 ```
 
-Sync map persistence (apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`) is handled by the SDK.
+Sync map persistence (apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`) is caller-owned.
+In the CLI, persistence is handled by `planpilot.cli.persistence.*`.
 
 ## Sync Map Lifecycle
 
@@ -239,7 +241,7 @@ stateDiagram-v2
     Populated --> Updated: Upsert adds new entries
     Updated --> Enriched: Enrich updates bodies with cross-refs
     Enriched --> Returned: engine returns SyncResult
-    Returned --> Persisted: SDK writes to disk
+    Returned --> Persisted: CLI/caller writes to disk
 ```
 
 ## Internal Utilities
