@@ -192,7 +192,7 @@ async def test_from_config_unknown_renderer_raises_config_error(
 
 
 @pytest.mark.asyncio
-async def test_sync_happy_path_persists_sync_map(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_sync_happy_path_does_not_persist_sync_map(tmp_path: Path, sample_plan: Plan) -> None:
     provider = SpyProvider()
     renderer = FakeRenderer()
     config = _make_config(tmp_path)
@@ -204,11 +204,7 @@ async def test_sync_happy_path_persists_sync_map(tmp_path: Path, sample_plan: Pl
     assert provider.enter_calls == 1
     assert provider.exit_calls == 1
 
-    assert config.sync_path.exists()
-    persisted = json.loads(config.sync_path.read_text(encoding="utf-8"))
-    assert persisted["target"] == config.target
-    assert persisted["board_url"] == config.board_url
-    assert len(persisted["entries"]) == len(sample_plan.items)
+    assert config.sync_path.exists() is False
 
 
 @pytest.mark.asyncio
@@ -241,7 +237,7 @@ async def test_sync_loads_plan_from_config_when_not_provided(tmp_path: Path) -> 
 
 
 @pytest.mark.asyncio
-async def test_sync_dry_run_uses_dry_run_provider_and_persists_dry_run_map(tmp_path: Path, sample_plan: Plan) -> None:
+async def test_sync_dry_run_uses_dry_run_provider_without_persisting_map(tmp_path: Path, sample_plan: Plan) -> None:
     provider = SpyProvider()
     config = _make_config(tmp_path)
 
@@ -253,9 +249,7 @@ async def test_sync_dry_run_uses_dry_run_provider_and_persists_dry_run_map(tmp_p
     assert provider.exit_calls == 0
 
     dry_run_path = Path(f"{config.sync_path}.dry-run")
-    assert dry_run_path.exists()
-    persisted = json.loads(dry_run_path.read_text(encoding="utf-8"))
-    assert persisted["entries"]["E1"]["id"].startswith("dry-run-")
+    assert dry_run_path.exists() is False
 
 
 @pytest.mark.asyncio
@@ -331,10 +325,11 @@ async def test_sync_provider_factory_value_error_is_wrapped_as_config_error(
 
 
 @pytest.mark.asyncio
-async def test_sync_persist_write_error_is_wrapped_as_sync_error(
+async def test_persist_sync_map_write_error_is_wrapped_as_sync_error(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
 ) -> None:
     sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
+    result = await sdk.sync(sample_plan)
     original_write_text = Path.write_text
 
     def _boom(self: Path, *args: object, **kwargs: object) -> int:
@@ -345,14 +340,15 @@ async def test_sync_persist_write_error_is_wrapped_as_sync_error(
     monkeypatch.setattr(Path, "write_text", _boom)
 
     with pytest.raises(SyncError, match="failed to persist sync map"):
-        await sdk.sync(sample_plan)
+        sdk.persist_sync_map(result.sync_map, dry_run=False)
 
 
 @pytest.mark.asyncio
-async def test_sync_uses_persist_sync_map_compatibility_hook(
+async def test_persist_sync_map_uses_persist_sync_map_compatibility_hook(
     monkeypatch: pytest.MonkeyPatch, tmp_path: Path, sample_plan: Plan
 ) -> None:
     sdk = PlanPilot(provider=SpyProvider(), renderer=FakeRenderer(), config=_make_config(tmp_path))
+    result = await sdk.sync(sample_plan)
     calls: list[bool] = []
 
     def _spy(_sync_map, *, dry_run: bool) -> None:
@@ -360,7 +356,7 @@ async def test_sync_uses_persist_sync_map_compatibility_hook(
 
     monkeypatch.setattr(sdk, "_persist_sync_map", _spy)
 
-    await sdk.sync(sample_plan, dry_run=True)
+    sdk.persist_sync_map(result.sync_map, dry_run=True)
 
     assert calls == [True]
 

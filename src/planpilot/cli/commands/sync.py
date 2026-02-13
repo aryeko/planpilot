@@ -6,6 +6,7 @@ import argparse
 
 from planpilot import PlanItemType, PlanPilotConfig, SyncResult
 from planpilot.cli.common import format_type_breakdown
+from planpilot.persistence.sync_map import persist_sync_map
 
 
 def format_sync_summary(result: SyncResult, config: PlanPilotConfig) -> str:
@@ -89,6 +90,8 @@ async def run_sync(args: argparse.Namespace) -> SyncResult:
     else:
         pp = await cli.PlanPilot.from_config(config)
         result = await pp.sync(dry_run=args.dry_run)
+
+    persist_sync_map(sync_map=result.sync_map, sync_path=config.sync_path, dry_run=args.dry_run)
 
     print(cli._format_summary(result, config))
     return result

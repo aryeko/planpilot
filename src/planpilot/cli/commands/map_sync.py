@@ -7,6 +7,8 @@ import sys
 
 from planpilot import MapSyncResult, PlanPilotConfig
 from planpilot.cli.common import format_comma_or_none
+from planpilot.persistence.remote_plan import persist_plan_from_remote
+from planpilot.persistence.sync_map import persist_sync_map
 
 
 def format_map_sync_summary(result: MapSyncResult, config: PlanPilotConfig) -> str:
@@ -89,6 +91,11 @@ async def run_map_sync(args: argparse.Namespace) -> MapSyncResult:
             candidate_plan_ids=candidate_plan_ids,
         )
         result = await pp.map_sync(plan_id=selected_plan_id, dry_run=args.dry_run)
+
+    if not args.dry_run:
+        persist_sync_map(sync_map=result.sync_map, sync_path=config.sync_path, dry_run=False)
+        persist_plan_from_remote(items=result.remote_plan_items, plan_paths=config.plan_paths)
+
     result = result.model_copy(update={"candidate_plan_ids": candidate_plan_ids})
     print(cli._format_map_sync_summary(result, config))
     return result

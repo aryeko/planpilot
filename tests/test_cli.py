@@ -149,10 +149,18 @@ async def test_run_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_pa
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    persisted: list[tuple[bool, Path]] = []
+
+    def _fake_persist_sync_map(*, sync_map: SyncMap, sync_path: Path, dry_run: bool) -> None:
+        del sync_map
+        persisted.append((dry_run, sync_path))
+
+    monkeypatch.setattr("planpilot.cli.sync_command.persist_sync_map", _fake_persist_sync_map)
 
     actual = await _run_sync(args)
 
     assert actual == result
+    assert persisted == [(True, config.sync_path)]
 
 
 @pytest.mark.asyncio
@@ -173,10 +181,18 @@ async def test_run_sync_verbose_skips_progress(monkeypatch: pytest.MonkeyPatch, 
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    persisted: list[tuple[bool, Path]] = []
+
+    def _fake_persist_sync_map(*, sync_map: SyncMap, sync_path: Path, dry_run: bool) -> None:
+        del sync_map
+        persisted.append((dry_run, sync_path))
+
+    monkeypatch.setattr("planpilot.cli.sync_command.persist_sync_map", _fake_persist_sync_map)
 
     actual = await _run_sync(args)
 
     assert actual == result
+    assert persisted == [(True, config.sync_path)]
 
 
 def test_main_returns_zero_on_success(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -122,37 +122,40 @@ Once architecture boundaries are fixed, we can safely reduce cognitive load and 
 - No functional regressions.
 - Quality gates remain green.
 
-## Phase 3 - Namespace Consolidation (CLI + SDK Top-Level Domains)
+## Phase 3 - SDK/CLI Responsibility Consolidation
 
 ### Motivation
 
-After Phase 2 decomposition, runtime concerns are cleaner but still distributed across many top-level packages. Consolidating into explicit `cli` and `sdk` top-level domains improves discoverability and reinforces architectural intent (interface vs core) without changing behavior.
+After Phase 2 decomposition and the Phase 2.5 `sdk_ops` collapse, behavior is stable but `sdk.py` has regained high responsibility density. Phase 3 focuses on clarifying ownership between CLI orchestration and SDK programmatic behavior while preserving runtime semantics.
 
 ### Goals
 
 - Keep `cli` as the user interface entry domain.
-- Consolidate core runtime domains under `sdk`.
+- Keep SDK programmatic APIs stable while making workflow internals pure (return data, avoid local file persistence side effects in core workflow methods).
+- Introduce/retain neutral persistence modules outside CLI and outside the SDK facade class.
 - Preserve compatibility for public imports and command behavior.
 
 ### Scope Clarification
 
-- Phase 3 owns top-level domain movement and import-path consolidation.
-- Phase 2 may include CLI package decomposition (`src/planpilot/cli.py` -> `src/planpilot/cli/`) as maintainability work.
-- Phase 3 focuses on consolidating core runtime modules under `src/planpilot/sdk/` and finalizing root-domain import-path consolidation.
+- Phase 3 does **not** require moving all root modules under `sdk/`.
+- Phase 3 owns SDK/CLI responsibility consolidation and internal structure cleanup.
+- CLI package decomposition (`src/planpilot/cli.py` -> `src/planpilot/cli/`) remains Phase 2 work.
+- Phase 3 may introduce `src/planpilot/sdk/` package internals with a compatibility shim at `src/planpilot/sdk.py`.
 
 ### Requirements
 
-1. **Top-level domain shape**
-   - `src/planpilot/cli/` remains the CLI entry domain.
-   - Core runtime modules move under `src/planpilot/sdk/` (for example: contracts, engine, providers, plan, config, init, map_sync, clean).
+1. **Domain ownership shape**
+   - `src/planpilot/cli/` remains the CLI entry domain (parsing, prompts, output formatting, exit mapping).
+   - SDK public methods remain programmatic APIs.
+   - Core workflow persistence side effects are invoked by CLI (or other callers) through neutral persistence helpers, not hidden in SDK workflow bodies.
 
 2. **Compatibility strategy**
    - Preserve user-facing APIs exposed from `planpilot.__init__`.
    - Provide compatibility shims where needed during migration to avoid abrupt breakage.
 
 3. **SDK ownership review task**
-   - Review each planned SDK workflow/support module (for example: `sync_ops`, `map_sync_ops`, `clean_ops`, `persistence`) and explicitly decide whether its logic belongs in SDK composition/workflow orchestration or should live in a deeper domain module.
-   - Record and apply the decision before finalizing the `sdk/` package layout to avoid reintroducing SDK scope drift.
+   - Review sync/map-sync/clean/persistence logic and explicitly classify each piece as CLI concern, SDK workflow concern, or neutral persistence service.
+   - Keep SDK workflow code pure where possible (result objects in/out) and route persistence through explicit caller-owned steps.
 
 4. **Behavioral safety**
    - No change to command flags, summaries, exit codes, or sync semantics.
@@ -164,13 +167,13 @@ After Phase 2 decomposition, runtime concerns are cleaner but still distributed 
 
 ### Deliverables
 
-- New consolidated package layout centered on `cli` and `sdk`.
+- Clear SDK/CLI ownership boundaries with explicit persistence orchestration.
 - Updated imports and compatibility shims with no user-visible behavior changes.
 - Guardrail tests ensuring layering remains enforced after re-rooting.
 
 ### Exit Criteria
 
-- Core modules are namespaced under `sdk`.
+- SDK methods expose stable programmatic behavior with explicit persistence orchestration outside core workflow bodies.
 - Public API and runtime behavior remain stable.
 - Quality and boundary gates are green.
 

@@ -53,9 +53,8 @@ flowchart TB
     Engine --> Run["engine.sync(plan, plan_id)"]
     Run --> Exit{"apply mode?"}
     Exit -- Yes --> ProviderExit["provider.__aexit__()"]
-    Exit -- No --> Persist["persist sync map to config.sync_path (or .dry-run)"]
-    ProviderExit --> Persist
-    Persist --> Return["return SyncResult"]
+    Exit -- No --> Return["return SyncResult"]
+    ProviderExit --> Return
 ```
 
 1. **Load plan** (if not provided) — `PlanLoader().load(config.plan_paths)`
@@ -67,8 +66,14 @@ flowchart TB
 5. **Enter provider for apply mode** — `async with provider` manages auth + context resolution
 6. **Construct + run engine** — `SyncEngine(provider, renderer, config, dry_run).sync(plan, plan_id)`
 7. **Exit provider in apply mode** — `__aexit__` ensures cleanup even on error
-8. **Persist sync map** — apply mode -> `config.sync_path`, dry-run -> `<sync_path>.dry-run`
-9. **Return result**
+8. **Return result**
+
+`sync()` and `map_sync()` are side-effect free for local file persistence. They return domain results only.
+CLI (or other callers) can persist artifacts explicitly via SDK helper methods:
+
+- `persist_sync_map(sync_map, dry_run=...)`
+- `persist_plan_from_remote(items=...)`
+- `load_sync_map(plan_id=...)`
 
 **Provider lifecycle:** `sync()` manages provider construction and lifecycle internally. Callers never manage `async with`.
 
@@ -180,7 +185,8 @@ write_config(config, Path("planpilot.json"))
 | `__init__` accepts injected dependencies | Advanced/testing scenarios |
 | `sync()` manages provider lifecycle | Simple API — no `async with` boilerplate |
 | `plan` parameter optional on `sync()` | Config-driven and programmatic usage both supported |
-| SDK persists sync map, not engine | Engine is pure orchestration (no I/O) |
+| SDK sync/map_sync workflows avoid local writes | Programmatic workflows return result objects only |
+| Local artifact writes are explicit helper calls | CLI owns user-facing persistence decisions |
 | `load_config()` is standalone, not a method | Used before `PlanPilot` construction |
 
 ## File Structure

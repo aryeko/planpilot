@@ -6,6 +6,18 @@ Phase 1 restored architectural correctness (layer boundaries, SDK drift reductio
 
 This phase focuses on maintainability improvements so future changes are easier to review, test, and reason about, without changing user-visible behavior.
 
+## Phase 2.5 Follow-up (Completed)
+
+After initial Phase 2 extraction, `sdk_ops/*` was intentionally collapsed back into `src/planpilot/sdk.py` to reduce unnecessary indirection while preserving behavior and compatibility hooks. This was a structural simplification, not a behavior change.
+
+Current source-of-truth (post-2.5):
+
+- `src/planpilot/sdk.py` owns sync/map-sync/clean orchestration and sync-map persistence hooks.
+- `src/planpilot/sdk_ops/*` has been removed.
+- Boundary tests now validate `sdk.py` import hygiene directly.
+
+This update supersedes earlier Slice 4/5 destination references to `sdk_ops/*`.
+
 ## Goals
 
 1. Reduce responsibility density in hotspot modules.
@@ -44,11 +56,8 @@ Phase 2 uses explicit destination modules so decomposition is predictable and re
   - `src/planpilot/init/auth.py`
   - `src/planpilot/init/validation.py`
 
-- SDK internal decomposition (keep `src/planpilot/sdk.py` as public facade in Phase 2):
-  - `src/planpilot/sdk_ops/sync_ops.py`
-  - `src/planpilot/sdk_ops/map_sync_ops.py`
-  - `src/planpilot/sdk_ops/clean_ops.py`
-  - `src/planpilot/sdk_ops/persistence.py`
+- SDK internals (post-2.5):
+  - `src/planpilot/sdk.py` (public facade + current orchestration internals)
 
 - GitHub provider internal split (while keeping context/lifecycle in `provider.py`):
   - `src/planpilot/providers/github/ops/__init__.py`
@@ -77,11 +86,6 @@ src/planpilot/
 |  |- auth.py
 |  `- validation.py
 |- sdk.py
-|- sdk_ops/
-|  |- sync_ops.py
-|  |- map_sync_ops.py
-|  |- clean_ops.py
-|  `- persistence.py
 `- providers/github/
    |- provider.py
    `- ops/
@@ -115,15 +119,15 @@ src/planpilot/
 - Keep domain auth/validation logic in `src/planpilot/init/*` and call through public APIs.
 - Keep command flow and exit behavior unchanged.
 
-### Slice 4 - SDK sync/map orchestration extraction
+### Slice 4 - SDK sync/map orchestration extraction (completed then simplified in 2.5)
 
-- Keep `PlanPilot` as public facade in `src/planpilot/sdk.py`.
-- Move sync/map orchestration internals to `src/planpilot/sdk_ops/sync_ops.py` and `src/planpilot/sdk_ops/map_sync_ops.py`.
+- Kept `PlanPilot` as public facade in `src/planpilot/sdk.py`.
+- Initial extraction to `sdk_ops/*` was completed, then collapsed back into `sdk.py` in Phase 2.5 to reduce indirection.
 
-### Slice 5 - SDK clean and persistence extraction
+### Slice 5 - SDK clean and persistence extraction (completed then simplified in 2.5)
 
-- Extract clean path internals and persistence concerns into `src/planpilot/sdk_ops/clean_ops.py` and `src/planpilot/sdk_ops/persistence.py`.
-- Preserve `PlanPilot.clean()` contract and deletion semantics.
+- Preserved `PlanPilot.clean()` contract and deletion semantics.
+- Final post-2.5 location for these internals is `src/planpilot/sdk.py`.
 
 ### Slice 6 - GitHub provider context/CRUD split
 

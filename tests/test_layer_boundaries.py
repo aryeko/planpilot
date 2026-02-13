@@ -48,6 +48,36 @@ def test_sdk_does_not_import_github_provider_internals() -> None:
     assert not violations, f"sdk imports forbidden github provider internals: {violations}"
 
 
+def test_sdk_does_not_import_cli_layer() -> None:
+    root = Path(__file__).resolve().parents[1]
+    files = [root / "src" / "planpilot" / "sdk.py"]
+    violations = _find_forbidden_imports(files, ("planpilot.cli",))
+    assert not violations, f"sdk imports forbidden cli layer modules: {violations}"
+
+
+def test_cli_sync_commands_import_persistence_helpers() -> None:
+    root = Path(__file__).resolve().parents[1]
+    required_modules = {
+        root / "src" / "planpilot" / "cli" / "commands" / "sync.py": {"planpilot.persistence.sync_map"},
+        root / "src" / "planpilot" / "cli" / "commands" / "map_sync.py": {
+            "planpilot.persistence.sync_map",
+            "planpilot.persistence.remote_plan",
+        },
+    }
+    missing: list[str] = []
+
+    for path, expected_modules in required_modules.items():
+        module = ast.parse(path.read_text(encoding="utf-8"))
+        imported_modules = {
+            node.module for node in ast.walk(module) if isinstance(node, ast.ImportFrom) and node.module is not None
+        }
+        for expected_module in expected_modules:
+            if expected_module not in imported_modules:
+                missing.append(f"{path}: missing import from {expected_module}")
+
+    assert not missing, f"cli sync commands must import persistence helpers: {missing}"
+
+
 def test_github_ops_do_not_import_cli_sdk_or_engine_layers() -> None:
     root = Path(__file__).resolve().parents[1]
     files = _collect_python_files(root / "src" / "planpilot" / "providers" / "github" / "ops")

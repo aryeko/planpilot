@@ -85,7 +85,7 @@ def test_resolve_selected_plan_id_interactive_prompts(monkeypatch: pytest.Monkey
 
 @pytest.mark.asyncio
 async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json")
+    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json", plan_paths=SimpleNamespace())
     expected = _make_map_result(dry_run=True)
 
     class _FakeSDK:
@@ -106,6 +106,13 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _path: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    monkeypatch.setattr(
+        "planpilot.cli.map_sync_command.persist_sync_map",
+        lambda **_: (_ for _ in ()).throw(AssertionError),
+    )
+    monkeypatch.setattr(
+        "planpilot.cli.map_sync_command.persist_plan_from_remote", lambda **_: (_ for _ in ()).throw(AssertionError)
+    )
 
     args = argparse.Namespace(
         command="map",
@@ -126,7 +133,7 @@ async def test_run_map_sync_delegates_to_sdk(monkeypatch: pytest.MonkeyPatch, tm
 
 @pytest.mark.asyncio
 async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
-    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json")
+    config = SimpleNamespace(sync_path=tmp_path / "sync-map.json", plan_paths=SimpleNamespace())
     expected = _make_map_result(dry_run=False)
 
     class _FakeSDK:
@@ -147,6 +154,19 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
 
     monkeypatch.setattr("planpilot.cli.load_config", lambda _path: config)
     monkeypatch.setattr("planpilot.cli.PlanPilot.from_config", _fake_from_config)
+    persisted_sync_map: list[tuple[bool, Path]] = []
+    persisted_plans: list[int] = []
+
+    def _fake_persist_sync_map(*, sync_map: SyncMap, sync_path: Path, dry_run: bool) -> None:
+        del sync_map
+        persisted_sync_map.append((dry_run, sync_path))
+
+    def _fake_persist_plan_from_remote(*, items: list[object], plan_paths: object) -> None:
+        del plan_paths
+        persisted_plans.append(len(items))
+
+    monkeypatch.setattr("planpilot.cli.map_sync_command.persist_sync_map", _fake_persist_sync_map)
+    monkeypatch.setattr("planpilot.cli.map_sync_command.persist_plan_from_remote", _fake_persist_plan_from_remote)
 
     args = argparse.Namespace(
         command="map",
@@ -163,6 +183,8 @@ async def test_run_map_sync_respects_explicit_plan_id(monkeypatch: pytest.Monkey
     assert actual.sync_map.plan_id == "abc123"
     assert actual.candidate_plan_ids == ["abc123", "zzz999"]
     assert len(from_config_calls) == 2
+    assert persisted_sync_map == [(False, config.sync_path)]
+    assert persisted_plans == [0]
 
 
 @pytest.mark.asyncio

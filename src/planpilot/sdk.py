@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import json
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
 
 from pydantic import ValidationError
 
@@ -13,7 +11,7 @@ from planpilot.auth import create_token_resolver
 from planpilot.clean import CleanDeletionPlanner
 from planpilot.config.loader import load_config as _load_config
 from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProviderError, SyncError
+from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProviderError
 from planpilot.contracts.item import Item, ItemSearchFilters
 from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
 from planpilot.contracts.provider import Provider
@@ -21,8 +19,10 @@ from planpilot.contracts.renderer import BodyRenderer
 from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
 from planpilot.engine import SyncEngine
 from planpilot.engine.progress import SyncProgress
-from planpilot.map_sync import MapSyncReconciler, RemotePlanParser, RemotePlanPersistence
+from planpilot.map_sync import MapSyncReconciler, RemotePlanParser
 from planpilot.metadata import parse_metadata_block
+from planpilot.persistence.remote_plan import RemotePlanPersistence
+from planpilot.persistence.sync_map import load_sync_map, output_sync_path, persist_sync_map
 from planpilot.plan import PlanHasher as PlanHasher
 from planpilot.plan import PlanLoader, PlanValidator
 from planpilot.providers.dry_run import DryRunProvider
@@ -123,7 +123,6 @@ class PlanPilot:
         except* ProviderError as provider_errors:
             raise provider_errors.exceptions[0] from None
 
-        self._persist_sync_map(result.sync_map, dry_run=dry_run)
         return result
 
     async def discover_remote_plan_ids(self) -> list[str]:
@@ -202,16 +201,19 @@ class PlanPilot:
             removed=removed,
             updated=updated,
             plan_items_synced=len(remote_plan_items),
+            remote_plan_items=list(remote_plan_items.values()),
             dry_run=dry_run,
         )
-        if not dry_run:
-            if self._progress is not None:
-                self._progress.phase_start("Map Persist")
-            self._persist_sync_map(reconciled, dry_run=False)
-            self._persist_plan_from_remote(items=remote_plan_items.values())
-            if self._progress is not None:
-                self._progress.phase_done("Map Persist")
         return result
+
+    def persist_sync_map(self, sync_map: SyncMap, *, dry_run: bool) -> None:
+        self._persist_sync_map(sync_map, dry_run=dry_run)
+
+    def load_sync_map(self, *, plan_id: str) -> SyncMap:
+        return self._load_sync_map(plan_id=plan_id)
+
+    def persist_plan_from_remote(self, *, items: Iterable[PlanItem]) -> None:
+        self._persist_plan_from_remote(items=items)
 
     async def clean(self, *, dry_run: bool = False, all_plans: bool = False) -> CleanResult:
         """Discover and delete all issues belonging to a plan.
@@ -358,28 +360,18 @@ class PlanPilot:
             raise ConfigError(str(exc)) from exc
 
     def _persist_sync_map(self, sync_map: SyncMap, *, dry_run: bool) -> None:
-        output_path = self._output_sync_path(dry_run=dry_run)
-        try:
-            output_path.parent.mkdir(parents=True, exist_ok=True)
-            output_path.write_text(sync_map.model_dump_json(indent=2), encoding="utf-8")
-        except OSError as exc:
-            raise SyncError(f"failed to persist sync map: {output_path}") from exc
+        persist_sync_map(sync_map=sync_map, sync_path=self._config.sync_path, dry_run=dry_run)
 
     def _output_sync_path(self, *, dry_run: bool) -> Path:
-        if not dry_run:
-            return self._config.sync_path
-        return Path(f"{self._config.sync_path}.dry-run")
+        return output_sync_path(sync_path=self._config.sync_path, dry_run=dry_run)
 
     def _load_sync_map(self, *, plan_id: str) -> SyncMap:
-        path = self._config.sync_path
-        if not path.exists():
-            return SyncMap(plan_id=plan_id, target=self._config.target, board_url=self._config.board_url, entries={})
-        try:
-            payload: Any = json.loads(path.read_text(encoding="utf-8"))
-            parsed = SyncMap.model_validate(payload)
-        except (OSError, json.JSONDecodeError, ValidationError) as exc:
-            raise ConfigError(f"invalid sync map file: {path}") from exc
-        return parsed
+        return load_sync_map(
+            sync_path=self._config.sync_path,
+            plan_id=plan_id,
+            target=self._config.target,
+            board_url=self._config.board_url,
+        )
 
     def _persist_plan_from_remote(self, *, items: Iterable[PlanItem]) -> None:
         self._map_sync_persistence.persist_plan_from_remote(items=items, plan_paths=self._config.plan_paths)

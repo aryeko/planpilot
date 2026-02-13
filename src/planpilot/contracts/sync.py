@@ -5,7 +5,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field
 
 from planpilot.contracts.item import Item
-from planpilot.contracts.plan import PlanItemType
+from planpilot.contracts.plan import PlanItem, PlanItemType
 
 
 class SyncEntry(BaseModel):
@@ -41,6 +41,7 @@ class MapSyncResult(BaseModel):
     updated: list[str] = Field(default_factory=list)
     candidate_plan_ids: list[str] = Field(default_factory=list)
     plan_items_synced: int = 0
+    remote_plan_items: list[PlanItem] = Field(default_factory=list, exclude=True, repr=False)
     dry_run: bool = False
 
 

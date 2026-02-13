@@ -38,11 +38,16 @@ flowchart TB
         PlanPilot["PlanPilot<br/>public API facade"]
     end
 
+    subgraph Persistence["Persistence Layer"]
+        PersistenceHelpers["persistence/<br/>sync_map + remote_plan helpers"]
+    end
+
     subgraph CLI["CLI Layer"]
         CLIModule["cli.py<br/>arg parsing<br/>output formatting"]
     end
 
     CLI --> SDK
+    CLI --> PersistenceHelpers
     SDK --> Engine
     SDK --> PlanCore
     SDK --> Providers
@@ -96,8 +101,8 @@ Thin shell wrapper. Imports only from the SDK's public API surface. Could be del
 |-------|----------------|-------------------|
 | **Contracts** | Other Contract domains (downward only), stdlib, third-party | Core, SDK, CLI |
 | **Core** | Contracts only | Other Core modules, SDK, CLI |
-| **SDK** | Core, Contracts (re-exports selected types publicly) | CLI |
-| **CLI** | SDK public API (which re-exports selected Contracts types) | Core, Contracts directly |
+| **SDK** | Core, Contracts (re-exports selected types publicly), Persistence helpers | CLI |
+| **CLI** | SDK public API (which re-exports selected Contracts types), approved Persistence helpers | Core, Contracts directly |
 
 The SDK re-exports Contracts types (e.g. `SyncResult`, `PlanPilotConfig`, `PlanItemType`) so that CLI and external callers access them through the SDK without importing Contracts directly.
 
@@ -252,11 +257,15 @@ sequenceDiagram
     Item->>Provider: internal relation API call
 
     Engine-->>SDK: SyncResult
-    SDK->>SDK: persist sync map to disk (apply path or .dry-run)
     alt apply mode
         SDK->>Provider: __aexit__()
     end
     SDK-->>CLI: SyncResult
+    alt apply mode
+        CLI->>CLI: persist sync-map + local plan files
+    else dry-run mode
+        CLI->>CLI: persist dry-run sync-map only
+    end
     CLI-->>User: formatted output
 ```
 
