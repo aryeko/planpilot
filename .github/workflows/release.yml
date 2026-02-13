@@ -15,11 +15,15 @@ concurrency:
   group: release-main
   cancel-in-progress: false
 
+env:
+  POETRY_VERSION: "2.3.2"
+
 jobs:
   # ── Job 1: Semantic Release — bump, changelog, tag ─────────────
   release:
     name: Semantic Release + Build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     # Gate: CI passed, on main, not a PSR release commit (defense-in-depth).
     if: >-
@@ -50,7 +54,7 @@ jobs:
           fetch-depth: 0
           token: ${{ steps.app-token.outputs.token }}
 
-      - run: pipx install poetry==1.8.5
+      - run: pipx install poetry==${POETRY_VERSION}
       - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: "3.12"
@@ -86,6 +90,7 @@ jobs:
     needs: release
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: testpypi
     permissions:
       id-token: write      # OIDC + PEP 740 attestations
@@ -94,6 +99,7 @@ jobs:
       - name: Checkout (for smoke-test script)
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
         with:
+          ref: ${{ github.event.workflow_run.head_sha }}
           sparse-checkout: scripts
           sparse-checkout-cone-mode: true
 
@@ -120,6 +126,7 @@ jobs:
     needs: [release, publish-testpypi]
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     environment: pypi
     permissions:
       id-token: write      # OIDC + PEP 740 attestations
@@ -142,6 +149,7 @@ jobs:
     needs: [release, publish-pypi]
     if: needs.release.outputs.released == 'true'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
 
