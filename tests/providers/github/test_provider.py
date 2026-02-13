@@ -315,8 +315,8 @@ async def test_search_items_applies_labels_and_body_filters(monkeypatch: pytest.
     items = await provider.search_items(ItemSearchFilters(labels=["planpilot", "foo"], body_contains="PLAN_ID:abc"))
 
     assert len(items) == 1
-    assert "label:planpilot" in captured["query"]
-    assert "label:foo" in captured["query"]
+    assert 'label:"planpilot"' in captured["query"]
+    assert 'label:"foo"' in captured["query"]
     assert '"PLAN_ID:abc" in:body' in captured["query"]
 
 
@@ -347,6 +347,33 @@ async def test_search_items_escapes_double_quotes_in_body_contains(monkeypatch: 
 
 
 @pytest.mark.asyncio
+async def test_search_items_quotes_and_escapes_labels(monkeypatch: pytest.MonkeyPatch) -> None:
+    provider = GitHubProvider(
+        target="acme/repo",
+        token="token",
+        board_url="https://github.com/orgs/acme/projects/1",
+        label="planpilot",
+        field_config=FieldConfig(),
+    )
+    provider.context = GitHubProviderContext(
+        repo_id="repo-id", label_id="label-id", issue_type_ids={}, project_owner_type="org"
+    )
+
+    captured: dict[str, str] = {}
+
+    async def fake_search(query: str) -> list[IssueCore]:
+        captured["query"] = query
+        return [_make_issue_core(id="I1", number=1, url="u", title="t", body="")]
+
+    monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
+
+    await provider.search_items(ItemSearchFilters(labels=["needs triage", 'x"y']))
+
+    assert 'label:"needs triage"' in captured["query"]
+    assert 'label:"x\\"y"' in captured["query"]
+
+
+@pytest.mark.asyncio
 async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatch) -> None:
     provider = GitHubProvider(
         target="acme/repo",
@@ -368,7 +395,7 @@ async def test_search_items_without_body_contains(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(provider, "_search_issue_nodes", fake_search)
 
     await provider.search_items(ItemSearchFilters(labels=["planpilot"]))
-    assert "label:planpilot" in captured["query"]
+    assert 'label:"planpilot"' in captured["query"]
     assert "PLAN_ID:" not in captured["query"]
     assert "in:body" not in captured["query"]
 

@@ -126,7 +126,8 @@ class GitHubProvider(Provider):
     async def search_items(self, filters: ItemSearchFilters) -> list[Item]:
         query_parts = [f"repo:{self._target}", "is:issue"]
         for label in filters.labels:
-            query_parts.append(f"label:{label}")
+            escaped_label = label.replace('"', '\\"')
+            query_parts.append(f'label:"{escaped_label}"')
         if filters.body_contains:
             escaped_body_contains = filters.body_contains.replace('"', '\\"')
             query_parts.append(f'"{escaped_body_contains}" in:body')
