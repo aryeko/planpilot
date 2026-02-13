@@ -7,8 +7,9 @@ import sys
 
 from planpilot import MapSyncResult, PlanPilotConfig
 from planpilot.cli.common import format_comma_or_none
-from planpilot.persistence.remote_plan import persist_plan_from_remote
-from planpilot.persistence.sync_map import persist_sync_map
+from planpilot.cli.persistence.remote_plan import persist_plan_from_remote
+from planpilot.cli.persistence.sync_map import persist_sync_map
+from planpilot.cli.progress.rich import RichSyncProgress
 
 
 def format_map_sync_summary(result: MapSyncResult, config: PlanPilotConfig) -> str:
@@ -71,8 +72,6 @@ async def run_map_sync(args: argparse.Namespace) -> MapSyncResult:
 
     config = cli.load_config(args.config)
     if not args.verbose:
-        from planpilot.progress import RichSyncProgress
-
         with RichSyncProgress() as progress:
             pp = await cli.PlanPilot.from_config(config, progress=progress)
             candidate_plan_ids = await pp.discover_remote_plan_ids()

@@ -1,5 +1,5 @@
-"""Compatibility bridge to neutral remote-plan persistence helpers."""
+"""Compatibility shim for map-sync remote-plan persistence."""
 
-from planpilot.persistence.remote_plan import RemotePlanPersistence
+from planpilot.core.map_sync.persistence import RemotePlanPersistence
 
 __all__ = ["RemotePlanPersistence"]

@@ -8,26 +8,36 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from planpilot.auth import create_token_resolver
-from planpilot.clean import CleanDeletionPlanner
 from planpilot.config.loader import load_config as _load_config
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, PlanLoadError, ProviderError
-from planpilot.contracts.item import Item, ItemSearchFilters
-from planpilot.contracts.plan import Plan, PlanItem, PlanItemType
-from planpilot.contracts.provider import Provider
-from planpilot.contracts.renderer import BodyRenderer
-from planpilot.contracts.sync import CleanResult, MapSyncResult, SyncEntry, SyncMap, SyncResult
-from planpilot.engine import SyncEngine
-from planpilot.engine.progress import SyncProgress
-from planpilot.map_sync import MapSyncReconciler, RemotePlanParser
-from planpilot.metadata import parse_metadata_block
+from planpilot.core.clean import CleanDeletionPlanner
+from planpilot.core.contracts import (
+    BodyRenderer,
+    CleanResult,
+    ConfigError,
+    Item,
+    ItemSearchFilters,
+    MapSyncResult,
+    Plan,
+    PlanItem,
+    PlanItemType,
+    PlanLoadError,
+    PlanPaths,
+    PlanPilotConfig,
+    Provider,
+    ProviderError,
+    SyncEntry,
+    SyncMap,
+    SyncResult,
+)
+from planpilot.core.engine import SyncEngine, SyncProgress
+from planpilot.core.map_sync import MapSyncReconciler, RemotePlanParser
+from planpilot.core.metadata import parse_metadata_block
+from planpilot.core.plan import PlanHasher as PlanHasher
+from planpilot.core.plan import PlanLoader, PlanValidator
+from planpilot.core.providers import DryRunProvider, create_provider
+from planpilot.core.renderers import create_renderer
 from planpilot.persistence.remote_plan import RemotePlanPersistence
 from planpilot.persistence.sync_map import load_sync_map, output_sync_path, persist_sync_map
-from planpilot.plan import PlanHasher as PlanHasher
-from planpilot.plan import PlanLoader, PlanValidator
-from planpilot.providers.dry_run import DryRunProvider
-from planpilot.providers.factory import create_provider
-from planpilot.renderers import create_renderer
 
 
 def load_config(path: str | Path) -> PlanPilotConfig:

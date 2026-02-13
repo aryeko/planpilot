@@ -108,7 +108,7 @@ def run_init_interactive(output: Path) -> int:
         owner_type: str | None = None
         if provider == "github":
             if sys.stderr.isatty():
-                from planpilot.progress import RichSyncProgress
+                from planpilot.cli.progress.rich import RichSyncProgress
 
                 with RichSyncProgress() as progress:
                     resolved_token = cli._resolve_init_token(auth=auth, target=target, static_token=auth_token)

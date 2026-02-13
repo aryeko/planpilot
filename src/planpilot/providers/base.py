@@ -1,9 +1,5 @@
-"""Provider module base types."""
+"""Compatibility shim for provider base types."""
 
-from __future__ import annotations
+from planpilot.core.providers.base import ProviderContext
 
-
-class ProviderContext:
-    """Base class for provider-specific resolved state."""
-
-    pass
+__all__ = ["ProviderContext"]

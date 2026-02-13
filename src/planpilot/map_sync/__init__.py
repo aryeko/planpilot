@@ -1,7 +1,5 @@
-"""Map-sync domain exports."""
+"""Compatibility shim for map-sync domain exports."""
 
-from planpilot.map_sync.parser import RemotePlanParser
-from planpilot.map_sync.persistence import RemotePlanPersistence
-from planpilot.map_sync.reconciler import MapSyncReconciler
+from planpilot.core.map_sync import MapSyncReconciler, RemotePlanParser, RemotePlanPersistence
 
 __all__ = ["MapSyncReconciler", "RemotePlanParser", "RemotePlanPersistence"]

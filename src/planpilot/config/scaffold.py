@@ -9,8 +9,8 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from planpilot.contracts.config import PlanPaths, PlanPilotConfig
-from planpilot.contracts.exceptions import ConfigError, ProjectURLError
+from planpilot.core.contracts.config import PlanPaths, PlanPilotConfig
+from planpilot.core.contracts.exceptions import ConfigError, ProjectURLError
 from planpilot.targets.github_project import parse_project_url
 
 _SPLIT_DEFAULTS = {
@@ -161,3 +161,12 @@ def create_plan_stubs(plan_paths: dict[str, str], *, base: Path | None = None) -
         created.append(full)
 
     return created
+
+
+__all__ = [
+    "create_plan_stubs",
+    "detect_plan_paths",
+    "detect_target",
+    "scaffold_config",
+    "write_config",
+]

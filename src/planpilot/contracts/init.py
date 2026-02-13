@@ -1,13 +1,3 @@
-"""Contracts for init preflight workflows."""
+"""Compatibility shim for init contracts."""
 
-from __future__ import annotations
-
-from typing import Protocol
-
-
-class InitProgress(Protocol):
-    def phase_start(self, phase: str, total: int | None = None) -> None: ...
-
-    def phase_done(self, phase: str) -> None: ...
-
-    def phase_error(self, phase: str, error: BaseException) -> None: ...
+from planpilot.core.contracts.init import *  # noqa: F403

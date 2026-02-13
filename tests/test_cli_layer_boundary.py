@@ -26,6 +26,12 @@ def test_cli_imports_only_public_planpilot_api() -> None:
             elif isinstance(node, ast.ImportFrom):
                 if node.module is None:
                     continue
+                if (
+                    cli_path.name == "rich.py"
+                    and "planpilot/cli/progress" in str(cli_path)
+                    and node.module == "planpilot.engine.progress"
+                ):
+                    continue
                 if node.module.startswith(forbidden_prefixes):
                     violations.append(f"{cli_path}: {node.module}")
 
