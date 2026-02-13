@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import warnings
 from collections.abc import Awaitable, Callable
-from typing import TypeVar, cast
+from typing import TypeVar
 
 from planpilot.core.contracts.config import PlanPilotConfig
 from planpilot.core.contracts.exceptions import CreateItemPartialFailureError, ProviderError, SyncError
@@ -397,14 +397,13 @@ class SyncEngine:
         self._progress.item_done("Relations")
 
     async def _prime_relation_cache(self, relation_targets: set[str], item_objects: dict[str, Item]) -> None:
-        prime = getattr(self._provider, "prime_relations_cache", None)
+        prime: Callable[[list[str]], Awaitable[None]] | None = getattr(self._provider, "prime_relations_cache", None)
         if not callable(prime):
             return
-        prime_relations_cache = cast(Callable[[list[str]], Awaitable[None]], prime)
         provider_ids = sorted(
             {item_objects[plan_item_id].id for plan_item_id in relation_targets if plan_item_id in item_objects}
         )
-        await prime_relations_cache(provider_ids)
+        await prime(provider_ids)
 
     def _desired_labels_for_item(self, item_type: PlanItemType) -> list[str]:
         labels = [self._config.label]

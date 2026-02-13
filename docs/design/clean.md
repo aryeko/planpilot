@@ -24,7 +24,7 @@ flowchart TD
     J --> K{progress made?}
     K -- yes --> J
     K -- no --> L[Raise first provider error]
-    J --> I
+    J --> M[Return clean result]
 ```
 
 ## Deletion Strategy
