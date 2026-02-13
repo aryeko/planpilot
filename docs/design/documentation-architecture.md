@@ -50,6 +50,23 @@ flowchart LR
 - Update `docs/modules/*.md` when implementation details change in the corresponding runtime module.
 - Update `RELEASE.md` and workflow docs when release or CI semantics change.
 
+## Docs Update Decision Flow
+
+```mermaid
+flowchart TD
+    Change[Code or behavior change] --> Type{Change type}
+    Type -->|Sync behavior| SyncDocs[Update docs/design/engine.md + docs/how-it-works.md + docs/modules/sdk.md]
+    Type -->|CLI behavior| CliDocs[Update docs/modules/cli.md + README.md]
+    Type -->|Provider behavior| ProviderDocs[Update docs/modules/providers.md + docs/modules/github-provider.md + docs/design/contracts.md]
+    Type -->|Config/schema| ConfigDocs[Update docs/modules/config.md + docs/reference/plan-schemas.md + README.md]
+    Type -->|CI/release| OpsDocs[Update RELEASE.md and workflow-facing docs]
+    SyncDocs --> Verify[Verify links + run poe check + run e2e when CLI changed]
+    CliDocs --> Verify
+    ProviderDocs --> Verify
+    ConfigDocs --> Verify
+    OpsDocs --> Verify
+```
+
 ## What To Update For Common Changes
 
 | Change type | Must update |

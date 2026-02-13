@@ -24,6 +24,7 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe lint` | Run ruff linter (`ruff check .`) |
 | `poe format` | Auto-format code (`ruff format .`) |
 | `poe format-check` | Check formatting without changes (`ruff format --check .`) |
+| `poe workflow-lint` | Lint GitHub Actions workflows (`./scripts/actionlint.sh`) |
 | `poe test` | Run non-E2E tests (`pytest -v --ignore=tests/e2e`) |
 | `poe test-e2e` | Run offline E2E suite (`pytest -v tests/e2e/test_cli_e2e.py`) |
 | `poe coverage` | Run tests and generate HTML coverage report |
@@ -143,6 +144,7 @@ tests/
 - Unit tests mock the `Provider` and `BodyRenderer` abstractions -- no real API calls.
 - Shared fixtures live in `tests/conftest.py`.
 - Coverage target: 90%+ branch coverage (`poe test` reports coverage automatically).
+- Type-checking currently gates runtime code in `src/planpilot`; tests are not mypy-gated.
 - When adding a new module, create a matching test file in the same relative path.
 
 ## Adding a provider

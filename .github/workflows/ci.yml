@@ -18,6 +18,26 @@ jobs:
           fetch-depth: 0
       - uses: opensource-nepal/commitlint@b475c5486b51a090474c55a8dd2eafc84bcd84ba # v1
 
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Install actionlint
+        run: |
+          set -euo pipefail
+          version="1.7.7"
+          arch="$(uname -m)"
+          case "$arch" in
+            x86_64) artifact="actionlint_${version}_linux_amd64.tar.gz" ;;
+            aarch64|arm64) artifact="actionlint_${version}_linux_arm64.tar.gz" ;;
+            *) echo "Unsupported architecture: $arch" >&2; exit 1 ;;
+          esac
+          curl -fsSL -o "$artifact" "https://github.com/rhysd/actionlint/releases/download/v${version}/${artifact}"
+          tar -xzf "$artifact" actionlint
+          sudo install -m 0755 actionlint /usr/local/bin/actionlint
+      - name: Lint workflows
+        run: actionlint
+
   lint:
     runs-on: ubuntu-latest
     steps:
