@@ -65,7 +65,7 @@ jobs:
 
       - name: Python Semantic Release
         id: psr
-        uses: python-semantic-release/python-semantic-release@754a065a2ea187da71977ada6630a8ec0f98e380 # v10.5.3
+        uses: python-semantic-release/python-semantic-release@350c48fcb3ffcdfd2e0a235206bc2ecea6b69df0 # v10.5.3
         with:
           github_token: ${{ steps.app-token.outputs.token }}
           vcs_release: "true"
