@@ -1,8 +1,18 @@
-# Install: `roadmap-to-github-project` Skill
+# Install: planpilot Skills
 
-This installs the planpilot skill into the open discovery path used by agent platforms that support filesystem skills:
+This installs the planpilot skills into the open discovery path used by agent platforms that support filesystem skills:
 
 - `~/.agents/skills/<skill-name>/SKILL.md`
+
+## Planpilot Skills Overview
+
+The planpilot suite includes three complementary skills that form a workflow chain:
+
+1. **`create-prd`** — Start with a feature idea and generate a structured Product Requirements Document through interactive discovery.
+2. **`create-tech-spec`** — Take your PRD and create a codebase-aware technical specification with architecture diagrams.
+3. **`roadmap-to-github-project`** — Convert your PRD/spec into schema-aligned `.plans` JSON files and sync them to GitHub Issues and Projects v2.
+
+Install all three to unlock the full end-to-end planning workflow.
 
 ## Agent Self-Install
 
@@ -72,17 +82,25 @@ Verify:
 planpilot --version
 ```
 
-### 4) Install the skill into open skill path
+### 4) Install the skills into open skill path
 
-Create destination directory:
+Create destination directories:
 
 ```bash
+mkdir -p ~/.agents/skills/create-prd
+mkdir -p ~/.agents/skills/create-tech-spec
 mkdir -p ~/.agents/skills/roadmap-to-github-project
 ```
 
 #### Option A: Copy from local repo checkout
 
 ```bash
+cp skills/create-prd/SKILL.md \
+  ~/.agents/skills/create-prd/SKILL.md
+
+cp skills/create-tech-spec/SKILL.md \
+  ~/.agents/skills/create-tech-spec/SKILL.md
+
 cp skills/roadmap-to-github-project/SKILL.md \
   ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
@@ -90,6 +108,12 @@ cp skills/roadmap-to-github-project/SKILL.md \
 #### Option B: Fetch from GitHub raw URL
 
 ```bash
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+  -o ~/.agents/skills/create-prd/SKILL.md
+
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+  -o ~/.agents/skills/create-tech-spec/SKILL.md
+
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
@@ -99,12 +123,20 @@ Prefer pinned tags (for example `v2.3.0`) over mutable branches when fetching fr
 ### 5) Verify skill install
 
 ```bash
+ls -la ~/.agents/skills/create-prd
+head -5 ~/.agents/skills/create-prd/SKILL.md
+
+ls -la ~/.agents/skills/create-tech-spec
+head -5 ~/.agents/skills/create-tech-spec/SKILL.md
+
 ls -la ~/.agents/skills/roadmap-to-github-project
 head -5 ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
 Expected frontmatter should include:
 
+- `name: create-prd`
+- `name: create-tech-spec`
 - `name: roadmap-to-github-project`
 
 ### 6) Restart your agent
@@ -113,15 +145,25 @@ Expected frontmatter should include:
 
 ### 7) Update / uninstall
 
-Update (re-copy or re-fetch `SKILL.md`):
+Update (re-copy or re-fetch `SKILL.md` for each skill):
 
 ```bash
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+  -o ~/.agents/skills/create-prd/SKILL.md
+
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+  -o ~/.agents/skills/create-tech-spec/SKILL.md
+
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-Uninstall:
+Uninstall all skills:
 
 ```bash
+rm -rf ~/.agents/skills/create-prd
+rm -rf ~/.agents/skills/create-tech-spec
 rm -rf ~/.agents/skills/roadmap-to-github-project
 ```
+
+Or uninstall individual skills as needed.
