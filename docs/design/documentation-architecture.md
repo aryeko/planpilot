@@ -40,6 +40,7 @@ flowchart TD
     Reference --> R5[plan-schemas.md]
     Reference --> R6[workflows-reference.md]
     Reference --> R7[developer-workflow.md]
+    Reference --> R8[docs-inventory.md]
 ```
 
 ## Code-to-Docs Ownership Map
@@ -116,5 +117,4 @@ flowchart TD
 - `poe check` passes.
 - `poe docs-links` passes.
 - `poe test-e2e` passes when CLI behavior changes.
-- Local markdown links resolve.
 - New docs files are linked from `docs/README.md`.

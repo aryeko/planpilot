@@ -19,7 +19,7 @@ flowchart TD
 
 | Command | Why it matters |
 |---|---|
-| `poetry run poe docs-links` | Prevent broken local markdown links in `README.md` and `docs/` |
+| `poetry run poe docs-links` | Prevent broken local Markdown links in all root `.md` files and `docs/` |
 | `poetry run poe workflow-lint` | Validate GitHub workflow YAML and expressions |
 | `poetry run poe check` | Run lint + format-check + mypy + non-E2E tests |
 | `poetry run poe test-e2e` | Validate CLI behavior through offline integration flows |

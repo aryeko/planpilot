@@ -24,7 +24,7 @@ Development tasks are managed with [poethepoet](https://github.com/nat-n/poethep
 | `poe lint` | Run ruff linter (`ruff check .`) |
 | `poe format` | Auto-format code (`ruff format .`) |
 | `poe format-check` | Check formatting without changes (`ruff format --check .`) |
-| `poe docs-links` | Validate local markdown links in `README.md` and `docs/` |
+| `poe docs-links` | Validate local Markdown links in all root `.md` files and `docs/` |
 | `poe workflow-lint` | Lint GitHub Actions workflows (`./scripts/actionlint.sh`) |
 | `poe test` | Run non-E2E tests (`pytest -v --ignore=tests/e2e`) |
 | `poe test-e2e` | Run offline E2E suite (`pytest -v tests/e2e/test_cli_e2e.py`) |
@@ -66,7 +66,7 @@ Primary references:
 
 - `docs/README.md` — docs index and navigation
 - `docs/design/documentation-architecture.md` — ownership map and update rules
-- `docs/plans/2026-02-13-docs-refresh-execution-plan.md` — docs inventory and update strategy
+- `docs/reference/docs-inventory.md` — docs inventory and update strategy
 
 Quick mapping:
 

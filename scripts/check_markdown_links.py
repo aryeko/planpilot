@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Validate local markdown links in README and docs."""
+"""Validate local markdown links in repository root and docs."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ import sys
 from dataclasses import dataclass
 from pathlib import Path
 
-LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^)]+)\)")
+LINK_PATTERN = re.compile(r"\[[^\]]+\]\(([^\s)]+)")
 IGNORED_PREFIXES = ("http://", "https://", "mailto:", "#")
 
 
@@ -19,7 +19,7 @@ class BrokenLink:
 
 
 def _candidate_markdown_files(repo_root: Path) -> list[Path]:
-    files = [repo_root / "README.md"]
+    files = list(repo_root.glob("*.md"))
     files.extend((repo_root / "docs").rglob("*.md"))
     return [file for file in files if file.exists()]
 
