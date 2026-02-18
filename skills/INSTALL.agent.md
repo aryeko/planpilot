@@ -1,6 +1,6 @@
-# Agent Install: `roadmap-to-github-project` Skill
+# Agent Install: planpilot Skills
 
-You are installing the **planpilot** skill for roadmap-to-GitHub-project sync.
+You are installing the **planpilot** skills: `roadmap-to-github-project`, `create-prd`, and `create-tech-spec`.
 
 Follow every step below **in order**. Do not skip steps. Report results to the user after each major step.
 
@@ -72,7 +72,9 @@ python -m planpilot --version
 
 If none work, STOP and report the failure to the user.
 
-## Step 5: Install the skill
+## Step 5: Install the skills
+
+Install `roadmap-to-github-project`:
 
 ```bash
 mkdir -p ~/.agents/skills/roadmap-to-github-project
@@ -83,36 +85,71 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roa
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-If `curl` is not available, try `wget`:
+Install `create-prd`:
 
 ```bash
-wget -qO ~/.agents/skills/roadmap-to-github-project/SKILL.md \
-  "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md"
+mkdir -p ~/.agents/skills/create-prd
 ```
 
+```bash
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+  -o ~/.agents/skills/create-prd/SKILL.md
+```
+
+Install `create-tech-spec`:
+
+```bash
+mkdir -p ~/.agents/skills/create-tech-spec
+```
+
+```bash
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+  -o ~/.agents/skills/create-tech-spec/SKILL.md
+```
+
+If `curl` is not available, try `wget` for any of the above (replace `curl -fsSL ... -o` with `wget -qO`).
+
 ## Step 6: Verify skill install
+
+Verify all three skills were installed:
 
 ```bash
 head -5 ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-The output must contain `name: roadmap-to-github-project`. If not, the download failed — retry Step 5.
+Should contain `name: roadmap-to-github-project`.
+
+```bash
+head -5 ~/.agents/skills/create-prd/SKILL.md
+```
+
+Should contain `name: create-prd`.
+
+```bash
+head -5 ~/.agents/skills/create-tech-spec/SKILL.md
+```
+
+Should contain `name: create-tech-spec`.
+
+If any are missing or incorrect, retry Step 5.
 
 ## Step 7: Report to user
 
 Tell the user:
 
-> **planpilot skill installed successfully.**
+> **planpilot skills installed successfully.**
 >
 > - `planpilot` CLI: installed and verified
-> - Skill: `~/.agents/skills/roadmap-to-github-project/SKILL.md`
+> - Skills installed:
+>   - `~/.agents/skills/roadmap-to-github-project/SKILL.md`
+>   - `~/.agents/skills/create-prd/SKILL.md`
+>   - `~/.agents/skills/create-tech-spec/SKILL.md`
 >
-> **Please restart your agent** (start a new session) so it discovers the newly installed skill. The skill won't be available until the agent re-scans `~/.agents/skills/`.
+> **Please restart your agent** (start a new session) so it discovers the newly installed skills. The skills won't be available until the agent re-scans `~/.agents/skills/`.
 >
-> After restarting, ask me to turn a roadmap or spec into a GitHub project.
+> After restarting, you can:
+> - Ask me to turn a roadmap or spec into a GitHub project
+> - Ask me to create a Product Requirements Document (PRD)
+> - Ask me to create a Technical Specification (Tech Spec)
 >
-> To update the skill later, re-run this install or run:
-> ```
-> curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
->   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
-> ```
+> To update the skills later, re-run this install or update individual skills with curl.
