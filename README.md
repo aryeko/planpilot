@@ -11,6 +11,12 @@ Sync roadmap plans (epics, stories, tasks) to GitHub Issues and Projects v2.
 
 > **⭐ If planpilot helps you manage your roadmaps, consider [giving it a star](https://github.com/aryeko/planpilot)!**
 
+## Why planpilot?
+
+Managing roadmaps through GitHub's UI works for small projects, but breaks down fast: manually creating dozens of issues, linking parent/child hierarchies, setting up blocked-by dependencies, and keeping project board fields in sync is tedious and error-prone. Scripting the GitHub API directly means dealing with pagination, rate limits, idempotency, and GraphQL complexity.
+
+**planpilot treats your roadmap as code.** Define epics, stories, and tasks in JSON files, commit them alongside your source code, and let planpilot handle the rest — creating issues, wiring up sub-issue hierarchies, setting blocked-by relations, and populating project board fields. It's idempotent (safe to rerun), supports dry-run previews, and works across multiple epics in a single run.
+
 ## What it does
 
 **planpilot** takes structured plan files and turns them into a fully linked project board:
@@ -85,6 +91,29 @@ poetry install
 ```
 
 </details>
+
+## Try it now
+
+See planpilot in action without any configuration or GitHub token — the built-in example runs a fully offline dry-run:
+
+```bash
+git clone https://github.com/aryeko/planpilot.git && cd planpilot
+pipx install .   # or: pip install .
+planpilot sync --config examples/planpilot.json --dry-run
+```
+
+```text
+planpilot - sync complete (dry-run)
+
+  Plan ID:   3832d3ffce22
+  Target:    example-org/example-repo
+  Board:     https://github.com/orgs/example-org/projects/1
+
+  Items:     6 total (1 epic, 2 stories, 3 tasks)
+  Created:   6 (1 epic, 2 stories, 3 tasks)
+
+  [dry-run] No changes were made
+```
 
 ## Install Agent Skill
 
@@ -241,6 +270,7 @@ A complete working example is in the [examples/](examples/) directory, including
 - Operations:
   - [E2E Testing](docs/testing/e2e.md)
   - [Release Guide](RELEASE.md)
+  - [Changelog](CHANGELOG.md)
 
 ## Support
 
