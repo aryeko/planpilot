@@ -28,7 +28,7 @@ flowchart LR
 - Commit message linting on pull requests
 - Workflow linting (`actionlint`)
 - Ruff lint + format check
-- Docs local-link integrity (`poetry run poe docs-links`)
+- Docs local-link integrity (`poetry run poe docs-links`): scans all root-level `*.md` files and `docs/**/*.md`; exits 0 (success) when no broken links are found, exits 1 (failure) when broken links are detected; external URLs and anchor-only fragments are ignored; no dry-run mode
 - Mypy type-check (`poetry run poe typecheck`)
 - Unit/integration test matrix across Python 3.11-3.13
 - E2E suite job
