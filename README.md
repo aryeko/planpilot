@@ -99,7 +99,7 @@ See planpilot in action without any configuration or GitHub token — the built-
 ```bash
 git clone https://github.com/aryeko/planpilot.git && cd planpilot
 pipx install .   # or: pip install .
-planpilot sync --config examples/planpilot.json --dry-run
+planpilot sync --config examples/sync-workflow/planpilot.json --dry-run
 ```
 
 ```text
@@ -112,7 +112,7 @@ planpilot - sync complete (dry-run)
   Items:     6 total (1 epic, 2 stories, 3 tasks)
   Created:   6 (1 epic, 2 stories, 3 tasks)
 
-  Sync map:  examples/sync-map-sample.json.dry-run
+  Sync map:  examples/sync-workflow/sync-map-sample.json.dry-run
 
   [dry-run] No changes were made
 ```

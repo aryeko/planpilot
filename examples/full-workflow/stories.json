@@ -1,0 +1,197 @@
+[
+  {
+    "id": "S-1",
+    "type": "STORY",
+    "title": "Core validation pipeline: JSON syntax, schema, and hierarchy checks",
+    "goal": "Implement the first three validation layers (JSON syntax, schema compliance, hierarchy integrity) that catch structural issues in plan files before advanced validation.",
+    "parent_id": "E-1",
+    "requirements": [
+      "Parse JSON files using Python's json module with error context (line/column info)",
+      "Load parsed JSON against Pydantic models via PlanLoader.load()",
+      "Validate hierarchy: parent_id references exist and match type rules (story\u2192epic, task\u2192story)",
+      "Validate epics have no parent_id set",
+      "Collect errors from all three layers and report before proceeding",
+      "Report file paths, line/column numbers for JSON errors",
+      "Report item IDs and field names for schema/hierarchy errors"
+    ],
+    "acceptance_criteria": [
+      "Invalid JSON files report error with file path and line/column number",
+      "Missing required fields (goal, requirements, acceptance_criteria) are reported with item ID and field name",
+      "Type mismatches are reported with expected vs actual type information",
+      "Hierarchy validation detects missing parent references",
+      "Hierarchy validation enforces type rules (story can only parent to epic, task to story)",
+      "Epics with parent_id are flagged as hierarchy error",
+      "All errors halt further validation before schema or hierarchy checks proceed"
+    ],
+    "estimate": {
+      "tshirt": "M"
+    },
+    "scope": {
+      "in_scope": [
+        "JSON syntax validation with line/column reporting",
+        "Schema validation via Pydantic models",
+        "Parent-child type hierarchy validation",
+        "Error collection and categorization"
+      ],
+      "out_scope": [
+        "Dependency cycle detection (separate story)",
+        "Uniqueness validation (separate story)"
+      ]
+    },
+    "sub_item_ids": [
+      "T-1",
+      "T-2",
+      "T-3"
+    ]
+  },
+  {
+    "id": "S-2",
+    "type": "STORY",
+    "title": "Advanced validation: cycle detection and ID uniqueness checks",
+    "goal": "Implement the final two validation layers (dependency cycle detection and ID uniqueness) that ensure data integrity and prevent downstream sync errors.",
+    "parent_id": "E-1",
+    "requirements": [
+      "Implement cycle detection algorithm using depth-first search (DFS) with visit tracking",
+      "Detect cycles in depends_on relationships and report all items in cycle",
+      "Detect self-references (items depending on themselves)",
+      "Verify every item ID is unique across all plan files",
+      "Verify no item appears in multiple files with same ID",
+      "Collect and format cycle paths as readable sequences (a\u2192b\u2192c\u2192a)",
+      "Report duplicate IDs with list of files containing duplicates"
+    ],
+    "acceptance_criteria": [
+      "Circular depends_on relationships are detected (simple: a\u2192b\u2192a and complex: a\u2192b\u2192c\u2192d\u2192b)",
+      "Cycle detection reports all items involved in cycle",
+      "Self-references (item depending on itself) are detected and reported",
+      "Duplicate IDs are detected across all plan files",
+      "Duplicate error reports which files contain the duplicate ID",
+      "Cycle detection completes within reasonable time for 10k-item plans",
+      "All detected cycles and duplicates are included in validation report"
+    ],
+    "estimate": {
+      "tshirt": "M"
+    },
+    "scope": {
+      "in_scope": [
+        "Cycle detection using DFS algorithm",
+        "Self-reference detection",
+        "ID uniqueness validation across files",
+        "Cycle path formatting for human readability"
+      ],
+      "out_scope": [
+        "Fixing detected cycles",
+        "Auto-deduplication of IDs"
+      ]
+    },
+    "sub_item_ids": [
+      "T-4",
+      "T-5"
+    ]
+  },
+  {
+    "id": "S-3",
+    "type": "STORY",
+    "title": "CLI integration and validation report formatting",
+    "goal": "Build the command-line interface with proper argument parsing, config loading, and human-readable error report output suitable for both interactive use and CI/CD integration.",
+    "parent_id": "E-1",
+    "requirements": [
+      "Add 'validate' subcommand to CLI parser with --config, --plan-dir, and --verbose flags",
+      "Implement config loading via ConfigLoader when --config is provided",
+      "Implement plan directory scanning when --plan-dir is provided",
+      "Search default paths (./planpilot.json, ./.plans/) if neither flag provided",
+      "Collect all validation errors from five layers",
+      "Format validation report: summary section with status and item counts",
+      "Group errors by category: JSON, schema, hierarchy, cycles, uniqueness",
+      "Output clear, actionable error messages with item IDs and field context",
+      "Exit with code 0 for success, code 3 for validation failures"
+    ],
+    "acceptance_criteria": [
+      "Command runs with --config pointing to valid planpilot.json",
+      "Command runs with --plan-dir pointing to plan directory",
+      "Command searches and uses defaults if no flags provided",
+      "Validation report shows status (PASS or FAIL)",
+      "Report shows total items validated and counts by type (epics, stories, tasks)",
+      "Errors are grouped by category with clear section headers",
+      "Each error message includes item ID and specific issue",
+      "Exit code matches validation status (0=pass, 3=fail)",
+      "Report is human-readable and actionable (not raw Python exceptions)"
+    ],
+    "estimate": {
+      "tshirt": "M"
+    },
+    "scope": {
+      "in_scope": [
+        "CLI argument parsing and validation",
+        "Config and directory discovery logic",
+        "Report formatting and categorization",
+        "Exit code handling"
+      ],
+      "out_scope": [
+        "Machine-readable output formats (JSON, CSV)",
+        "Verbose detailed error explanations with suggested fixes"
+      ]
+    },
+    "sub_item_ids": [
+      "T-6",
+      "T-7",
+      "T-8",
+      "T-9"
+    ]
+  },
+  {
+    "id": "S-4",
+    "type": "STORY",
+    "title": "Comprehensive testing: unit, integration, and e2e validation",
+    "goal": "Ensure the validate command is fully tested across unit, integration, and end-to-end scenarios with high coverage and strong confidence in offline behavior and error reporting.",
+    "parent_id": "E-1",
+    "requirements": [
+      "Unit tests: path resolution (--config, --plan-dir, defaults)",
+      "Unit tests: JSON syntax validation with line/column reporting",
+      "Unit tests: schema validation with field-level error details",
+      "Unit tests: hierarchy validation for parent-child type rules",
+      "Unit tests: cycle detection for simple/complex cycles and self-references",
+      "Unit tests: ID uniqueness validation across files",
+      "Integration tests: end-to-end with real JSON files",
+      "Integration tests: verify split and unified plan formats work identically",
+      "E2E tests: CLI invocation with test fixtures and exit code verification",
+      "Performance tests: validate 10k-item plan completes within 5 seconds",
+      "Test fixtures: valid plans, invalid JSON, schema errors, cycles, duplicates"
+    ],
+    "acceptance_criteria": [
+      "All path resolution modes tested (--config, --plan-dir, defaults)",
+      "JSON syntax errors include file path and line/column info",
+      "Schema validation reports missing fields and type mismatches with context",
+      "Hierarchy validation tests parent-child type rules and epic parent_id checks",
+      "Cycle detection tests simple cycles, complex cycles, and self-references",
+      "Uniqueness validation tests cross-file duplicates and self-references",
+      "Integration tests use real split and unified plan JSON files",
+      "E2E tests verify CLI invocation and exit codes",
+      "Performance tests confirm <100ms for 500-item plans, <5s for 10k plans",
+      "Unit test code coverage exceeds 90% for validation logic"
+    ],
+    "estimate": {
+      "tshirt": "L"
+    },
+    "scope": {
+      "in_scope": [
+        "Unit test coverage for all validation layers",
+        "Integration tests with real JSON files",
+        "E2E CLI testing with fixtures",
+        "Performance benchmarking",
+        "Test fixture creation"
+      ],
+      "out_scope": [
+        "Property-based testing or fuzzing",
+        "Stress testing with extremely large plans (>100k items)"
+      ]
+    },
+    "sub_item_ids": [
+      "T-10",
+      "T-11",
+      "T-12",
+      "T-13",
+      "T-14",
+      "T-15"
+    ]
+  }
+]

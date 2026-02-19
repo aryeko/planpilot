@@ -1,0 +1,492 @@
+[
+  {
+    "id": "T-1",
+    "type": "TASK",
+    "title": "Implement JSON syntax validation with error context",
+    "goal": "Build the first validation layer that parses JSON files and reports syntax errors with file path, line, and column information.",
+    "parent_id": "S-1",
+    "requirements": [
+      "Parse JSON files in sequence using Python json module",
+      "Catch json.JSONDecodeError exceptions",
+      "Extract and report file path, line number, and column number from exception",
+      "Format error message: 'File: X, Line: Y, Col: Z: <error description>'",
+      "Stop validation on first JSON error (fail-fast)"
+    ],
+    "acceptance_criteria": [
+      "Invalid JSON syntax is caught and reported",
+      "Error message includes file path",
+      "Error message includes line number",
+      "Error message includes column number",
+      "Error message is human-readable",
+      "Validation stops before schema validation attempt"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 2
+    },
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_json_syntax_validation -v"
+      ],
+      "manual_steps": [
+        "Create invalid JSON fixture with syntax error",
+        "Run validate command, verify error includes line/col"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-2",
+    "type": "TASK",
+    "title": "Integrate PlanLoader and Pydantic schema validation",
+    "goal": "Reuse existing PlanLoader to validate parsed JSON against Pydantic schema models and report field-level validation errors.",
+    "parent_id": "S-1",
+    "requirements": [
+      "Call PlanLoader.load() with discovered plan files",
+      "Catch PlanLoadError exceptions wrapping Pydantic ValidationError",
+      "Extract validation error details: item ID, field name, error message",
+      "Format error: 'Item: <id>, Field: <field>, Error: <message>'",
+      "Collect all schema errors before halting"
+    ],
+    "acceptance_criteria": [
+      "Missing required fields are caught and reported with item ID and field name",
+      "Type mismatches (string vs number) are reported with context",
+      "Invalid enum values are reported",
+      "Each error includes the item ID",
+      "Error messages are actionable (e.g., 'Value is required')"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 3
+    },
+    "depends_on": [
+      "T-1"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_schema_validation -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-3",
+    "type": "TASK",
+    "title": "Implement hierarchy validation (parent refs and type rules)",
+    "goal": "Validate that parent_id references exist, point to correct parent types, and enforce parent-child type rules.",
+    "parent_id": "S-1",
+    "requirements": [
+      "Check all parent_id references point to existing items",
+      "Enforce type hierarchy: stories must have epic parents, tasks must have story parents",
+      "Verify epics have no parent_id (null or omitted)",
+      "Format error: 'Item: <id>, Parent: <parent_id>, Error: <violation>'",
+      "Call PlanValidator methods for consistency with existing validation"
+    ],
+    "acceptance_criteria": [
+      "Missing parent references are detected",
+      "Wrong parent type (story with story parent) is rejected",
+      "Epic with parent_id is flagged as error",
+      "Task with epic parent is rejected",
+      "Story with task parent is rejected",
+      "All hierarchy errors are reported"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 3
+    },
+    "depends_on": [
+      "T-2"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_hierarchy_validation -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-4",
+    "type": "TASK",
+    "title": "Implement cycle detection algorithm (DFS-based)",
+    "goal": "Build a depth-first search algorithm to detect circular dependencies in depends_on relationships.",
+    "parent_id": "S-2",
+    "requirements": [
+      "Implement DFS with three-state visit tracking: unvisited, visiting, visited",
+      "Build adjacency list from depends_on relationships",
+      "Detect back edges (indicators of cycles)",
+      "Return list of items forming the cycle",
+      "Detect self-references (item depending on itself)",
+      "Format cycle path: 'item1 \u2192 item2 \u2192 item3 \u2192 item1'"
+    ],
+    "acceptance_criteria": [
+      "Simple cycle (a\u2192b\u2192a) is detected",
+      "Complex cycle (a\u2192b\u2192c\u2192d\u2192b) is detected",
+      "Self-reference (a\u2192a) is detected",
+      "Cycle path is reported with all items involved",
+      "Algorithm completes in O(V+E) time (efficient)"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_cycle_detection -v"
+      ],
+      "manual_steps": [
+        "Create test plans with known cycles",
+        "Verify algorithm detects all cycles correctly",
+        "Verify no false negatives or positives"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-5",
+    "type": "TASK",
+    "title": "Implement ID uniqueness validation across files",
+    "goal": "Ensure every item ID is unique across all plan files and detect self-references in depends_on.",
+    "parent_id": "S-2",
+    "requirements": [
+      "Build a global ID index from all plan items",
+      "Detect duplicate IDs across files",
+      "Report which files contain each duplicate ID",
+      "Detect self-references in depends_on",
+      "Format error: 'Duplicate ID: <id> in files [file1, file2]'",
+      "Format self-ref error: 'Self-reference: <id> depends on itself'"
+    ],
+    "acceptance_criteria": [
+      "Duplicate IDs across files are detected",
+      "Duplicate ID error reports all files containing the ID",
+      "Self-references are detected and reported",
+      "All IDs are verified for uniqueness",
+      "Error messages are clear and actionable"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 2
+    },
+    "depends_on": [
+      "T-4"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_uniqueness_validation -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-6",
+    "type": "TASK",
+    "title": "Add validate command to CLI parser and argument handling",
+    "goal": "Extend the CLI parser with the validate subcommand and implement argument parsing for --config, --plan-dir, and --verbose flags.",
+    "parent_id": "S-3",
+    "requirements": [
+      "Add 'validate' subparser to cli/parser.py build_parser()",
+      "Add --config flag (optional, path to planpilot.json)",
+      "Add --plan-dir flag (optional, path to plan directory)",
+      "Add --verbose flag (optional, enable debug logging)",
+      "Implement mutual exclusion logic at runtime (both flags can be optional, but --plan-dir overrides config if both provided)"
+    ],
+    "acceptance_criteria": [
+      "CLI parser accepts --config flag",
+      "CLI parser accepts --plan-dir flag",
+      "CLI parser accepts --verbose flag",
+      "Help text is clear and shows all options",
+      "Parser is discoverable via 'planpilot validate --help'"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 2
+    },
+    "verification": {
+      "commands": [
+        "planpilot validate --help"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-7",
+    "type": "TASK",
+    "title": "Implement config/directory discovery and plan loading",
+    "goal": "Build logic to discover planpilot.json or plan directory, resolve plan file paths, and load all plan items.",
+    "parent_id": "S-3",
+    "requirements": [
+      "If --config provided: load config via ConfigLoader, extract plan_paths",
+      "If --plan-dir provided: scan directory for epics.json, stories.json, tasks.json (split) or plan.json (unified)",
+      "If neither provided: search defaults (./planpilot.json, then ./.plans/ directory)",
+      "Handle missing files with clear error message",
+      "Support both split and unified plan formats",
+      "Return list of all loaded items (epics, stories, tasks)"
+    ],
+    "acceptance_criteria": [
+      "Config file loading returns plan paths correctly",
+      "Plan directory scanning finds all files",
+      "Default search works when no flags provided",
+      "Missing config/directory reports clear error",
+      "Both split and unified formats are discovered",
+      "All items are loaded and returned"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 3
+    },
+    "depends_on": [
+      "T-6"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_config_discovery -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-8",
+    "type": "TASK",
+    "title": "Build validation report formatter with error categorization",
+    "goal": "Create a report formatter that organizes validation results by category and produces human-readable output.",
+    "parent_id": "S-3",
+    "requirements": [
+      "Collect validation errors from all five layers",
+      "Categorize errors: JSON, Schema, Hierarchy, Cycles, Uniqueness",
+      "Format summary: Status (PASS/FAIL), Total Items, Errors count, Breakdown by type",
+      "For each category: clear section header and error list",
+      "Each error: item ID, field (if applicable), specific issue",
+      "Report to stdout, not stderr"
+    ],
+    "acceptance_criteria": [
+      "Report shows PASS when no errors found",
+      "Report shows FAIL when errors detected",
+      "Summary section includes all required metrics",
+      "Errors are grouped by category",
+      "Each category has a clear header",
+      "Error messages are consistent and actionable"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "depends_on": [
+      "T-5"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_report_formatting -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-9",
+    "type": "TASK",
+    "title": "Implement command handler and exit code logic",
+    "goal": "Wire together all validation layers into a single command handler that orchestrates the validation pipeline and returns correct exit codes.",
+    "parent_id": "S-3",
+    "requirements": [
+      "Create run_validate(args) function in cli/commands/validate.py",
+      "Orchestrate: load \u2192 validate (5 layers) \u2192 report \u2192 exit",
+      "Exit 0 if all validations pass",
+      "Exit 3 if any validation fails",
+      "Handle unexpected errors gracefully",
+      "Integrate into cli/app.py error mapping (PlanValidationError \u2192 exit 3)"
+    ],
+    "acceptance_criteria": [
+      "Command handler accepts argparse.Namespace args",
+      "Returns 0 on successful validation",
+      "Returns 3 on validation failure",
+      "Orchestrates all validation layers in correct order",
+      "Handles unexpected errors without crashing"
+    ],
+    "estimate": {
+      "tshirt": "S",
+      "hours": 2
+    },
+    "depends_on": [
+      "T-8"
+    ],
+    "verification": {
+      "commands": [
+        "pytest src/planpilot/cli/commands/test_validate.py::test_command_handler -v"
+      ]
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-10",
+    "type": "TASK",
+    "title": "Unit tests: path resolution and config loading",
+    "goal": "Write comprehensive unit tests for all path discovery modes (--config, --plan-dir, defaults) and config file loading.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Test --config with valid planpilot.json",
+      "Test --config with missing file (error handling)",
+      "Test --plan-dir with valid directory",
+      "Test --plan-dir with missing directory (error handling)",
+      "Test default path search (./planpilot.json, then ./.plans/)",
+      "Test --plan-dir overrides --config",
+      "Test error messages are clear"
+    ],
+    "acceptance_criteria": [
+      "All path resolution modes are tested",
+      "Valid paths are loaded correctly",
+      "Missing paths report clear errors",
+      "Precedence is tested (--plan-dir > --config > defaults)",
+      "All tests pass"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-11",
+    "type": "TASK",
+    "title": "Unit tests: JSON syntax and schema validation errors",
+    "goal": "Write unit tests covering JSON parsing errors and Pydantic schema validation with realistic error scenarios.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Test invalid JSON syntax with line/column reporting",
+      "Test missing required fields (goal, requirements, acceptance_criteria)",
+      "Test type mismatches (string vs number, etc.)",
+      "Test invalid enum values (type field)",
+      "Test each error is reported with item ID and field name",
+      "Test error messages are actionable"
+    ],
+    "acceptance_criteria": [
+      "JSON syntax errors include file path and line/column",
+      "Schema errors include item ID and field name",
+      "Type mismatches show expected vs actual",
+      "All error scenarios are covered",
+      "Error messages are human-readable"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-12",
+    "type": "TASK",
+    "title": "Unit tests: hierarchy, cycles, and uniqueness validation",
+    "goal": "Write unit tests for advanced validation: parent-child hierarchy rules, cycle detection, and ID uniqueness.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Test hierarchy: missing parent references",
+      "Test hierarchy: wrong parent type (story\u2192story, task\u2192epic)",
+      "Test hierarchy: epic with parent_id",
+      "Test cycle detection: simple (a\u2192b\u2192a) and complex (a\u2192b\u2192c\u2192d\u2192b)",
+      "Test self-reference (a\u2192a)",
+      "Test ID uniqueness: duplicates across files",
+      "Test error messages format cycle paths correctly"
+    ],
+    "acceptance_criteria": [
+      "Hierarchy validation tests all rules",
+      "Cycle detection covers simple and complex cases",
+      "Self-references are detected",
+      "Duplicates are reported with file list",
+      "Cycle paths are formatted correctly",
+      "All tests pass"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-13",
+    "type": "TASK",
+    "title": "Integration tests: real plan files and format support",
+    "goal": "Write integration tests using real JSON files to verify all validation layers work together and support split/unified formats.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Create test fixtures: valid plan (split format), valid plan (unified format)",
+      "Test fixtures: JSON syntax error, schema error, hierarchy error, cycle, duplicates",
+      "Run full validation pipeline on each fixture",
+      "Verify split and unified formats produce identical results",
+      "Verify exit codes match expectations"
+    ],
+    "acceptance_criteria": [
+      "Valid plans pass all validations",
+      "Invalid plans are caught at correct layer",
+      "Split and unified formats work identically",
+      "Exit codes are correct (0 for pass, 3 for fail)",
+      "Error reports are consistent"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 5
+    },
+    "depends_on": [
+      "T-10",
+      "T-11",
+      "T-12"
+    ],
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-14",
+    "type": "TASK",
+    "title": "E2E tests: CLI invocation and exit code verification",
+    "goal": "Write end-to-end tests that invoke the validate command as a CLI and verify exit codes and output.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Use subprocess to invoke 'planpilot validate' with test fixtures",
+      "Verify exit codes: 0 for valid, 3 for invalid",
+      "Verify output format matches expected report structure",
+      "Test all flag combinations: --config, --plan-dir, --verbose, none",
+      "Capture stdout/stderr and verify content"
+    ],
+    "acceptance_criteria": [
+      "Valid plans exit with code 0",
+      "Invalid plans exit with code 3",
+      "Report output is human-readable",
+      "All flag combinations work",
+      "Verbose mode enables debug logging",
+      "CLI is discoverable and usable"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 4
+    },
+    "depends_on": [
+      "T-13"
+    ],
+    "sub_item_ids": []
+  },
+  {
+    "id": "T-15",
+    "type": "TASK",
+    "title": "Performance tests and optimization verification",
+    "goal": "Benchmark validation performance to confirm <100ms for 500-item plans and <5s for 10k-item plans.",
+    "parent_id": "S-4",
+    "requirements": [
+      "Create test fixtures: 500-item plan, 1k-item plan, 5k-item plan, 10k-item plan",
+      "Measure validation time for each fixture",
+      "Verify <100ms for 500 items",
+      "Verify <5s for 10k items",
+      "Profile cycle detection algorithm performance",
+      "Document any bottlenecks found"
+    ],
+    "acceptance_criteria": [
+      "500-item plan validates in <100ms",
+      "1k-item plan validates in <500ms",
+      "5k-item plan validates in <2s",
+      "10k-item plan validates in <5s",
+      "Algorithm performance is documented"
+    ],
+    "estimate": {
+      "tshirt": "M",
+      "hours": 3
+    },
+    "depends_on": [
+      "T-13"
+    ],
+    "sub_item_ids": []
+  }
+]
