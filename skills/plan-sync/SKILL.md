@@ -1,5 +1,5 @@
 ---
-name: roadmap-to-github-project
+name: plan-sync
 description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot installed from pip, no source tree required.
 ---
 
