@@ -81,7 +81,7 @@ mkdir -p ~/.agents/skills/roadmap-to-github-project
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
@@ -92,7 +92,7 @@ mkdir -p ~/.agents/skills/create-prd
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 ```
 
@@ -103,7 +103,7 @@ mkdir -p ~/.agents/skills/create-tech-spec
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 ```
 

@@ -187,10 +187,10 @@ Example additions to the manual install section:
 mkdir -p ~/.agents/skills/create-prd
 mkdir -p ~/.agents/skills/create-tech-spec
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 ```
 

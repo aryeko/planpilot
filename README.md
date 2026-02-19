@@ -132,7 +132,7 @@ planpilot ships three agent skills that form a complete product workflow:
 Tell your agent:
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
 ```
 
 The agent will install `planpilot` and all three skills automatically.
@@ -144,7 +144,7 @@ Install skills to the open discovery path used by agent platforms that support f
 ```bash
 for skill in create-prd create-tech-spec roadmap-to-github-project; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```

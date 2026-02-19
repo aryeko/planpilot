@@ -18,7 +18,7 @@ Install all three to unlock the full end-to-end planning workflow.
 
 Tell your agent:
 
-> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
+> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
 
 The agent will install `planpilot` and all three skills automatically.
 
@@ -108,17 +108,17 @@ cp skills/roadmap-to-github-project/SKILL.md \
 #### Option B: Fetch from GitHub raw URL
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
-Prefer pinned tags (for example `v2.3.0`) over mutable branches when fetching from GitHub.
+For reproducible installs, pin to a release tag (e.g., `v2.4.0`) instead of `main` once a new release is available.
 
 ### 5) Verify skill install
 
@@ -148,13 +148,13 @@ Expected frontmatter should include:
 Update (re-copy or re-fetch `SKILL.md` for each skill):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
   -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
 ```
 
