@@ -65,7 +65,15 @@ E-1 Implement planpilot validate CLI command
 
 ## Reproducing
 
-To regenerate these artifacts from scratch:
+### Preview the plans (offline dry-run)
+
+```bash
+planpilot sync --config examples/full-workflow/planpilot.json --dry-run
+```
+
+### Regenerate from scratch
+
+To regenerate these artifacts from scratch using the skill chain:
 
 1. Run the `create-prd` skill with a feature idea
 2. Run `create-tech-spec` pointing at the generated PRD

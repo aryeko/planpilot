@@ -10,6 +10,7 @@ dist/
 .coverage/
 .env
 planpilot.json
+!examples/**/planpilot.json
 .DS_Store
 .idea/
 .vscode/
