@@ -345,7 +345,7 @@ This skill run is complete when:
 4. System Context includes a mermaid context diagram showing the feature's relationship to existing system
 5. At least one dynamic design section included with clear rationale for selection
 6. Dynamic sections include mermaid diagrams where they improve understanding
-7. All three fixed closing sections present and substantive: Technical Decisions, Validation, Risks & Mitigations, Open Questions
+7. All four fixed closing sections present and substantive: Technical Decisions, Validation, Risks & Mitigations, Open Questions
 8. Technical requirements clearly trace back to PRD requirements
 9. No vague or implementation-level details (focus on architecture-level design)
 10. User has reviewed and approved the draft

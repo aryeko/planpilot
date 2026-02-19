@@ -20,7 +20,7 @@ Tell your agent:
 
 > Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
 
-The agent will install both `planpilot` and the skill automatically.
+The agent will install `planpilot` and all three skills automatically.
 
 ## Manual Install
 
