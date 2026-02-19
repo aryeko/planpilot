@@ -15,6 +15,7 @@
 | Action | File |
 |--------|------|
 | Create | `.claude-plugin/plugin.json` |
+| Create | `.claude-plugin/marketplace.json` |
 | Git rename | `skills/roadmap-to-github-project/` → `skills/plan-sync/` |
 | Modify | `skills/plan-sync/SKILL.md` — update `name:` frontmatter + internal refs |
 | Modify | `skills/create-prd/SKILL.md` — update skill name refs |
@@ -70,11 +71,51 @@ python3 -m json.tool .claude-plugin/plugin.json
 
 Expected: prints the formatted JSON without error.
 
-**Step 3: Commit**
+**Step 3: Create `marketplace.json`**
+
+Create `.claude-plugin/marketplace.json`:
+
+```json
+{
+  "name": "planpilot",
+  "owner": {
+    "name": "Arye Kogan",
+    "email": "arye@kogan.dev"
+  },
+  "metadata": {
+    "description": "Sync roadmap plans (epics/stories/tasks) to GitHub Issues and Projects v2"
+  },
+  "plugins": [
+    {
+      "name": "planpilot",
+      "source": "./",
+      "description": "Claude Code skills and commands for planning workflows: create PRDs, tech specs, and sync plans to GitHub Issues + Projects v2",
+      "author": { "name": "Arye Kogan" },
+      "homepage": "https://github.com/aryeko/planpilot",
+      "repository": "https://github.com/aryeko/planpilot",
+      "license": "MIT",
+      "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
+      "category": "workflow",
+      "tags": ["planning", "github-projects", "roadmap", "prd", "tech-spec", "skills", "commands"]
+    }
+  ]
+}
+```
+
+**Step 4: Verify both files are valid JSON**
 
 ```bash
-git add .claude-plugin/plugin.json
-git commit -m "feat(plugin): add .claude-plugin/plugin.json manifest"
+python3 -m json.tool .claude-plugin/plugin.json > /dev/null && \
+python3 -m json.tool .claude-plugin/marketplace.json > /dev/null && echo "OK"
+```
+
+Expected: `OK`
+
+**Step 5: Commit**
+
+```bash
+git add .claude-plugin/
+git commit -m "feat(plugin): add plugin.json and marketplace.json"
 ```
 
 ---
