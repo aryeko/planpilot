@@ -99,7 +99,7 @@ See planpilot in action without any configuration or GitHub token — the built-
 ```bash
 git clone https://github.com/aryeko/planpilot.git && cd planpilot
 pipx install .   # or: pip install .
-planpilot sync --config examples/planpilot.json --dry-run
+planpilot sync --config examples/sync-workflow/planpilot.json --dry-run
 ```
 
 ```text
@@ -112,39 +112,41 @@ planpilot - sync complete (dry-run)
   Items:     6 total (1 epic, 2 stories, 3 tasks)
   Created:   6 (1 epic, 2 stories, 3 tasks)
 
-  Sync map:  examples/sync-map-sample.json.dry-run
+  Sync map:  /absolute/path/to/examples/sync-workflow/output/sync-map-sample.json.dry-run
 
   [dry-run] No changes were made
 ```
 
-## Install Agent Skill
+## Install Agent Skills
+
+planpilot ships three agent skills that form a complete product workflow:
+
+| Skill | Purpose |
+|-------|---------|
+| `create-prd` | Generate structured PRDs from feature ideas |
+| `create-tech-spec` | Create codebase-aware technical specs from PRDs |
+| `roadmap-to-github-project` | Sync specs to GitHub Issues + Projects v2 |
 
 ### Agent Self-Install
 
 Tell your agent:
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
 ```
 
-The agent will install both `planpilot` and the skill automatically.
+The agent will install `planpilot` and all three skills automatically.
 
 ### Manual Install
 
-Install the skill to the open discovery path used by agent platforms that support filesystem skills:
+Install skills to the open discovery path used by agent platforms that support filesystem skills:
 
 ```bash
-mkdir -p ~/.agents/skills/roadmap-to-github-project
-
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/v2.3.0/skills/roadmap-to-github-project/SKILL.md" \
-  -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
-```
-
-Or from a local checkout:
-
-```bash
-cp skills/roadmap-to-github-project/SKILL.md \
-  ~/.agents/skills/roadmap-to-github-project/SKILL.md
+for skill in create-prd create-tech-spec roadmap-to-github-project; do
+  mkdir -p ~/.agents/skills/$skill
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
+    -o ~/.agents/skills/$skill/SKILL.md
+done
 ```
 
 Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)

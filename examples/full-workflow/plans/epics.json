@@ -1,0 +1,61 @@
+[
+  {
+    "id": "E-1",
+    "type": "EPIC",
+    "title": "Implement planpilot validate CLI command",
+    "goal": "Ship a fully-featured offline validation command that validates plan JSON files without requiring GitHub authentication or sync operations, enabling fast feedback during plan authoring and CI/CD integration.",
+    "requirements": [
+      "Command accepts --config flag pointing to planpilot.json",
+      "Command accepts --plan-dir flag for direct plan directory specification",
+      "Command searches default paths if neither flag provided",
+      "Five-layer validation: JSON syntax, schema compliance, hierarchy integrity, dependency cycles, ID uniqueness",
+      "Structured validation report grouped by error category",
+      "Exit code 0 for success, exit code 3 for validation failures",
+      "Support both split (epics.json, stories.json, tasks.json) and unified (plan.json) plan formats",
+      "Performance: complete validation within 5 seconds for plans up to 10,000 items",
+      "Offline operation: no GitHub authentication or network calls required"
+    ],
+    "acceptance_criteria": [
+      "CLI command 'planpilot validate' is available and discoverable via --help",
+      "All five validation layers execute in correct order with appropriate error handling",
+      "Validation report clearly categorizes errors (JSON syntax, schema, hierarchy, cycles, uniqueness)",
+      "Exit codes are correct: 0 for pass, 3 for validation failures",
+      "Both split and unified plan formats are validated identically",
+      "Command operates offline without GitHub API calls",
+      "Performance testing confirms <100ms for 500-item plans, <5s for 10k-item plans",
+      "All unit, integration, and e2e tests pass with 100% code coverage for validation logic"
+    ],
+    "motivation": "Currently users must run 'planpilot sync --dry-run' to discover validation errors, which requires authentication and provides mixed error output. The validate command enables instant offline feedback, reducing iteration time for plan authoring and supporting CI/CD workflows.",
+    "scope": {
+      "in_scope": [
+        "Offline plan file validation",
+        "Error reporting and categorization",
+        "Cycle detection in dependencies",
+        "Integration with existing PlanLoader and PlanValidator",
+        "CLI argument parsing and config loading",
+        "Exit code handling"
+      ],
+      "out_scope": [
+        "Syncing validated plans to GitHub (separate sync operation)",
+        "Auto-fixing errors or modifying plan files",
+        "Custom validation rules or plugins",
+        "Machine-readable output formats (JSON, CSV)",
+        "Streaming validation for very large plans"
+      ]
+    },
+    "success_metrics": [
+      "70% of users run validate before sync (adoption metric)",
+      "80% of validation errors caught before sync attempt",
+      "Average error fix time reduces from 12 minutes to 3 minutes",
+      "90% of validation errors resolved on first attempt",
+      "Validation completes <100ms for 500-item plans",
+      "Zero external dependencies or network calls"
+    ],
+    "sub_item_ids": [
+      "S-1",
+      "S-2",
+      "S-3",
+      "S-4"
+    ]
+  }
+]

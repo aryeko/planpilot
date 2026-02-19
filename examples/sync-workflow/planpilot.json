@@ -3,9 +3,9 @@
   "target": "example-org/example-repo",
   "board_url": "https://github.com/orgs/example-org/projects/1",
   "plan_paths": {
-    "epics": "epics.json",
-    "stories": "stories.json",
-    "tasks": "tasks.json"
+    "epics": "plans/epics.json",
+    "stories": "plans/stories.json",
+    "tasks": "plans/tasks.json"
   },
-  "sync_path": "sync-map-sample.json"
+  "sync_path": "output/sync-map-sample.json"
 }
