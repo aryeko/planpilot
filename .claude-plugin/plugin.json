@@ -1,0 +1,14 @@
+{
+  "name": "planpilot",
+  "version": "1.0.0",
+  "description": "Sync roadmap plans (epics/stories/tasks) to GitHub Issues and Projects v2",
+  "author": {
+    "name": "Arye Kogan",
+    "url": "https://github.com/aryeko/planpilot"
+  },
+  "homepage": "https://github.com/aryeko/planpilot",
+  "repository": "https://github.com/aryeko/planpilot",
+  "license": "MIT",
+  "keywords": ["planning", "github", "roadmap", "issues", "projects"],
+  "skills": ["./skills/"]
+}
