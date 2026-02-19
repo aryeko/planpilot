@@ -274,6 +274,7 @@ Suggest next action:
 - **Vague or non-actionable technical decisions** — "we'll use a database" is not a decision; "we'll use PostgreSQL with separate read/write databases for analytical queries" is. Every decision should have rationale.
 - **Missing risk assessment** — identify technical risks during analysis. Don't assume everything will go smoothly.
 - **Saving spec without user approval** — always present a draft and iterate before saving the file.
+- **Using absolute file paths** — always use project-relative paths (e.g., `src/planpilot/core/plan/validator.py` not `/Users/.../validator.py`) so specs are portable across machines.
 - **Incorrect slug derivation** — ensure the slug matches the spec title (without "— Technical Specification" suffix) and is lowercase, hyphenated.
 
 ---
