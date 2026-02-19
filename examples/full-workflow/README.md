@@ -13,17 +13,17 @@ flowchart LR
 
 | Step | Skill | Input | Output |
 |------|-------|-------|--------|
-| 1 | `create-prd` | Brief feature idea | [`planpilot-validate-prd.md`](planpilot-validate-prd.md) |
-| 2 | `create-tech-spec` | PRD + codebase analysis | [`planpilot-validate-spec.md`](planpilot-validate-spec.md) |
-| 3 | `roadmap-to-github-project` | Tech spec | [`epics.json`](epics.json), [`stories.json`](stories.json), [`tasks.json`](tasks.json) |
+| 1 | `create-prd` | Brief feature idea | [`prd/planpilot-validate-prd.md`](prd/planpilot-validate-prd.md) |
+| 2 | `create-tech-spec` | PRD + codebase analysis | [`spec/planpilot-validate-spec.md`](spec/planpilot-validate-spec.md) |
+| 3 | `roadmap-to-github-project` | Tech spec | [`plans/`](plans/) (epics, stories, tasks) |
 
 ## Artifacts
 
-### PRD (`planpilot-validate-prd.md`)
+### PRD (`prd/`)
 
 Product Requirements Document with 9 sections: Overview, Motivation, Goals & Non-Goals, Target Audience, Requirements (22 numbered), Success Metrics (9), Diagrams (3 mermaid), Constraints & Assumptions, Open Questions.
 
-### Tech Spec (`planpilot-validate-spec.md`)
+### Tech Spec (`spec/`)
 
 Codebase-aware technical specification with:
 - System context diagram showing integration with existing architecture
@@ -33,7 +33,7 @@ Codebase-aware technical specification with:
 - Technical decisions with rationale and alternatives
 - Validation strategy (unit, integration, E2E tests)
 
-### Plans JSON
+### Plans (`plans/`)
 
 Schema-aligned plan files ready for `planpilot sync`:
 - **1 epic** — Implement planpilot validate CLI command

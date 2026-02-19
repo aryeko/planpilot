@@ -2,13 +2,13 @@
 
 A complete working example of a planpilot plan for a **User Authentication** epic with two stories and three tasks. Demonstrates the `planpilot sync` command.
 
-## Plan files
+## Plan files (`plans/`)
 
 | File | Description |
 |------|-------------|
-| [`epics.json`](epics.json) | 1 epic: User Authentication |
-| [`stories.json`](stories.json) | 2 stories: User Registration, User Login and Sessions |
-| [`tasks.json`](tasks.json) | 3 tasks: user model, registration endpoint, login endpoint |
+| [`plans/epics.json`](plans/epics.json) | 1 epic: User Authentication |
+| [`plans/stories.json`](plans/stories.json) | 2 stories: User Registration, User Login and Sessions |
+| [`plans/tasks.json`](plans/tasks.json) | 3 tasks: user model, registration endpoint, login endpoint |
 | [`planpilot.json`](planpilot.json) | Config file pointing at the above plan files |
 
 ### Dependency graph
@@ -38,11 +38,11 @@ planpilot sync --config examples/sync-workflow/planpilot.json --apply
 
 Use any supported auth mode from config (`gh-cli`, `env`, or `token`).
 
-## Sample output
+## Sample output (`output/`)
 
 ### CLI output
 
-[`dry-run-output.txt`](dry-run-output.txt) — the terminal output from a dry-run:
+[`output/dry-run-output.txt`](output/dry-run-output.txt) — the terminal output from a dry-run:
 
 ```text
 planpilot - sync complete (dry-run)
@@ -61,7 +61,7 @@ planpilot - sync complete (dry-run)
 
 ### Sync map
 
-[`sync-map-sample.json`](sync-map-sample.json) — maps plan entity IDs to their GitHub issue metadata, used for idempotency on subsequent runs.
+[`output/sync-map-sample.json`](output/sync-map-sample.json) — maps plan entity IDs to their GitHub issue metadata, used for idempotency on subsequent runs.
 
 ## What `--apply` creates on GitHub
 
