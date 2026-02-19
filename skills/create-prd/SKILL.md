@@ -25,7 +25,7 @@ None. This skill requires only an agent with no external tools or dependencies.
 - User says "let's plan a feature", "create a PRD", or similar
 - User is beginning a new project or feature initiative
 
-Do **not** use when the user already has a completed PRD and wants a technical specification (use `create-tech-spec`), the user wants to generate `.plans` JSON artifacts (use `roadmap-to-github-project`), or the user is asking to implement feature requirements.
+Do **not** use when the user already has a completed PRD and wants a technical specification (use `create-tech-spec`), the user wants to generate `.plans` JSON artifacts (use `plan-sync`), or the user is asking to implement feature requirements.
 
 ## Inputs
 
@@ -177,7 +177,7 @@ Suggest next action:
 
 > PRD saved to `docs/prd/<slug>-prd.md`. Ready for the next step?
 >
-> Run `/create-tech-spec` to generate a technical specification from this PRD, which will detail how to build it. After approving the spec, run `/roadmap-to-github-project` to decompose it into epics, stories, and tasks synced to GitHub.
+> Run `/create-tech-spec` to generate a technical specification from this PRD, which will detail how to build it. After approving the spec, run `/planpilot:sync` to decompose it into epics, stories, and tasks synced to GitHub.
 
 ---
 

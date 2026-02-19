@@ -21,6 +21,6 @@ The [`full-workflow/`](full-workflow/) directory contains pre-generated artifact
 
 1. **`create-prd`** — generate a PRD from a feature idea
 2. **`create-tech-spec`** — generate a codebase-aware tech spec from the PRD
-3. **`roadmap-to-github-project`** — decompose the spec into epics, stories, and tasks
+3. **`plan-sync`** — decompose the spec into epics, stories, and tasks
 
 See each subdirectory's README for details.
