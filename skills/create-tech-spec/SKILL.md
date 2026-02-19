@@ -47,7 +47,7 @@ title: "Feature Title — Technical Specification"
 status: draft | review | approved
 created: YYYY-MM-DD
 prd: docs/prd/<slug>-prd.md
-author: <user or auto>
+author: <user or auto-detected>  # optional
 tags: [tag1, tag2]
 ---
 ```

@@ -46,7 +46,7 @@ Every PRD must include YAML frontmatter with these fields:
 title: "Feature Title"
 status: draft | review | approved
 created: YYYY-MM-DD
-author: <user or auto-detected>
+author: <user or auto-detected>  # optional
 tags: [tag1, tag2]
 ---
 ```
@@ -177,7 +177,7 @@ Suggest next action:
 
 > PRD saved to `docs/prd/<slug>-prd.md`. Ready for the next step?
 >
-> Run `/create-tech-spec` to generate a technical specification from this PRD, which will detail how to build it.
+> Run `/create-tech-spec` to generate a technical specification from this PRD, which will detail how to build it. After approving the spec, run `/roadmap-to-github-project` to decompose it into epics, stories, and tasks synced to GitHub.
 
 ---
 
@@ -198,7 +198,7 @@ Suggest next action:
 This skill run is complete when:
 
 1. PRD file saved to `docs/prd/<slug>-prd.md`
-2. YAML frontmatter includes `title`, `status` (draft), `created` (today's date), and `tags`
+2. YAML frontmatter includes `title`, `status` (draft), `created` (today's date), and `tags`; `author` is optional
 3. All nine sections are present and substantive (not placeholder text)
 4. Every requirement is numbered and verifiable (not vague)
 5. Success metrics are measurable with explicit targets

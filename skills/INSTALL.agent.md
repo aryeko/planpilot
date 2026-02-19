@@ -1,6 +1,6 @@
 # Agent Install: planpilot Skills
 
-You are installing the **planpilot** skills: `roadmap-to-github-project`, `create-prd`, and `create-tech-spec`.
+You are installing the **planpilot** skills: `create-prd`, `create-tech-spec`, and `roadmap-to-github-project`.
 
 Follow every step below **in order**. Do not skip steps. Report results to the user after each major step.
 

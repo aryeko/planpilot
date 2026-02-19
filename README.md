@@ -112,7 +112,7 @@ planpilot - sync complete (dry-run)
   Items:     6 total (1 epic, 2 stories, 3 tasks)
   Created:   6 (1 epic, 2 stories, 3 tasks)
 
-  Sync map:  examples/sync-workflow/sync-map-sample.json.dry-run
+  Sync map:  /absolute/path/to/examples/sync-workflow/output/sync-map-sample.json.dry-run
 
   [dry-run] No changes were made
 ```
