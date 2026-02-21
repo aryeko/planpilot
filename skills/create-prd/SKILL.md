@@ -177,7 +177,7 @@ Suggest next action:
 
 > PRD saved to `docs/prd/<slug>-prd.md`. Ready for the next step?
 >
-> Run `/create-tech-spec` to generate a technical specification from this PRD, which will detail how to build it. After approving the spec, run `/planpilot:sync` to decompose it into epics, stories, and tasks synced to GitHub.
+> Run `/planpilot:spec` to generate a technical specification from this PRD, which will detail how to build it. After approving the spec, run `/planpilot:sync` to decompose it into epics, stories, and tasks synced to GitHub.
 
 ---
 

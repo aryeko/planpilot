@@ -129,7 +129,7 @@ planpilot ships three agent skills that form a complete product workflow:
 
 ### Claude Code Plugin
 
-Install the planpilot plugin directly in Claude Code:
+Install the planpilot plugin directly in Claude Code (the planpilot CLI is installed automatically from PyPI):
 
 ```bash
 claude plugin marketplace add https://github.com/aryeko/planpilot

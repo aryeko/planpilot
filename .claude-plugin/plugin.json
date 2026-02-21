@@ -1,14 +1,18 @@
 {
   "name": "planpilot",
-  "version": "1.0.0",
-  "description": "Sync roadmap plans (epics/stories/tasks) to GitHub Issues and Projects v2",
+  "version": "2.3.0",
+  "description": "Claude Code skills and commands for planning workflows: create PRDs, tech specs, and sync plans to GitHub Issues + Projects v2",
   "author": {
     "name": "Arye Kogan",
+    "email": "aryekogan@gmail.com",
     "url": "https://github.com/aryeko/planpilot"
   },
   "homepage": "https://github.com/aryeko/planpilot",
   "repository": "https://github.com/aryeko/planpilot",
   "license": "MIT",
-  "keywords": ["planning", "github", "roadmap", "issues", "projects"],
-  "skills": ["./skills/"]
+  "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
+  "category": "workflow",
+  "tags": ["planning", "github-projects", "roadmap", "prd", "tech-spec", "skills", "commands"],
+  "skills": ["./skills/"],
+  "commands": ["./commands/"]
 }

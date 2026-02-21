@@ -27,7 +27,11 @@ classifiers = [
 packages = [
     {include = "planpilot", from = "src"},
 ]
-exclude = ["skills"]
+include = [
+    { path = "skills", format = ["sdist", "wheel"] },
+    { path = "commands", format = ["sdist", "wheel"] },
+    { path = ".claude-plugin", format = ["sdist", "wheel"] },
+]
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/aryeko/planpilot/issues"
