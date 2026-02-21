@@ -102,6 +102,16 @@ Plan ID selection rules:
 
 Delete provider issues discovered from planpilot metadata.
 
+```mermaid
+flowchart TB
+    Start["main()"] --> Parse["parse args"]
+    Parse --> LoadConfig["config = load_config(args.config)"]
+    LoadConfig --> SDKBuild["pp = await PlanPilot.from_config(config)"]
+    SDKBuild --> Clean["result = await pp.clean(dry_run=args.dry_run, all=args.all)"]
+    Clean --> Format["print deletion summary"]
+    Format --> Exit["exit 0"]
+```
+
 | Argument | Type | Required | Default | Description |
 |----------|------|----------|---------|-------------|
 | `--config` | `str` | No | `./planpilot.json` | Path to `planpilot.json` config file |

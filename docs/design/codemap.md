@@ -23,6 +23,8 @@ flowchart LR
 | Renderers | `src/planpilot/core/renderers/` | Body rendering and metadata marker emission |
 | Config | `src/planpilot/core/config/` | Config loading and scaffold helpers |
 | Auth | `src/planpilot/core/auth/` | Token resolver factory and preflight checks |
+| Map Sync | `src/planpilot/core/map_sync/` | Remote plan ID discovery/selection and local sync-map reconciliation |
+| Clean | `src/planpilot/core/clean/` | Metadata-scoped item discovery and leaf-first deletion planning |
 
 ## Boundary rules
 
