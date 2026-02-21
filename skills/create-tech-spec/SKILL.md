@@ -24,7 +24,7 @@ Must be run inside a project directory with codebase access. The agent reads pro
 - User wants architecture-level documentation before implementation
 - User wants to understand how a feature fits into the existing codebase
 
-Do **not** use when: the user doesn't have a PRD yet (use `create-prd` first), the user wants to generate `.plans` JSON (use `plan-sync` instead), or the user is ready to implement (the spec is a design document, not implementation guide).
+Do **not** use when: the user doesn't have a PRD yet (use `create-prd` first), the user needs to generate `.plans` JSON (use `plan-sync` instead), or the user is ready to implement (the spec is a design document, not an implementation guide).
 
 ## Inputs
 
