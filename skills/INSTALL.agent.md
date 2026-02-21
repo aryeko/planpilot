@@ -1,6 +1,6 @@
 # Agent Install: planpilot Skills
 
-You are installing the **planpilot** skills: `create-prd`, `create-tech-spec`, and `roadmap-to-github-project`.
+You are installing the **planpilot** skills: `create-prd`, `create-tech-spec`, and `plan-sync`.
 
 Follow every step below **in order**. Do not skip steps. Report results to the user after each major step.
 
@@ -74,15 +74,15 @@ If none work, STOP and report the failure to the user.
 
 ## Step 5: Install the skills
 
-Install `roadmap-to-github-project`:
+Install `plan-sync`:
 
 ```bash
-mkdir -p ~/.agents/skills/roadmap-to-github-project
+mkdir -p ~/.agents/skills/plan-sync
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/roadmap-to-github-project/SKILL.md" \
-  -o ~/.agents/skills/roadmap-to-github-project/SKILL.md
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/plan-sync/SKILL.md" \
+  -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 
 Install `create-prd`:
@@ -114,10 +114,10 @@ If `curl` is not available, try `wget` for any of the above (replace `curl -fsSL
 Verify all three skills were installed:
 
 ```bash
-head -5 ~/.agents/skills/roadmap-to-github-project/SKILL.md
+head -5 ~/.agents/skills/plan-sync/SKILL.md
 ```
 
-Should contain `name: roadmap-to-github-project`.
+Should contain `name: plan-sync`.
 
 ```bash
 head -5 ~/.agents/skills/create-prd/SKILL.md
@@ -141,7 +141,7 @@ Tell the user:
 >
 > - `planpilot` CLI: installed and verified
 > - Skills installed:
->   - `~/.agents/skills/roadmap-to-github-project/SKILL.md`
+>   - `~/.agents/skills/plan-sync/SKILL.md`
 >   - `~/.agents/skills/create-prd/SKILL.md`
 >   - `~/.agents/skills/create-tech-spec/SKILL.md`
 >

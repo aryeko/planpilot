@@ -82,6 +82,7 @@ For any user-visible behavior or architecture change, update docs in the same PR
 | Engine/sync semantics | `docs/design/engine.md`, `docs/how-it-works.md`, `docs/modules/sdk.md` |
 | Provider behavior | `docs/modules/providers.md`, `docs/modules/github-provider.md` |
 | Config/schema | `README.md`, `docs/modules/config.md`, `docs/reference/plan-schemas.md` |
+| Plugin/skills | `skills/*/SKILL.md`, `commands/*.md`, `.claude-plugin/plugin.json`, `docs/guides/plugin-skills-guide.md`, `docs/reference/plugin-reference.md` |
 | CI/release | `RELEASE.md`, `docs/reference/workflows-reference.md` |
 
 Run `poe docs-links` after updating docs to verify no broken internal links.
