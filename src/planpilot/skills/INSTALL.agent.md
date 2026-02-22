@@ -155,7 +155,19 @@ Should contain `name: create-tech-spec`.
 
 If any are missing or incorrect, retry Step 4.
 
-## Step 6: Report to user
+## Step 6: Update planpilot (if requested)
+
+If the user asks to update planpilot:
+
+```bash
+# If using uvx
+uvx planpilot@latest --version
+
+# If installed via pipx
+pipx upgrade planpilot
+```
+
+## Step 7: Report to user
 
 Tell the user:
 

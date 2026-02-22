@@ -162,7 +162,17 @@ Expected frontmatter should include:
 
 ### 6) Update / uninstall
 
-Update (re-copy or re-fetch `SKILL.md` for each skill):
+**Update `planpilot`:**
+
+```bash
+# If using uvx (force latest on next run)
+uvx planpilot@latest --version
+
+# If installed via pipx
+pipx upgrade planpilot
+```
+
+**Update skills** (re-copy or re-fetch `SKILL.md` for each skill):
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
