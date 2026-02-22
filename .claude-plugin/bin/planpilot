@@ -8,6 +8,14 @@ plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
 if plugin_root:
     sys.path.insert(0, os.path.join(plugin_root, "src"))
 
-from planpilot.cli.app import main
+try:
+    from planpilot.cli.app import main
+except ModuleNotFoundError:
+    print(
+        "planpilot not found. Either CLAUDE_PLUGIN_ROOT is unset/incorrect "
+        "or planpilot is not installed. Install with: uvx planpilot / pipx install planpilot",
+        file=sys.stderr,
+    )
+    sys.exit(1)
 
 main()

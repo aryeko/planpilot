@@ -461,7 +461,7 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 planpilot --version
 ```
 
-If not found, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot.
+If not found, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
 
 #### 5b) Verify GitHub auth
 

@@ -109,7 +109,7 @@ mkdir -p ~/.agents/skills/create-tech-spec
 mkdir -p ~/.agents/skills/plan-sync
 ```
 
-#### Option A: Copy from local repo checkout
+#### Local: Copy from local repo checkout
 
 ```bash
 cp src/planpilot/skills/create-prd/SKILL.md \
@@ -122,7 +122,7 @@ cp src/planpilot/skills/plan-sync/SKILL.md \
   ~/.agents/skills/plan-sync/SKILL.md
 ```
 
-#### Option B: Fetch from GitHub raw URL
+#### Remote: Fetch from GitHub raw URL
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \

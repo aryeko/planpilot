@@ -26,7 +26,7 @@ First, try `uvx` (zero-install, preferred — no separate install step):
 uvx planpilot --version
 ```
 
-If that succeeds, **skip to Step 3** — `uvx planpilot` is your invocation for all subsequent commands.
+If that succeeds, **skip to Step 4** — `uvx planpilot` is your invocation for all subsequent commands.
 
 If `uvx` is not found, install `uv`:
 
@@ -34,7 +34,7 @@ If `uvx` is not found, install `uv`:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then retry `uvx planpilot --version`. If it works, skip to Step 3.
+Then retry `uvx planpilot --version`. If it works, skip to Step 4.
 
 **Fallback — install via `pipx`:**
 
