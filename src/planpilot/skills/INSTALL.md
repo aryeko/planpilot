@@ -121,7 +121,7 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilo
   -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 
-For reproducible installs, pin to a release tag (e.g., `v2.4.0`) instead of `main` once a new release is available.
+For reproducible installs, pin to a release tag (e.g., `v2.4.1`) instead of `main` once a new release is available.
 
 ### 4) Verify skill install
 

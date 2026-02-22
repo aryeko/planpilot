@@ -1,6 +1,6 @@
 ---
 name: plan-sync
-description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot installed from pip, no source tree required.
+description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot available via plugin wrapper or manual install (uv/pipx/pip3), no source tree required.
 ---
 
 # Plan Sync
@@ -457,11 +457,15 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 
 #### 5a) Verify planpilot is available
 
-```bash
-planpilot --version
-```
+Try each invocation in order until one succeeds:
 
-If this fails, STOP and direct the user to install planpilot — see https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+1. `uvx planpilot --version` → set `PLANPILOT_CMD="uvx planpilot"`
+2. `planpilot --version` → set `PLANPILOT_CMD="planpilot"`
+3. `python3 -m planpilot --version` → set `PLANPILOT_CMD="python3 -m planpilot"`
+
+If all three fail, STOP and direct the user to install planpilot — see https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+
+Record which command succeeded as `PLANPILOT_CMD` — use it for all subsequent planpilot invocations in this session.
 
 #### 5b) Verify GitHub auth
 
@@ -484,6 +488,8 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 - `detect_target()` reads the `origin` remote URL to pre-fill `OWNER/REPO` — this only works inside a git repo.
 - `detect_plan_paths()` scans `.plans/` and `plans/` for existing plan files to pre-fill paths.
 - Outside a git repo, both detections are disabled and every value must be entered manually.
+
+Use the invocation form that succeeded in preflight (step 5a). Examples use `planpilot` — substitute `uvx planpilot`, `python3 -m planpilot`, etc. if that's what worked.
 
 ```bash
 cd <repo-root>
@@ -521,13 +527,13 @@ This generates a config with placeholder `board_url` that must be edited manuall
 Always dry-run first:
 
 ```bash
-planpilot sync --config ./planpilot.json --dry-run
+$PLANPILOT_CMD sync --config ./planpilot.json --dry-run
 ```
 
 Review dry-run output. If everything looks correct:
 
 ```bash
-planpilot sync --config ./planpilot.json --apply
+$PLANPILOT_CMD sync --config ./planpilot.json --apply
 ```
 
 ### 8) Post-Sync Verification (sync / full)

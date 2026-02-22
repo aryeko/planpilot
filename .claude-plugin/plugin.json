@@ -19,7 +19,7 @@
     "SessionStart": [
       {
         "type": "command",
-        "command": "grep -qxF \"export PATH=${CLAUDE_PLUGIN_ROOT}/bin:$PATH\" \"$CLAUDE_ENV_FILE\" 2>/dev/null || echo \"export PATH=${CLAUDE_PLUGIN_ROOT}/bin:$PATH\" >> \"$CLAUDE_ENV_FILE\""
+        "command": "[ -n \"$CLAUDE_ENV_FILE\" ] && { grep -qF \"${CLAUDE_PLUGIN_ROOT}/bin\" \"$CLAUDE_ENV_FILE\" 2>/dev/null || echo \"export PATH=${CLAUDE_PLUGIN_ROOT}/bin:\\$PATH\" >> \"$CLAUDE_ENV_FILE\"; }"
       }
     ]
   }

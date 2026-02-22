@@ -36,6 +36,10 @@ If not found, install it:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+```bash
+source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
+```
+
 Then install planpilot:
 
 ```bash
