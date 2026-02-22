@@ -2,6 +2,87 @@
 
 <!-- version list -->
 
+## v2.5.0 (2026-02-22)
+
+### Bug Fixes
+
+- **plugin**: Address CodeRabbit PR #94 review comments
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **plugin**: Address PR review comments ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **plugin**: Address self-review HIGH findings from CodeRabbit fixes
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skill**: Restore full planpilot invocation fallback chain
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skill**: Standardize plan-sync on uvx/pipx run invocation
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skill**: Use verified-planpilot-cmd in plan-sync init steps
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skills**: Lean skill preflight, install via uv/pipx/pip3 to PATH
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+### Chores
+
+- Move project rules to user-level ~/.claude/rules/
+  ([#95](https://github.com/aryeko/planpilot/pull/95),
+  [`8f6be3b`](https://github.com/aryeko/planpilot/commit/8f6be3b68fa8fa969f362197e75d9d832776f082))
+
+### Documentation
+
+- Address CodeRabbit review comments ([#95](https://github.com/aryeko/planpilot/pull/95),
+  [`8f6be3b`](https://github.com/aryeko/planpilot/commit/8f6be3b68fa8fa969f362197e75d9d832776f082))
+
+- Improve CLAUDE.md clarity and add project rules
+  ([#95](https://github.com/aryeko/planpilot/pull/95),
+  [`8f6be3b`](https://github.com/aryeko/planpilot/commit/8f6be3b68fa8fa969f362197e75d9d832776f082))
+
+- Sync plugin/skills docs with github-source install changes
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **install**: Add planpilot update instructions
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **install**: Prefer uvx over pipx as primary installation method
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **plan-sync**: Remove install instructions from skill
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skills**: Add planpilot CLI dependency with uvx preference
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **skills**: Address remaining unresolved CodeRabbit comments
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+### Features
+
+- **plugin**: Add full metadata to marketplace.json
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+- **plugin**: Zero-install github-source plugin distribution
+  ([#94](https://github.com/aryeko/planpilot/pull/94),
+  [`6a002e9`](https://github.com/aryeko/planpilot/commit/6a002e9456a0ce7b4fe2ea2ef99611151a0f080f))
+
+
 ## v2.4.1 (2026-02-22)
 
 ### Bug Fixes
