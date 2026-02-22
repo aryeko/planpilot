@@ -493,7 +493,7 @@ Use the invocation form that succeeded in preflight (step 5a). Examples use `pla
 
 ```bash
 cd <repo-root>
-planpilot init
+$PLANPILOT_CMD init
 ```
 
 The wizard asks these questions in order. Forward each to the user with the hints below:
@@ -517,7 +517,7 @@ After the wizard completes, inform the user:
 If the user prefers non-interactive setup with auto-detected defaults:
 
 ```bash
-planpilot init --defaults
+$PLANPILOT_CMD init --defaults
 ```
 
 This generates a config with placeholder `board_url` that must be edited manually.
