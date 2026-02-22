@@ -44,7 +44,7 @@ poetry run poe gen-gql
 | `tests/fakes/` | Shared test doubles — use these, never call live APIs in tests |
 | `src/planpilot/core/providers/github/github_gql/` | Generated GraphQL client — do not hand-edit |
 
-Project-specific coding guidelines are in `.claude/rules/` (auto-loaded).
+Python-specific coding guidelines are in `~/.claude/rules/python/` (auto-loaded when working with `.py` files).
 
 ## Architecture
 
