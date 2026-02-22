@@ -48,9 +48,33 @@ Check pip is available:
 python3 -m pip --version
 ```
 
-### 2) Install `pipx` (if not already installed)
+### 2) Install `planpilot`
 
-[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments -- avoids PEP 668 / "externally managed environment" errors on macOS Homebrew and system Python.
+**Option A — zero-install via `uvx` (recommended):**
+
+[`uv`](https://docs.astral.sh/uv/) runs planpilot in an isolated, auto-downloaded environment. No install step needed.
+
+Check if `uv` is available:
+
+```bash
+uvx planpilot --version
+```
+
+If `uv` is not installed:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then verify:
+
+```bash
+uvx planpilot --version
+```
+
+**Option B — global install via `pipx`:**
+
+[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments — avoids PEP 668 errors on macOS Homebrew and system Python.
 
 ```bash
 pipx --version
@@ -70,19 +94,12 @@ pipx ensurepath
 
 You may need to restart your shell after `ensurepath`.
 
-### 3) Install `planpilot`
-
 ```bash
 pipx install planpilot
-```
-
-Verify:
-
-```bash
 planpilot --version
 ```
 
-### 4) Install the skills into open skill path
+### 3) Install the skills into open skill path
 
 Create destination directories:
 
@@ -120,7 +137,7 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilo
 
 For reproducible installs, pin to a release tag (e.g., `v2.4.0`) instead of `main` once a new release is available.
 
-### 5) Verify skill install
+### 4) Verify skill install
 
 ```bash
 ls -la ~/.agents/skills/create-prd
@@ -139,11 +156,11 @@ Expected frontmatter should include:
 - `name: create-tech-spec`
 - `name: plan-sync`
 
-### 6) Restart your agent
+### 5) Restart your agent
 
 **Restart your agent** (start a new session) so it discovers the newly installed skill. The skill won't be available until the agent re-scans `~/.agents/skills/`.
 
-### 7) Update / uninstall
+### 6) Update / uninstall
 
 Update (re-copy or re-fetch `SKILL.md` for each skill):
 

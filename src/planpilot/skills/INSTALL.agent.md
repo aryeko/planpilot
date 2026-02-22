@@ -18,7 +18,25 @@ If Python is not installed, STOP and tell the user:
 
 > Python 3.11+ is required. Please install it from https://python.org and try again.
 
-## Step 2: Ensure pipx is available
+## Step 2: Install planpilot
+
+First, try `uvx` (zero-install, preferred — no separate install step):
+
+```bash
+uvx planpilot --version
+```
+
+If that succeeds, **skip to Step 3** — `uvx planpilot` is your invocation for all subsequent commands.
+
+If `uvx` is not found, install `uv`:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then retry `uvx planpilot --version`. If it works, skip to Step 3.
+
+**Fallback — install via `pipx`:**
 
 Check if `pipx` is installed:
 
@@ -44,9 +62,7 @@ If `pipx` is **not found**, install it:
   python3 -m pipx ensurepath
   ```
 
-After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for the PATH update to take effect.
-
-## Step 3: Install planpilot
+After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for PATH to update.
 
 ```bash
 pipx install planpilot
@@ -54,9 +70,13 @@ pipx install planpilot
 
 If this fails, STOP and tell the user the error output.
 
-## Step 4: Verify planpilot
+## Step 3: Verify planpilot
 
 Run (try in order until one succeeds):
+
+```bash
+uvx planpilot --version
+```
 
 ```bash
 planpilot --version
@@ -72,7 +92,9 @@ python -m planpilot --version
 
 If none work, STOP and report the failure to the user.
 
-## Step 5: Install the skills
+**Remember which invocation worked** and use it for all subsequent commands.
+
+## Step 4: Install the skills
 
 Install `plan-sync`:
 
@@ -109,7 +131,7 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilo
 
 If `curl` is not available, try `wget` for any of the above (replace `curl -fsSL ... -o` with `wget -qO`).
 
-## Step 6: Verify skill install
+## Step 5: Verify skill install
 
 Verify all three skills were installed:
 
@@ -131,9 +153,9 @@ head -5 ~/.agents/skills/create-tech-spec/SKILL.md
 
 Should contain `name: create-tech-spec`.
 
-If any are missing or incorrect, retry Step 5.
+If any are missing or incorrect, retry Step 4.
 
-## Step 7: Report to user
+## Step 6: Report to user
 
 Tell the user:
 
