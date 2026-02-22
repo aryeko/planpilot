@@ -62,6 +62,7 @@ Contracts → Core → SDK → CLI
 - **Coverage target**: 90%+ branch coverage.
 - **Commit format**: Conventional Commits required (`feat`, `fix`, `docs`, `chore`, etc.), max 72-char header. Enforced by CI (commitlint) and local hook (`./scripts/install-hooks.sh`).
 - **Generated code**: `src/planpilot/core/providers/github/github_gql/` is excluded from mypy and coverage. Regenerate with `poe gen-gql`.
+- **Worktrees**: Create under `.worktrees/` in the project root. Run `poetry install` after creating.
 
 ## Anti-Patterns
 
