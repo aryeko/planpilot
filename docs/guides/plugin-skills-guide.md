@@ -24,7 +24,7 @@ Each step is independent — you can enter the chain at any point.
 
 ## Install: Claude Code Plugin (recommended)
 
-The plugin is distributed via PyPI. Claude Code installs it automatically when you add it from the marketplace:
+The plugin is registered on GitHub; the underlying `planpilot` CLI is distributed via PyPI and installed automatically when Claude Code installs the plugin:
 
 ```bash
 claude plugin marketplace add aryeko/planpilot

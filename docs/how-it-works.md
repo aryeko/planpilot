@@ -34,7 +34,7 @@ flowchart TD
 
 1. Load config from `planpilot.json`.
 2. Compute `plan_id` from local plan files (default mode) or skip (with `--all`).
-3. Discover provider issues by metadata marker (`PLANPILOT_META_V1` label).
+3. Discover provider issues by metadata marker (`PLANPILOT_META_V1` block in issue body).
 4. Filter: default targets current `plan_id` only; `--all` targets every planpilot-managed issue.
 5. Order deletions leaf-first (tasks → stories → epics) to avoid dangling sub-issues.
 6. Delete each issue, or preview in dry-run mode.
