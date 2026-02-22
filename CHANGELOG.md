@@ -2,6 +2,19 @@
 
 <!-- version list -->
 
+## v2.4.1 (2026-02-22)
+
+### Bug Fixes
+
+- **plugin**: Fix marketplace and plugin paths ([#93](https://github.com/aryeko/planpilot/pull/93),
+  [`ecc6b84`](https://github.com/aryeko/planpilot/commit/ecc6b84378aebfd46216b5af5193322040328e30))
+
+### Documentation
+
+- **claude**: Add worktree setup convention
+  ([`aedd462`](https://github.com/aryeko/planpilot/commit/aedd462667709576c35ef3aa28e14eb174e77008))
+
+
 ## v2.4.0 (2026-02-22)
 
 ### Bug Fixes
