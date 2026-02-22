@@ -41,9 +41,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-    A[Load config] --> B[Compute plan_id]
-    B --> C{--all flag?}
-    C -- No --> D[Discover issues matching plan_id]
+    A[Load config] --> C{--all flag?}
+    C -- No --> B[Compute plan_id]
+    B --> D[Discover issues matching plan_id]
     C -- Yes --> E[Discover all planpilot-managed issues]
     D --> F[Order deletions leaf-first]
     E --> F
@@ -60,7 +60,7 @@ See [design/clean.md](design/clean.md) and [modules/clean.md](modules/clean.md) 
 
 1. Load config from `planpilot.json`.
 2. Discover remote plan IDs from provider metadata (or use explicit `--plan-id`).
-3. If multiple candidates and interactive TTY: prompt to select; otherwise fail.
+3. If no candidates: fail with an error (run `planpilot sync` first, or pass `--plan-id` to target a known plan). If multiple candidates and interactive TTY: prompt to select; otherwise fail.
 4. Fetch item metadata/bodies for the selected plan.
 5. Reconcile: match provider items to local plan entries.
 6. In dry-run: print reconciliation preview. In apply: write local `sync-map.json` and plan files.
@@ -71,6 +71,7 @@ flowchart TD
     B -- Yes --> D[Use explicit plan_id]
     B -- No --> C[Discover remote plan IDs from metadata]
     C --> E{How many candidates?}
+    E -- Zero --> M[Fail: no managed issues found]
     E -- One --> D
     E -- Multiple + TTY --> F[Prompt user to select]
     E -- Multiple + no TTY --> G[Fail: require --plan-id]
