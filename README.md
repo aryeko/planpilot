@@ -163,7 +163,7 @@ for skill in create-prd create-tech-spec plan-sync; do
 done
 ```
 
-Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)
+Full standalone instructions: [`src/planpilot/skills/INSTALL.md`](src/planpilot/skills/INSTALL.md)
 
 ## Quickstart
 

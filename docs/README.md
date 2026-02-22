@@ -17,7 +17,7 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 9. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
 10. **[Plugin and Skills Guide](./guides/plugin-skills-guide.md)** — Plugin install, skill chain walkthrough (PRD → spec → sync)
 11. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-11. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
+12. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Quick reference
 

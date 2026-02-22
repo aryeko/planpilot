@@ -63,7 +63,7 @@ for skill in create-prd create-tech-spec plan-sync; do
 done
 ```
 
-Full instructions: [`skills/INSTALL.md`](../../skills/INSTALL.md)
+Full instructions: [`src/planpilot/skills/INSTALL.md`](../../src/planpilot/skills/INSTALL.md)
 
 ---
 

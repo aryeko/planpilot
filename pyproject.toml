@@ -27,11 +27,6 @@ classifiers = [
 packages = [
     {include = "planpilot", from = "src"},
 ]
-include = [
-    { path = "skills", format = ["sdist", "wheel"] },
-    { path = "commands", format = ["sdist", "wheel"] },
-    { path = ".claude-plugin", format = ["sdist", "wheel"] },
-]
 
 [tool.poetry.urls]
 "Bug Tracker" = "https://github.com/aryeko/planpilot/issues"
@@ -149,7 +144,7 @@ exclude = "(^src/planpilot/core/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
-version_variables = ["src/planpilot/__init__.py:__version__", ".claude-plugin/plugin.json:version"]
+version_variables = ["src/planpilot/__init__.py:__version__", "src/planpilot/.claude-plugin/plugin.json:version"]
 commit_parser = "conventional"
 commit_message = "chore(release): {version}"
 tag_format = "v{version}"

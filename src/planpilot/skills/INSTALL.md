@@ -18,7 +18,7 @@ Install all three to unlock the full end-to-end planning workflow.
 
 Tell your agent:
 
-> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
+> Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 
 The agent will install `planpilot` and all three skills automatically.
 
@@ -95,26 +95,26 @@ mkdir -p ~/.agents/skills/plan-sync
 #### Option A: Copy from local repo checkout
 
 ```bash
-cp skills/create-prd/SKILL.md \
+cp src/planpilot/skills/create-prd/SKILL.md \
   ~/.agents/skills/create-prd/SKILL.md
 
-cp skills/create-tech-spec/SKILL.md \
+cp src/planpilot/skills/create-tech-spec/SKILL.md \
   ~/.agents/skills/create-tech-spec/SKILL.md
 
-cp skills/plan-sync/SKILL.md \
+cp src/planpilot/skills/plan-sync/SKILL.md \
   ~/.agents/skills/plan-sync/SKILL.md
 ```
 
 #### Option B: Fetch from GitHub raw URL
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/plan-sync/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/plan-sync/SKILL.md" \
   -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 
@@ -148,13 +148,13 @@ Expected frontmatter should include:
 Update (re-copy or re-fetch `SKILL.md` for each skill):
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/plan-sync/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/plan-sync/SKILL.md" \
   -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 

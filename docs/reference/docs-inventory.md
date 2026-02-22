@@ -58,20 +58,20 @@ flowchart TD
 | `docs/reference/developer-workflow.md` | Local contributor verification flow |
 | `docs/reference/docs-inventory.md` | This inventory page |
 
-## Plugin and skills (`skills/`, `commands/`, `.claude-plugin/`)
+## Plugin and skills (`src/planpilot/skills/`, `src/planpilot/commands/`, `src/planpilot/.claude-plugin/`)
 
 | File | Purpose |
 |---|---|
-| `skills/INSTALL.md` | Manual skill install instructions |
-| `skills/INSTALL.agent.md` | Agent-driven self-install instructions |
-| `skills/create-prd/SKILL.md` | PRD generation skill definition |
-| `skills/create-tech-spec/SKILL.md` | Tech spec generation skill definition |
-| `skills/plan-sync/SKILL.md` | Plan sync skill definition |
-| `commands/prd.md` | `/planpilot:prd` command definition |
-| `commands/spec.md` | `/planpilot:spec` command definition |
-| `commands/sync.md` | `/planpilot:sync` command definition |
-| `.claude-plugin/plugin.json` | Plugin manifest (name, version, author, skills/commands) |
-| `.claude-plugin/marketplace.json` | Marketplace registry entry (owner, pip source) |
+| `src/planpilot/skills/INSTALL.md` | Manual skill install instructions |
+| `src/planpilot/skills/INSTALL.agent.md` | Agent-driven self-install instructions |
+| `src/planpilot/skills/create-prd/SKILL.md` | PRD generation skill definition |
+| `src/planpilot/skills/create-tech-spec/SKILL.md` | Tech spec generation skill definition |
+| `src/planpilot/skills/plan-sync/SKILL.md` | Plan sync skill definition |
+| `src/planpilot/commands/prd.md` | `/planpilot:prd` command definition |
+| `src/planpilot/commands/spec.md` | `/planpilot:spec` command definition |
+| `src/planpilot/commands/sync.md` | `/planpilot:sync` command definition |
+| `src/planpilot/.claude-plugin/plugin.json` | Plugin manifest (name, version, author, skills/commands) |
+| `src/planpilot/.claude-plugin/marketplace.json` | Marketplace registry entry (owner, pip source) |
 
 ## Guides, testing, and decisions
 

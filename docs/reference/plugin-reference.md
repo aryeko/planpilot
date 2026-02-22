@@ -24,7 +24,7 @@ The planpilot CLI is installed automatically from PyPI. No separate `pip install
 ### Agent self-install
 
 ```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
 ### Manual (filesystem skills)
@@ -32,7 +32,7 @@ Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/plan
 ```bash
 for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```
@@ -41,18 +41,18 @@ done
 
 | File | Purpose |
 |------|---------|
-| `skills/create-prd/SKILL.md` | PRD generation skill definition |
-| `skills/create-tech-spec/SKILL.md` | Tech spec generation skill definition |
-| `skills/plan-sync/SKILL.md` | Plan sync skill definition |
-| `skills/INSTALL.md` | Manual install instructions |
-| `skills/INSTALL.agent.md` | Agent self-install instructions |
+| `src/planpilot/skills/create-prd/SKILL.md` | PRD generation skill definition |
+| `src/planpilot/skills/create-tech-spec/SKILL.md` | Tech spec generation skill definition |
+| `src/planpilot/skills/plan-sync/SKILL.md` | Plan sync skill definition |
+| `src/planpilot/skills/INSTALL.md` | Manual install instructions |
+| `src/planpilot/skills/INSTALL.agent.md` | Agent self-install instructions |
 
 ## Plugin manifest files
 
 | File | Purpose |
 |------|---------|
-| `.claude-plugin/plugin.json` | Plugin manifest: name, version, author, skills, commands |
-| `.claude-plugin/marketplace.json` | Marketplace registry entry: owner, pip source |
+| `src/planpilot/.claude-plugin/plugin.json` | Plugin manifest: name, version, author, skills, commands |
+| `src/planpilot/.claude-plugin/marketplace.json` | Marketplace registry entry: owner, pip source |
 
 ## Related
 
