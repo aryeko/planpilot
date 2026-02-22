@@ -27,7 +27,7 @@ Each step is independent — you can enter the chain at any point.
 The plugin is distributed via PyPI. Claude Code installs it automatically when you add it from the marketplace:
 
 ```bash
-claude plugin marketplace add https://github.com/aryeko/planpilot
+claude plugin marketplace add aryeko/planpilot
 claude plugin install planpilot@planpilot
 ```
 
@@ -45,8 +45,8 @@ Then invoke skills with prefixed commands:
 
 Tell your agent (any platform supporting filesystem skills):
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
 The agent installs `planpilot` from PyPI and copies all three skill files automatically.
@@ -58,7 +58,7 @@ The agent installs `planpilot` from PyPI and copies all three skill files automa
 ```bash
 for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```

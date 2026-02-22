@@ -15,7 +15,7 @@ Quick lookup for the planpilot Claude Code plugin: commands, skill locations, an
 ### Claude Code Plugin (pip, recommended)
 
 ```bash
-claude plugin marketplace add https://github.com/aryeko/planpilot
+claude plugin marketplace add aryeko/planpilot
 claude plugin install planpilot@planpilot
 ```
 

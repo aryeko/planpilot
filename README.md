@@ -132,7 +132,7 @@ planpilot ships three agent skills that form a complete product workflow:
 Install the planpilot plugin directly in Claude Code (the planpilot CLI is installed automatically from PyPI):
 
 ```bash
-claude plugin marketplace add https://github.com/aryeko/planpilot
+claude plugin marketplace add aryeko/planpilot
 claude plugin install planpilot@planpilot
 ```
 
@@ -145,8 +145,8 @@ Then use:
 
 Tell your agent:
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
 The agent will install `planpilot` and all three skills automatically.
@@ -158,7 +158,7 @@ Install skills to the open discovery path used by agent platforms that support f
 ```bash
 for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```
