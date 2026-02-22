@@ -1,0 +1,26 @@
+{
+  "name": "planpilot",
+  "version": "2.4.1",
+  "description": "Claude Code skills and commands for planning workflows: create PRDs, tech specs, and sync plans to GitHub Issues + Projects v2",
+  "author": {
+    "name": "Arye Kogan",
+    "email": "aryekogan@gmail.com",
+    "url": "https://github.com/aryeko/planpilot"
+  },
+  "homepage": "https://github.com/aryeko/planpilot",
+  "repository": "https://github.com/aryeko/planpilot",
+  "license": "MIT",
+  "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
+  "category": "workflow",
+  "tags": ["planning", "github-projects", "roadmap", "prd", "tech-spec", "skills", "commands"],
+  "skills": ["../src/planpilot/skills/"],
+  "commands": ["../src/planpilot/commands/"],
+  "hooks": {
+    "SessionStart": [
+      {
+        "type": "command",
+        "command": "[ -n \"$CLAUDE_ENV_FILE\" ] && { grep -qF \"${CLAUDE_PLUGIN_ROOT}/bin\" \"$CLAUDE_ENV_FILE\" 2>/dev/null || echo \"export PATH=\\\"${CLAUDE_PLUGIN_ROOT}/bin:\\$PATH\\\"\" >> \"$CLAUDE_ENV_FILE\"; }"
+      }
+    ]
+  }
+}

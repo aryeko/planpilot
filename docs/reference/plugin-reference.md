@@ -12,14 +12,14 @@ Quick lookup for the planpilot Claude Code plugin: commands, skill locations, an
 
 ## Install methods
 
-### Claude Code Plugin (pip, recommended)
+### Claude Code Plugin (recommended)
 
 ```bash
 claude plugin marketplace add aryeko/planpilot
 claude plugin install planpilot@planpilot
 ```
 
-The planpilot CLI is installed automatically from PyPI. No separate `pip install` needed.
+The plugin is installed from GitHub source. The `planpilot` CLI is available automatically via the bundled wrapper — no separate install needed.
 
 ### Agent self-install
 
@@ -51,8 +51,10 @@ done
 
 | File | Purpose |
 |------|---------|
-| `src/planpilot/.claude-plugin/plugin.json` | Plugin manifest: name, version, author, skills, commands |
-| `src/planpilot/.claude-plugin/marketplace.json` | Marketplace registry entry: owner, pip source |
+| `.claude-plugin/plugin.json` | Root plugin manifest: name, version, skills, commands, SessionStart hook |
+| `.claude-plugin/bin/planpilot` | Bundled CLI wrapper — makes `planpilot` available without a separate install |
+| `.claude-plugin/marketplace.json` | Marketplace registry entry: owner, github source |
+| `src/planpilot/.claude-plugin/plugin.json` | pip-installed layout manifest (site-packages) |
 
 ## Related
 

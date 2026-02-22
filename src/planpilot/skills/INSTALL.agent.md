@@ -14,13 +14,45 @@ python3 --version
 
 If `python3` is not found, try `python --version`. You need Python 3.11+.
 
-If Python is not installed, STOP and tell the user:
+If Python is not installed or below 3.11, STOP and tell the user:
 
 > Python 3.11+ is required. Please install it from https://python.org and try again.
 
-## Step 2: Ensure pipx is available
+## Step 2: Install planpilot
 
-Check if `pipx` is installed:
+All options below put `planpilot` on PATH so it can be invoked directly.
+
+**Option A — via `uv` (recommended):**
+
+Check if `uv` is available:
+
+```bash
+uv --version
+```
+
+If not found, install it:
+
+```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+> **Note:** Piping to `sh` without checksum verification is the officially recommended method but carries inherent supply-chain risk. For a verified install, see [uv GitHub releases](https://github.com/astral-sh/uv/releases) for SHA-256 hashes.
+
+```bash
+source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
+```
+
+Then install planpilot:
+
+```bash
+uv tool install planpilot
+```
+
+If this succeeds, skip to Step 3.
+
+**Option B — via `pipx`:**
+
+Check if `pipx` is available:
 
 ```bash
 pipx --version
@@ -44,35 +76,31 @@ If `pipx` is **not found**, install it:
   python3 -m pipx ensurepath
   ```
 
-After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for the PATH update to take effect.
-
-## Step 3: Install planpilot
+After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for PATH to update.
 
 ```bash
 pipx install planpilot
 ```
 
+If this succeeds, skip to Step 3.
+
+**Option C — via `pip3` (last resort):**
+
+```bash
+pip3 install planpilot
+```
+
 If this fails, STOP and tell the user the error output.
 
-## Step 4: Verify planpilot
-
-Run (try in order until one succeeds):
+## Step 3: Verify planpilot
 
 ```bash
 planpilot --version
 ```
 
-```bash
-python3 -m planpilot --version
-```
+If this fails, STOP and report the failure to the user.
 
-```bash
-python -m planpilot --version
-```
-
-If none work, STOP and report the failure to the user.
-
-## Step 5: Install the skills
+## Step 4: Install the skills
 
 Install `plan-sync`:
 
@@ -109,7 +137,7 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilo
 
 If `curl` is not available, try `wget` for any of the above (replace `curl -fsSL ... -o` with `wget -qO`).
 
-## Step 6: Verify skill install
+## Step 5: Verify skill install
 
 Verify all three skills were installed:
 
@@ -131,7 +159,22 @@ head -5 ~/.agents/skills/create-tech-spec/SKILL.md
 
 Should contain `name: create-tech-spec`.
 
-If any are missing or incorrect, retry Step 5.
+If any are missing or incorrect, retry Step 4.
+
+## Step 6: Update planpilot (if requested)
+
+If the user asks to update planpilot:
+
+```bash
+# If installed via uv
+uv tool upgrade planpilot
+
+# If installed via pipx
+pipx upgrade planpilot
+
+# If installed via pip3
+pip3 install --upgrade planpilot
+```
 
 ## Step 7: Report to user
 

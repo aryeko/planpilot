@@ -24,7 +24,7 @@ Each step is independent — you can enter the chain at any point.
 
 ## Install: Claude Code Plugin (recommended)
 
-The plugin is registered on GitHub; the underlying `planpilot` CLI is distributed via PyPI and installed automatically when Claude Code installs the plugin:
+The plugin is installed from GitHub source. The `planpilot` CLI is available automatically via the bundled wrapper — no separate install needed:
 
 ```bash
 claude plugin marketplace add aryeko/planpilot
@@ -49,7 +49,7 @@ Tell your agent (any platform supporting filesystem skills):
 Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
-The agent installs `planpilot` from PyPI and copies all three skill files automatically.
+The agent installs `planpilot` (via `uv tool install`, `pipx`, or `pip3`) and copies all three skill files automatically.
 
 ---
 
@@ -94,7 +94,7 @@ Invoke `/planpilot:sync` and point it at your PRD or spec. The skill generates `
 | Problem | Fix |
 |---------|-----|
 | Commands not registered | Reinstall: `claude plugin install planpilot@planpilot` |
-| `planpilot` not found after plugin install | Run `pip install planpilot` or `pipx install planpilot` manually |
+| `planpilot` not found after plugin install | Run `uv tool install planpilot` or `pipx install planpilot` manually |
 | Sync fails with auth error | Check `auth` field in `planpilot.json`; run `planpilot init` to regenerate |
 | Skill not invoked by agent | Verify skill files exist at `~/.agents/skills/*/SKILL.md` |
 

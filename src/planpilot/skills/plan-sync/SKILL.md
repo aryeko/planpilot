@@ -1,6 +1,6 @@
 ---
 name: plan-sync
-description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot installed from pip, no source tree required.
+description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot available via plugin wrapper or manual install (uv/pipx/pip3), no source tree required.
 ---
 
 # Plan Sync
@@ -17,8 +17,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- Python 3.11+
-- `planpilot` installed: `pipx install planpilot`
+- `planpilot` CLI accessible — via `uvx planpilot` (zero-install), a global install, or the Claude plugin wrapper (see [INSTALL.md](https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md))
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use
@@ -458,56 +457,15 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 
 #### 5a) Verify planpilot is available
 
-Try the following commands **in order** until one succeeds:
+Try each invocation in order until one succeeds:
 
-```bash
-planpilot --version
-```
+1. `uvx planpilot --version` → set `PLANPILOT_CMD="uvx planpilot"`
+2. `planpilot --version` → set `PLANPILOT_CMD="planpilot"`
+3. `python3 -m planpilot --version` → set `PLANPILOT_CMD="python3 -m planpilot"`
 
-If that fails (command not found):
+If all three fail, STOP and direct the user to install planpilot — see https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
 
-```bash
-python3 -m planpilot --version
-```
-
-If that also fails:
-
-```bash
-python -m planpilot --version
-```
-
-**If none of the above succeed**, run diagnostics:
-
-```bash
-which python3 python pipx
-python3 --version
-pipx list 2>/dev/null | grep -i planpilot
-```
-
-Report findings to the user and explain:
-
-> `planpilot` is not installed. Would you like me to install it?
-
-If the user agrees:
-
-1. **Ensure `pipx` is available** — check `pipx --version`. If not found, install it:
-
-   ```bash
-   brew install pipx && pipx ensurepath   # macOS
-   # or: sudo apt install -y pipx && pipx ensurepath   # Debian/Ubuntu
-   ```
-
-   The user may need to restart their shell after `ensurepath`.
-
-2. **Install planpilot**:
-
-   ```bash
-   pipx install planpilot
-   ```
-
-3. **Re-verify** with `planpilot --version`. If still failing, check that `~/.local/bin` is on `PATH`.
-
-**Remember which invocation worked** (`planpilot`, `python3 -m planpilot`, or `python -m planpilot`) and use that form for all subsequent commands in this session.
+Record which command succeeded as `PLANPILOT_CMD` — use it for all subsequent planpilot invocations in this session.
 
 #### 5b) Verify GitHub auth
 
@@ -531,9 +489,11 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 - `detect_plan_paths()` scans `.plans/` and `plans/` for existing plan files to pre-fill paths.
 - Outside a git repo, both detections are disabled and every value must be entered manually.
 
+Use the invocation form that succeeded in preflight (step 5a). Examples use `planpilot` — substitute `uvx planpilot`, `python3 -m planpilot`, etc. if that's what worked.
+
 ```bash
 cd <repo-root>
-planpilot init
+$PLANPILOT_CMD init
 ```
 
 The wizard asks these questions in order. Forward each to the user with the hints below:
@@ -557,25 +517,23 @@ After the wizard completes, inform the user:
 If the user prefers non-interactive setup with auto-detected defaults:
 
 ```bash
-planpilot init --defaults
+$PLANPILOT_CMD init --defaults
 ```
 
 This generates a config with placeholder `board_url` that must be edited manually.
 
 ### 7) Sync Execution (sync / full)
 
-Use whichever invocation form succeeded in preflight (step 5a). Examples below use `planpilot` — substitute `python3 -m planpilot` or `python -m planpilot` if that's what worked.
-
 Always dry-run first:
 
 ```bash
-planpilot sync --config ./planpilot.json --dry-run
+$PLANPILOT_CMD sync --config ./planpilot.json --dry-run
 ```
 
 Review dry-run output. If everything looks correct:
 
 ```bash
-planpilot sync --config ./planpilot.json --apply
+$PLANPILOT_CMD sync --config ./planpilot.json --apply
 ```
 
 ### 8) Post-Sync Verification (sync / full)
@@ -606,7 +564,7 @@ Report to user:
 - Creating stories that are too large (not PR-sized) or tasks that span multiple days
 - Omitting `goal`, `requirements`, or `acceptance_criteria` (required by validator)
 - Forgetting to set `parent_id` on stories and tasks
-- Assuming `planpilot` command exists without checking — always verify availability first and fall back to `python3 -m planpilot`
+- Assuming `planpilot` is available without checking — always run preflight (step 5a) first
 - Running `planpilot init` outside the git repo root — auto-detection of target and plan paths will fail
 - Not committing `planpilot.json` to git — config must be tracked for reproducible syncs
 - Writing `planpilot.json` by hand with invalid field combinations (e.g. both `unified` and `epics` in `plan_paths`)

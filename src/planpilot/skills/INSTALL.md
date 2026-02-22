@@ -26,35 +26,40 @@ The agent will install `planpilot` and all three skills automatically.
 
 ### 1) Prerequisites
 
-Check Python 3 is available:
+Check Python 3.11+ is available:
 
 ```bash
 python3 --version
 ```
 
-Optional strict check (requires Python 3.11+):
+If Python is not installed or below 3.11, install it from https://python.org.
+
+### 2) Install `planpilot`
+
+All options below put `planpilot` on your PATH so it can be invoked directly.
+
+**Option A — via `uv` (recommended):**
+
+[`uv`](https://docs.astral.sh/uv/) installs tools in isolated environments with no PEP 668 issues.
+
+If `uv` is not installed:
 
 ```bash
-python3 - <<'PY'
-import sys
-assert sys.version_info >= (3, 11), f"Need Python 3.11+, got {sys.version}"
-print("OK:", sys.version)
-PY
+curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Check pip is available:
+> **Note:** Piping to `sh` without checksum verification is the officially recommended method but carries inherent supply-chain risk. For a verified install, download the binary directly from [uv GitHub releases](https://github.com/astral-sh/uv/releases) and verify the SHA-256 hash before running.
+
+Then install planpilot:
 
 ```bash
-python3 -m pip --version
+uv tool install planpilot
+planpilot --version
 ```
 
-### 2) Install `pipx` (if not already installed)
+**Option B — via `pipx`:**
 
-[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments -- avoids PEP 668 / "externally managed environment" errors on macOS Homebrew and system Python.
-
-```bash
-pipx --version
-```
+[`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments — avoids PEP 668 errors on macOS Homebrew and system Python.
 
 If `pipx` is not found:
 
@@ -70,19 +75,19 @@ pipx ensurepath
 
 You may need to restart your shell after `ensurepath`.
 
-### 3) Install `planpilot`
-
 ```bash
 pipx install planpilot
-```
-
-Verify:
-
-```bash
 planpilot --version
 ```
 
-### 4) Install the skills into open skill path
+**Option C — via `pip3` (last resort):**
+
+```bash
+pip3 install planpilot
+planpilot --version
+```
+
+### 3) Install the skills into open skill path
 
 Create destination directories:
 
@@ -92,7 +97,7 @@ mkdir -p ~/.agents/skills/create-tech-spec
 mkdir -p ~/.agents/skills/plan-sync
 ```
 
-#### Option A: Copy from local repo checkout
+#### Local: Copy from local repo checkout
 
 ```bash
 cp src/planpilot/skills/create-prd/SKILL.md \
@@ -105,7 +110,7 @@ cp src/planpilot/skills/plan-sync/SKILL.md \
   ~/.agents/skills/plan-sync/SKILL.md
 ```
 
-#### Option B: Fetch from GitHub raw URL
+#### Remote: Fetch from GitHub raw URL
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
@@ -118,9 +123,9 @@ curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilo
   -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 
-For reproducible installs, pin to a release tag (e.g., `v2.4.0`) instead of `main` once a new release is available.
+For reproducible installs, pin to a release tag (e.g., `v2.4.1`) instead of `main` once a new release is available.
 
-### 5) Verify skill install
+### 4) Verify skill install
 
 ```bash
 ls -la ~/.agents/skills/create-prd
@@ -139,13 +144,26 @@ Expected frontmatter should include:
 - `name: create-tech-spec`
 - `name: plan-sync`
 
-### 6) Restart your agent
+### 5) Restart your agent
 
 **Restart your agent** (start a new session) so it discovers the newly installed skill. The skill won't be available until the agent re-scans `~/.agents/skills/`.
 
-### 7) Update / uninstall
+### 6) Update / uninstall
 
-Update (re-copy or re-fetch `SKILL.md` for each skill):
+**Update `planpilot`:**
+
+```bash
+# If installed via uv
+uv tool upgrade planpilot
+
+# If installed via pipx
+pipx upgrade planpilot
+
+# If installed via pip3
+pip3 install --upgrade planpilot
+```
+
+**Update skills** (re-copy or re-fetch `SKILL.md` for each skill):
 
 ```bash
 curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
