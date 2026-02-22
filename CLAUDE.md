@@ -1,20 +1,22 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+## Before Every Commit
+
+Run `poetry run poe check` (lint + typecheck + tests). CI will reject anything that fails this.
 
 ## Commands
 
-All tasks use [poethepoet](https://github.com/nat-n/poethepoet). Run with `poe <task>` or `poetry run poe <task>`:
+All tasks use [poethepoet](https://github.com/nat-n/poethepoet). Run with `poetry run poe <task>`:
 
 ```bash
-poe check          # lint + format-check + typecheck + non-E2E tests (run before pushing)
-poe lint           # ruff check
-poe format         # ruff format (auto-fix)
-poe typecheck      # mypy src/planpilot
-poe test           # pytest -v --ignore=tests/e2e (includes coverage report)
-poe test-e2e       # offline E2E suite (tests/e2e/test_cli_e2e.py)
-poe docs-links     # validate internal markdown links
-poe workflow-lint  # actionlint on .github/workflows/
+poetry run poe check          # lint + format-check + typecheck + non-E2E tests (run before pushing)
+poetry run poe lint           # ruff check
+poetry run poe format         # ruff format (auto-fix)
+poetry run poe typecheck      # mypy src/planpilot
+poetry run poe test           # pytest -v --ignore=tests/e2e (includes coverage report)
+poetry run poe test-e2e       # offline E2E suite (tests/e2e/test_cli_e2e.py)
+poetry run poe docs-links     # validate internal markdown links
+poetry run poe workflow-lint  # actionlint on .github/workflows/
 ```
 
 Run a single test file:
@@ -29,8 +31,20 @@ poetry run pytest tests/engine/test_engine.py -v -k "test_discovery"
 
 Regenerate the GitHub GraphQL client (requires `gh` auth):
 ```bash
-poe gen-gql
+poetry run poe gen-gql
 ```
+
+## Key Files
+
+| File | Role |
+|------|------|
+| `src/planpilot/core/engine/engine.py` | `SyncEngine` — 5-phase async pipeline |
+| `src/planpilot/sdk.py` | Composition root — only place that sees all Core modules |
+| `src/planpilot/core/contracts/` | All ABCs and Pydantic models |
+| `tests/fakes/` | Shared test doubles — use these, never call live APIs in tests |
+| `src/planpilot/core/providers/github/github_gql/` | Generated GraphQL client — do not hand-edit |
+
+Project-specific coding guidelines are in `.claude/rules/` (auto-loaded).
 
 ## Architecture
 
@@ -71,7 +85,7 @@ Contracts → Core → SDK → CLI
 - Do not bypass `PlanValidator` before sync execution.
 - Do not write side effects in dry-run code paths.
 - Do not re-introduce legacy root domain modules outside `core/` and `cli/`.
-- Do not hand-edit the generated GraphQL client as the primary change workflow.
+- Do not hand-edit the generated GraphQL client — use `poetry run poe gen-gql`.
 
 ## Documentation Update Policy
 
@@ -86,4 +100,4 @@ For any user-visible behavior or architecture change, update docs in the same PR
 | Plugin/skills | `src/planpilot/skills/*/SKILL.md`, `src/planpilot/commands/*.md`, `src/planpilot/.claude-plugin/plugin.json`, `docs/guides/plugin-skills-guide.md`, `docs/reference/plugin-reference.md` |
 | CI/release | `RELEASE.md`, `docs/reference/workflows-reference.md` |
 
-Run `poe docs-links` after updating docs to verify no broken internal links.
+Run `poetry run poe docs-links` after updating docs to verify no broken internal links.
