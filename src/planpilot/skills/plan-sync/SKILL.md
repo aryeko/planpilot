@@ -457,11 +457,23 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 
 #### 5a) Verify planpilot is available
 
+Try in order until one succeeds:
+
+```bash
+uvx planpilot --version
+```
+
 ```bash
 planpilot --version
 ```
 
-If not found, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+```bash
+python3 -m planpilot --version
+```
+
+**Remember which command succeeded** and use that exact invocation for all subsequent steps in this session.
+
+If none succeed, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
 
 #### 5b) Verify GitHub auth
 
@@ -487,7 +499,7 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 
 ```bash
 cd <repo-root>
-planpilot init
+<verified-planpilot-cmd> init
 ```
 
 The wizard asks these questions in order. Forward each to the user with the hints below:
@@ -511,7 +523,7 @@ After the wizard completes, inform the user:
 If the user prefers non-interactive setup with auto-detected defaults:
 
 ```bash
-planpilot init --defaults
+<verified-planpilot-cmd> init --defaults
 ```
 
 This generates a config with placeholder `board_url` that must be edited manually.
@@ -560,8 +572,8 @@ Report to user:
 - Creating stories that are too large (not PR-sized) or tasks that span multiple days
 - Omitting `goal`, `requirements`, or `acceptance_criteria` (required by validator)
 - Forgetting to set `parent_id` on stories and tasks
-- Assuming `planpilot` is available without checking — always run `planpilot --version` in preflight first
-- Running `planpilot init` outside the git repo root — auto-detection of target and plan paths will fail
+- Assuming `planpilot` is available without checking — always run preflight (step 5a) first
+- Running `<verified-planpilot-cmd> init` outside the git repo root — auto-detection of target and plan paths will fail
 - Not committing `planpilot.json` to git — config must be tracked for reproducible syncs
 - Writing `planpilot.json` by hand with invalid field combinations (e.g. both `unified` and `epics` in `plan_paths`)
 
