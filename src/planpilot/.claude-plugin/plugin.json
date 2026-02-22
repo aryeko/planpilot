@@ -13,6 +13,6 @@
   "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
   "category": "workflow",
   "tags": ["planning", "github-projects", "roadmap", "prd", "tech-spec", "skills", "commands"],
-  "skills": ["../skills/"],
-  "commands": ["../commands/"]
+  "skills": ["./skills/"],
+  "commands": ["./commands/"]
 }
