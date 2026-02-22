@@ -125,14 +125,28 @@ planpilot ships three agent skills that form a complete product workflow:
 |-------|---------|
 | `create-prd` | Generate structured PRDs from feature ideas |
 | `create-tech-spec` | Create codebase-aware technical specs from PRDs |
-| `roadmap-to-github-project` | Sync specs to GitHub Issues + Projects v2 |
+| `plan-sync` | Sync specs to GitHub Issues + Projects v2 |
+
+### Claude Code Plugin
+
+Install the planpilot plugin directly in Claude Code (the planpilot CLI is installed automatically from PyPI):
+
+```bash
+claude plugin marketplace add aryeko/planpilot
+claude plugin install planpilot@planpilot
+```
+
+Then use:
+- `/planpilot:prd` — create a PRD from a feature idea
+- `/planpilot:spec` — create a tech spec from a PRD
+- `/planpilot:sync` — generate `.plans` JSON and sync to GitHub
 
 ### Agent Self-Install
 
 Tell your agent:
 
-```
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
+```text
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
 The agent will install `planpilot` and all three skills automatically.
@@ -142,14 +156,14 @@ The agent will install `planpilot` and all three skills automatically.
 Install skills to the open discovery path used by agent platforms that support filesystem skills:
 
 ```bash
-for skill in create-prd create-tech-spec roadmap-to-github-project; do
+for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```
 
-Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)
+Full standalone instructions: [`src/planpilot/skills/INSTALL.md`](src/planpilot/skills/INSTALL.md)
 
 ## Quickstart
 

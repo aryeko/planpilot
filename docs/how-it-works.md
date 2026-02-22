@@ -28,6 +28,63 @@ flowchart TD
     H --> I[Persist sync artifacts]
 ```
 
+## Clean flow
+
+`planpilot clean` discovers and deletes planpilot-managed provider issues. It always uses the real provider for discovery so previews are accurate.
+
+1. Load config from `planpilot.json`.
+2. Compute `plan_id` from local plan files (default mode) or skip (with `--all`).
+3. Discover provider issues by metadata marker (`PLANPILOT_META_V1` block in issue body).
+4. Filter: default targets current `plan_id` only; `--all` targets every planpilot-managed issue.
+5. Order deletions leaf-first (tasks → stories → epics) to avoid dangling sub-issues.
+6. Delete each issue, or preview in dry-run mode.
+
+```mermaid
+flowchart TD
+    A[Load config] --> C{--all flag?}
+    C -- No --> B[Compute plan_id]
+    B --> D[Discover issues matching plan_id]
+    C -- Yes --> E[Discover all planpilot-managed issues]
+    D --> F[Order deletions leaf-first]
+    E --> F
+    F --> G{dry-run?}
+    G -- Yes --> H[Print deletion preview]
+    G -- No --> I[Delete issues]
+```
+
+See [design/clean.md](design/clean.md) and [modules/clean.md](modules/clean.md) for implementation details.
+
+## Map sync flow
+
+`planpilot map sync` reconciles the local `sync-map.json` from provider metadata without mutating any provider items. Use it to recover or bootstrap local artifacts when they are missing or out of sync.
+
+1. Load config from `planpilot.json`.
+2. Discover remote plan IDs from provider metadata (or use explicit `--plan-id`).
+3. If no candidates: fail with an error (run `planpilot sync` first, or pass `--plan-id` to target a known plan). If multiple candidates and interactive TTY: prompt to select; otherwise fail.
+4. Fetch item metadata/bodies for the selected plan.
+5. Reconcile: match provider items to local plan entries.
+6. In dry-run: print reconciliation preview. In apply: write local `sync-map.json` and plan files.
+
+```mermaid
+flowchart TD
+    A[Load config] --> B{--plan-id provided?}
+    B -- Yes --> D[Use explicit plan_id]
+    B -- No --> C[Discover remote plan IDs from metadata]
+    C --> E{How many candidates?}
+    E -- Zero --> M[Fail: no managed issues found]
+    E -- One --> D
+    E -- Multiple + TTY --> F[Prompt user to select]
+    E -- Multiple + no TTY --> G[Fail: require --plan-id]
+    F --> D
+    D --> H[Fetch item metadata for plan]
+    H --> I[Reconcile provider items to local entries]
+    I --> J{dry-run?}
+    J -- Yes --> K[Print reconciliation preview]
+    J -- No --> L[Write sync-map.json + plan files]
+```
+
+See [design/map-sync.md](design/map-sync.md) and [modules/map-sync.md](modules/map-sync.md) for implementation details.
+
 ## Idempotency model
 
 - Each rendered body includes:

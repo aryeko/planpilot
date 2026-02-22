@@ -88,6 +88,8 @@ Core contains runtime business logic and provider integrations.
 | `core/renderers/` | Concrete renderer implementations + factory | [renderers.md](../modules/renderers.md) |
 | `core/auth/` | Token resolution strategies + factory | [auth.md](../modules/auth.md) |
 | `core/config/` | Config loading and scaffold helpers | [config.md](../modules/config.md) |
+| `core/map_sync/` | Remote plan ID discovery/selection and local sync-map reconciliation | [map-sync.md](../modules/map-sync.md) |
+| `core/clean/` | Metadata-scoped item discovery and leaf-first deletion planning | [clean.md](../modules/clean.md) |
 
 **Rules:** Engine receives Provider and Renderer via dependency injection. Provider internals stay isolated under `core/providers/*`. Core modules must not import CLI modules.
 

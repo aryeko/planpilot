@@ -15,8 +15,9 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 7. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
 8. **[Documentation Architecture](./design/documentation-architecture.md)** — Doc IA, ownership map, and update rules
 9. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-10. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-11. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
+10. **[Plugin and Skills Guide](./guides/plugin-skills-guide.md)** — Plugin install, skill chain walkthrough (PRD → spec → sync)
+11. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+12. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Quick reference
 
@@ -24,6 +25,7 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 - **[SDK Reference](./reference/sdk-reference.md)** — API lookup for SDK entrypoints and result objects
 - **[Config Reference](./reference/config-reference.md)** — canonical config fields, validation, and examples
 - **[Exit Codes](./reference/exit-codes.md)** — stable process-exit mapping and troubleshooting links
+- **[Plugin Reference](./reference/plugin-reference.md)** — Claude Code plugin commands and skill install methods
 - **[Workflows Reference](./reference/workflows-reference.md)** — CI, release, security, and CodeQL automation map
 - **[Developer Workflow](./reference/developer-workflow.md)** — local verification sequence and pre-PR checklist
 - **[Docs Inventory](./reference/docs-inventory.md)** — complete docs file inventory and ownership map
@@ -40,6 +42,7 @@ flowchart LR
     B -->|Interpret failures| I[reference/exit-codes.md]
     B -->|Understand CI/release| J[reference/workflows-reference.md]
     B -->|Contribute safely| K[reference/developer-workflow.md]
+    B -->|Use plugin/skills| L[guides/plugin-skills-guide.md]
     B -->|Understand architecture| E[design/*.md]
     B -->|Change implementation| F[modules/*.md]
     B -->|Debug failure| G[guides/troubleshooting.md]
@@ -65,11 +68,6 @@ flowchart LR
 | ADR | Topic |
 |-----|-------|
 | [001](./decisions/001-ariadne-codegen.md) | Use ariadne-codegen for GitHub GraphQL client |
-
-### Archive and plans
-
-- [plans/](./plans/) contains historical execution plans and review artifacts.
-- Treat files in `docs/plans/` as implementation logs, not primary product documentation.
 
 ### Internal references
 

@@ -12,8 +12,8 @@ flowchart TD
     Index --> Guides[guides/*.md]
     Index --> Testing[testing/*.md]
     Index --> Decisions[decisions/*.md]
-    Index --> Plans[plans/*.md]
     Index --> Internal[AGENTS.md]
+    Index --> Skills[skills/ + commands/]
 ```
 
 ## Design docs (`docs/design/`)
@@ -53,18 +53,33 @@ flowchart TD
 | `docs/reference/config-reference.md` | Config schema and field semantics |
 | `docs/reference/exit-codes.md` | Process exit code mapping |
 | `docs/reference/plan-schemas.md` | Plan input schemas and examples |
+| `docs/reference/plugin-reference.md` | Claude Code plugin commands and skill install reference |
 | `docs/reference/workflows-reference.md` | CI/release/security workflow contracts |
 | `docs/reference/developer-workflow.md` | Local contributor verification flow |
 | `docs/reference/docs-inventory.md` | This inventory page |
 
-## Guides, testing, decisions, and plans
+## Plugin and skills (`src/planpilot/skills/`, `src/planpilot/commands/`, `src/planpilot/.claude-plugin/`)
+
+| File | Purpose |
+|---|---|
+| `src/planpilot/skills/INSTALL.md` | Manual skill install instructions |
+| `src/planpilot/skills/INSTALL.agent.md` | Agent-driven self-install instructions |
+| `src/planpilot/skills/create-prd/SKILL.md` | PRD generation skill definition |
+| `src/planpilot/skills/create-tech-spec/SKILL.md` | Tech spec generation skill definition |
+| `src/planpilot/skills/plan-sync/SKILL.md` | Plan sync skill definition |
+| `src/planpilot/commands/prd.md` | `/planpilot:prd` command definition |
+| `src/planpilot/commands/spec.md` | `/planpilot:spec` command definition |
+| `src/planpilot/commands/sync.md` | `/planpilot:sync` command definition |
+| `src/planpilot/.claude-plugin/plugin.json` | Plugin manifest (name, version, author, skills/commands) |
+| `src/planpilot/.claude-plugin/marketplace.json` | Marketplace registry entry (owner, pip source) |
+
+## Guides, testing, and decisions
 
 | Area | Files |
 |---|---|
-| Guides | `docs/guides/troubleshooting.md` |
+| Guides | `docs/guides/troubleshooting.md`, `docs/guides/plugin-skills-guide.md` |
 | Testing | `docs/testing/e2e.md` |
 | Decisions | `docs/decisions/001-ariadne-codegen.md` |
-| Planning artifacts | `docs/plans/*.md` |
 
 ## Internal/agent context
 
@@ -78,3 +93,4 @@ flowchart TD
 - User-facing command/config/output changes -> update `docs/reference/*` and `README.md`.
 - CI/release/security workflow changes -> update `docs/reference/workflows-reference.md` and `RELEASE.md`.
 - Contributor process changes -> update `docs/reference/developer-workflow.md` and `CONTRIBUTING.md`.
+- Plugin/skills changes -> update `src/planpilot/skills/*/SKILL.md`, `src/planpilot/commands/*.md`, `src/planpilot/.claude-plugin/plugin.json`, `docs/guides/plugin-skills-guide.md`, and `docs/reference/plugin-reference.md`.
