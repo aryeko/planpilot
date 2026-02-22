@@ -93,4 +93,4 @@ flowchart TD
 - User-facing command/config/output changes -> update `docs/reference/*` and `README.md`.
 - CI/release/security workflow changes -> update `docs/reference/workflows-reference.md` and `RELEASE.md`.
 - Contributor process changes -> update `docs/reference/developer-workflow.md` and `CONTRIBUTING.md`.
-- Plugin/skills changes -> update `skills/*/SKILL.md`, `commands/*.md`, `.claude-plugin/plugin.json`, `docs/guides/plugin-skills-guide.md`, and `docs/reference/plugin-reference.md`.
+- Plugin/skills changes -> update `src/planpilot/skills/*/SKILL.md`, `src/planpilot/commands/*.md`, `src/planpilot/.claude-plugin/plugin.json`, `docs/guides/plugin-skills-guide.md`, and `docs/reference/plugin-reference.md`.

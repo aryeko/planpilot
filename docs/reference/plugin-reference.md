@@ -23,7 +23,7 @@ The planpilot CLI is installed automatically from PyPI. No separate `pip install
 
 ### Agent self-install
 
-```
+```text
 Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
 ```
 
