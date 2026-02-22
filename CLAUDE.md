@@ -2,7 +2,7 @@
 
 ## Before Every Commit
 
-Run `poetry run poe check` (lint + typecheck + tests). CI will reject anything that fails this.
+Run `poetry run poe check` (lint + format-check + typecheck + non-E2E tests). CI will reject anything that fails this.
 
 ## Commands
 
@@ -75,7 +75,7 @@ Contracts → Core → SDK → CLI
 - **Test layout mirrors source**: `tests/engine/` → `src/planpilot/core/engine/`, etc.
 - **Coverage target**: 90%+ branch coverage.
 - **Commit format**: Conventional Commits required (`feat`, `fix`, `docs`, `chore`, etc.), max 72-char header. Enforced by CI (commitlint) and local hook (`./scripts/install-hooks.sh`).
-- **Generated code**: `src/planpilot/core/providers/github/github_gql/` is excluded from mypy and coverage. Regenerate with `poe gen-gql`.
+- **Generated code**: `src/planpilot/core/providers/github/github_gql/` is excluded from mypy and coverage. Regenerate with `poetry run poe gen-gql`.
 - **Worktrees**: Create under `.worktrees/` in the project root. Run `poetry install` after creating.
 
 ## Anti-Patterns

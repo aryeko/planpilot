@@ -5,7 +5,7 @@ paths:
 ---
 # Python Security
 
-> This file extends [common/security.md](../common/security.md) with Python specific content.
+> This file extends [common/security.md](../common/security.md) with Python-specific content.
 
 ## Secret Management
 
@@ -20,8 +20,9 @@ api_key = os.environ["OPENAI_API_KEY"]  # Raises KeyError if missing
 
 ## Security Scanning
 
-- Use **bandit** for static security analysis:
+- Use **bandit** for static security analysis (optional manual step — not in `poe check`):
   ```bash
+  pip install bandit
   bandit -r src/
   ```
 

@@ -5,7 +5,7 @@ paths:
 ---
 # Python Coding Style
 
-> This file extends [common/coding-style.md](../common/coding-style.md) with Python specific content.
+> This file extends [common/coding-style.md](../common/coding-style.md) with Python-specific content.
 
 ## Standards
 
@@ -16,6 +16,7 @@ paths:
 
 Prefer immutable data structures:
 
+**Frozen dataclass:**
 ```python
 from dataclasses import dataclass
 
@@ -23,7 +24,10 @@ from dataclasses import dataclass
 class User:
     name: str
     email: str
+```
 
+**NamedTuple:**
+```python
 from typing import NamedTuple
 
 class Point(NamedTuple):
@@ -33,9 +37,8 @@ class Point(NamedTuple):
 
 ## Formatting
 
-- **black** for code formatting
-- **isort** for import sorting
-- **ruff** for linting
+- **ruff format** for code formatting
+- **ruff check** for linting and import sorting
 
 ## Reference
 
