@@ -9,8 +9,8 @@
     {
       "name": "planpilot",
       "source": {
-        "source": "pip",
-        "package": "planpilot"
+        "source": "github",
+        "repo": "aryeko/planpilot"
       }
     }
   ]

@@ -1,0 +1,13 @@
+#!/usr/bin/env python3
+# Wrapper for running planpilot from the cloned plugin source (no install required).
+# Only used when planpilot is installed as a Claude Code github-source plugin.
+import os
+import sys
+
+plugin_root = os.environ.get("CLAUDE_PLUGIN_ROOT", "")
+if plugin_root:
+    sys.path.insert(0, os.path.join(plugin_root, "src"))
+
+from planpilot.cli.app import main
+
+main()

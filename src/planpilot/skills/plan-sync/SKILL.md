@@ -18,8 +18,8 @@ Before any action, list available skills and invoke all that apply. If installed
 ## Prerequisites
 
 - Python 3.11+
-- `planpilot` installed: `pipx install planpilot`
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
+- `uv` (optional, preferred — enables zero-install via `uvx planpilot`) or `planpilot` installed globally
 
 ## When to Use
 
@@ -461,6 +461,12 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 Try the following commands **in order** until one succeeds:
 
 ```bash
+uvx planpilot --version
+```
+
+If that fails (uv not installed):
+
+```bash
 planpilot --version
 ```
 
@@ -479,35 +485,47 @@ python -m planpilot --version
 **If none of the above succeed**, run diagnostics:
 
 ```bash
-which python3 python pipx
+which uv uvx python3 python pipx
 python3 --version
 pipx list 2>/dev/null | grep -i planpilot
 ```
 
 Report findings to the user and explain:
 
-> `planpilot` is not installed. Would you like me to install it?
+> `planpilot` is not available. Would you like me to install it?
 
-If the user agrees:
+If the user agrees, prefer the zero-install route if `uv` is present:
 
-1. **Ensure `pipx` is available** — check `pipx --version`. If not found, install it:
+1. **If `uv` is available** — no install needed. `uvx planpilot` downloads and runs planpilot in an isolated environment automatically. Verify with `uvx planpilot --version`.
 
-   ```bash
-   brew install pipx && pipx ensurepath   # macOS
-   # or: sudo apt install -y pipx && pipx ensurepath   # Debian/Ubuntu
-   ```
-
-   The user may need to restart their shell after `ensurepath`.
-
-2. **Install planpilot**:
+2. **If `uv` is not available**, install it first (recommended):
 
    ```bash
-   pipx install planpilot
+   curl -LsSf https://astral.sh/uv/install.sh | sh
    ```
 
-3. **Re-verify** with `planpilot --version`. If still failing, check that `~/.local/bin` is on `PATH`.
+   Then use `uvx planpilot` going forward.
 
-**Remember which invocation worked** (`planpilot`, `python3 -m planpilot`, or `python -m planpilot`) and use that form for all subsequent commands in this session.
+3. **Alternatively**, install via `pipx`:
+
+   - **Ensure `pipx` is available** — check `pipx --version`. If not found, install it:
+
+     ```bash
+     brew install pipx && pipx ensurepath   # macOS
+     # or: sudo apt install -y pipx && pipx ensurepath   # Debian/Ubuntu
+     ```
+
+     The user may need to restart their shell after `ensurepath`.
+
+   - **Install planpilot**:
+
+     ```bash
+     pipx install planpilot
+     ```
+
+   - **Re-verify** with `planpilot --version`. If still failing, check that `~/.local/bin` is on `PATH`.
+
+**Remember which invocation worked** (`uvx planpilot`, `planpilot`, `python3 -m planpilot`, or `python -m planpilot`) and use that form for all subsequent commands in this session.
 
 #### 5b) Verify GitHub auth
 
@@ -564,7 +582,7 @@ This generates a config with placeholder `board_url` that must be edited manuall
 
 ### 7) Sync Execution (sync / full)
 
-Use whichever invocation form succeeded in preflight (step 5a). Examples below use `planpilot` — substitute `python3 -m planpilot` or `python -m planpilot` if that's what worked.
+Use whichever invocation form succeeded in preflight (step 5a). Examples below use `planpilot` — substitute `uvx planpilot`, `python3 -m planpilot`, or `python -m planpilot` if that's what worked.
 
 Always dry-run first:
 
@@ -606,7 +624,7 @@ Report to user:
 - Creating stories that are too large (not PR-sized) or tasks that span multiple days
 - Omitting `goal`, `requirements`, or `acceptance_criteria` (required by validator)
 - Forgetting to set `parent_id` on stories and tasks
-- Assuming `planpilot` command exists without checking — always verify availability first and fall back to `python3 -m planpilot`
+- Assuming `planpilot` command exists without checking — always verify availability first; try `uvx planpilot` before falling back to `planpilot` or `python3 -m planpilot`
 - Running `planpilot init` outside the git repo root — auto-detection of target and plan paths will fail
 - Not committing `planpilot.json` to git — config must be tracked for reproducible syncs
 - Writing `planpilot.json` by hand with invalid field combinations (e.g. both `unified` and `epics` in `plan_paths`)

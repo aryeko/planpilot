@@ -15,8 +15,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- `planpilot` available via `uvx planpilot` (preferred, zero-install) or installed globally (`pipx install planpilot` / `pip install planpilot`)
-- `gh` CLI installed and authenticated (scopes: `repo`, `project`) — only required if you plan to sync to GitHub after generating the PRD
+None. This skill requires only an agent with no external tools or dependencies.
 
 ## When to Use
 
@@ -126,28 +125,6 @@ Unresolved items flagged for follow-up before implementation starts. What do we 
 ---
 
 ## Workflow — Step by Step for the Agent
-
-### Step 0: Preflight
-
-Verify planpilot is available. Try in order until one succeeds:
-
-```bash
-uvx planpilot --version
-```
-
-```bash
-planpilot --version
-```
-
-```bash
-python3 -m planpilot --version
-```
-
-If none succeed, inform the user:
-
-> `planpilot` is not available. Install it with `uvx` (no setup needed if `uv` is installed) or `pipx install planpilot`. See https://github.com/aryeko/planpilot for details.
-
-Remember which invocation worked and use it for all subsequent commands.
 
 ### Step 1: Initial Context
 
