@@ -26,39 +26,21 @@ The agent will install `planpilot` and all three skills automatically.
 
 ### 1) Prerequisites
 
-Check Python 3 is available:
+Check Python 3.11+ is available:
 
 ```bash
 python3 --version
 ```
 
-Optional strict check (requires Python 3.11+):
-
-```bash
-python3 - <<'PY'
-import sys
-assert sys.version_info >= (3, 11), f"Need Python 3.11+, got {sys.version}"
-print("OK:", sys.version)
-PY
-```
-
-Check pip is available:
-
-```bash
-python3 -m pip --version
-```
+If Python is not installed or below 3.11, install it from https://python.org.
 
 ### 2) Install `planpilot`
 
-**Option A — zero-install via `uvx` (recommended):**
+All options below put `planpilot` on your PATH so it can be invoked directly.
 
-[`uv`](https://docs.astral.sh/uv/) runs planpilot in an isolated, auto-downloaded environment. No install step needed.
+**Option A — via `uv` (recommended):**
 
-Check if `uv` is available:
-
-```bash
-uvx planpilot --version
-```
+[`uv`](https://docs.astral.sh/uv/) installs tools in isolated environments with no PEP 668 issues.
 
 If `uv` is not installed:
 
@@ -66,19 +48,16 @@ If `uv` is not installed:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then verify:
+Then install planpilot:
 
 ```bash
-uvx planpilot --version
+uv tool install planpilot
+planpilot --version
 ```
 
-**Option B — global install via `pipx`:**
+**Option B — via `pipx`:**
 
 [`pipx`](https://pipx.pypa.io/) installs CLI tools in isolated environments — avoids PEP 668 errors on macOS Homebrew and system Python.
-
-```bash
-pipx --version
-```
 
 If `pipx` is not found:
 
@@ -96,6 +75,13 @@ You may need to restart your shell after `ensurepath`.
 
 ```bash
 pipx install planpilot
+planpilot --version
+```
+
+**Option C — via `pip3` (last resort):**
+
+```bash
+pip3 install planpilot
 planpilot --version
 ```
 
@@ -165,11 +151,14 @@ Expected frontmatter should include:
 **Update `planpilot`:**
 
 ```bash
-# If using uvx (force latest on next run)
-uvx planpilot@latest --version
+# If installed via uv
+uv tool upgrade planpilot
 
 # If installed via pipx
 pipx upgrade planpilot
+
+# If installed via pip3
+pip3 install --upgrade planpilot
 ```
 
 **Update skills** (re-copy or re-fetch `SKILL.md` for each skill):

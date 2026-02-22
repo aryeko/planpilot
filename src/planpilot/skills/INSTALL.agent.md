@@ -14,31 +14,39 @@ python3 --version
 
 If `python3` is not found, try `python --version`. You need Python 3.11+.
 
-If Python is not installed, STOP and tell the user:
+If Python is not installed or below 3.11, STOP and tell the user:
 
 > Python 3.11+ is required. Please install it from https://python.org and try again.
 
 ## Step 2: Install planpilot
 
-First, try `uvx` (zero-install, preferred — no separate install step):
+All options below put `planpilot` on PATH so it can be invoked directly.
+
+**Option A — via `uv` (recommended):**
+
+Check if `uv` is available:
 
 ```bash
-uvx planpilot --version
+uv --version
 ```
 
-If that succeeds, **skip to Step 4** — `uvx planpilot` is your invocation for all subsequent commands.
-
-If `uvx` is not found, install `uv`:
+If not found, install it:
 
 ```bash
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
-Then retry `uvx planpilot --version`. If it works, skip to Step 4.
+Then install planpilot:
 
-**Fallback — install via `pipx`:**
+```bash
+uv tool install planpilot
+```
 
-Check if `pipx` is installed:
+If this succeeds, skip to Step 3.
+
+**Option B — via `pipx`:**
+
+Check if `pipx` is available:
 
 ```bash
 pipx --version
@@ -68,31 +76,23 @@ After installing pipx, you may need to open a new shell or `source ~/.bashrc` / 
 pipx install planpilot
 ```
 
+If this succeeds, skip to Step 3.
+
+**Option C — via `pip3` (last resort):**
+
+```bash
+pip3 install planpilot
+```
+
 If this fails, STOP and tell the user the error output.
 
 ## Step 3: Verify planpilot
-
-Run (try in order until one succeeds):
-
-```bash
-uvx planpilot --version
-```
 
 ```bash
 planpilot --version
 ```
 
-```bash
-python3 -m planpilot --version
-```
-
-```bash
-python -m planpilot --version
-```
-
-If none work, STOP and report the failure to the user.
-
-**Remember which invocation worked** and use it for all subsequent commands.
+If this fails, STOP and report the failure to the user.
 
 ## Step 4: Install the skills
 
@@ -160,11 +160,14 @@ If any are missing or incorrect, retry Step 4.
 If the user asks to update planpilot:
 
 ```bash
-# If using uvx
-uvx planpilot@latest --version
+# If installed via uv
+uv tool upgrade planpilot
 
 # If installed via pipx
 pipx upgrade planpilot
+
+# If installed via pip3
+pip3 install --upgrade planpilot
 ```
 
 ## Step 7: Report to user

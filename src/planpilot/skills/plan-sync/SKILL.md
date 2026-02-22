@@ -17,7 +17,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- `planpilot` available via Claude Code plugin, global install, `uvx`, or `pipx`
+- `planpilot` CLI installed and on PATH (see [INSTALL.md](https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md))
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use
@@ -457,27 +457,11 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 
 #### 5a) Verify planpilot is available
 
-Try each in order until one succeeds:
-
 ```bash
 planpilot --version
 ```
 
-```bash
-uvx planpilot --version
-```
-
-```bash
-pipx run planpilot --version
-```
-
-```bash
-python3 -m planpilot --version
-```
-
-**Remember which command succeeded** and use that exact invocation for all subsequent steps in this session.
-
-If none succeed, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+If this fails, STOP and direct the user to install planpilot — see https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
 
 #### 5b) Verify GitHub auth
 
@@ -503,7 +487,7 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 
 ```bash
 cd <repo-root>
-<verified-planpilot-cmd> init
+planpilot init
 ```
 
 The wizard asks these questions in order. Forward each to the user with the hints below:
@@ -527,7 +511,7 @@ After the wizard completes, inform the user:
 If the user prefers non-interactive setup with auto-detected defaults:
 
 ```bash
-<verified-planpilot-cmd> init --defaults
+planpilot init --defaults
 ```
 
 This generates a config with placeholder `board_url` that must be edited manually.
@@ -537,13 +521,13 @@ This generates a config with placeholder `board_url` that must be edited manuall
 Always dry-run first:
 
 ```bash
-<verified-planpilot-cmd> sync --config ./planpilot.json --dry-run
+planpilot sync --config ./planpilot.json --dry-run
 ```
 
 Review dry-run output. If everything looks correct:
 
 ```bash
-<verified-planpilot-cmd> sync --config ./planpilot.json --apply
+planpilot sync --config ./planpilot.json --apply
 ```
 
 ### 8) Post-Sync Verification (sync / full)
@@ -575,7 +559,7 @@ Report to user:
 - Omitting `goal`, `requirements`, or `acceptance_criteria` (required by validator)
 - Forgetting to set `parent_id` on stories and tasks
 - Assuming `planpilot` is available without checking — always run preflight (step 5a) first
-- Running `<verified-planpilot-cmd> init` outside the git repo root — auto-detection of target and plan paths will fail
+- Running `planpilot init` outside the git repo root — auto-detection of target and plan paths will fail
 - Not committing `planpilot.json` to git — config must be tracked for reproducible syncs
 - Writing `planpilot.json` by hand with invalid field combinations (e.g. both `unified` and `epics` in `plan_paths`)
 
