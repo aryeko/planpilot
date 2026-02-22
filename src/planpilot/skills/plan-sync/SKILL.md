@@ -17,7 +17,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- `planpilot` available (`uvx planpilot`, global install, or Claude Code plugin)
+- `planpilot` available via `uvx planpilot` or `pipx run planpilot` (or Claude Code plugin)
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use
@@ -453,27 +453,25 @@ Integrity checks:
 
 ### 5) Preflight (sync / full)
 
-Run preflight **before** config check — you need a working `planpilot` to run `planpilot init`.
+Run preflight **before** config check — you need a working `planpilot` to run `uvx planpilot init`.
 
 #### 5a) Verify planpilot is available
 
-Try in order until one succeeds:
+Try `uvx` first (zero-install, preferred):
 
 ```bash
 uvx planpilot --version
 ```
 
-```bash
-planpilot --version
-```
+If `uvx` is not available, fall back to `pipx run`:
 
 ```bash
-python3 -m planpilot --version
+pipx run planpilot --version
 ```
 
-**Remember which command succeeded** and use that exact invocation for all subsequent steps in this session.
+Use whichever succeeded (`uvx planpilot` or `pipx run planpilot`) for all subsequent commands in this session.
 
-If none succeed, STOP and direct the user to install planpilot — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+If neither succeeds, STOP and direct the user to install `uv` or `pipx` — see installation instructions at https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
 
 #### 5b) Verify GitHub auth
 
@@ -499,7 +497,7 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 
 ```bash
 cd <repo-root>
-<verified-planpilot-cmd> init
+uvx planpilot init
 ```
 
 The wizard asks these questions in order. Forward each to the user with the hints below:
@@ -523,25 +521,23 @@ After the wizard completes, inform the user:
 If the user prefers non-interactive setup with auto-detected defaults:
 
 ```bash
-<verified-planpilot-cmd> init --defaults
+uvx planpilot init --defaults
 ```
 
 This generates a config with placeholder `board_url` that must be edited manually.
 
 ### 7) Sync Execution (sync / full)
 
-Use the `planpilot` command verified in preflight (step 5a).
-
 Always dry-run first:
 
 ```bash
-planpilot sync --config ./planpilot.json --dry-run
+uvx planpilot sync --config ./planpilot.json --dry-run
 ```
 
 Review dry-run output. If everything looks correct:
 
 ```bash
-planpilot sync --config ./planpilot.json --apply
+uvx planpilot sync --config ./planpilot.json --apply
 ```
 
 ### 8) Post-Sync Verification (sync / full)
@@ -573,7 +569,7 @@ Report to user:
 - Omitting `goal`, `requirements`, or `acceptance_criteria` (required by validator)
 - Forgetting to set `parent_id` on stories and tasks
 - Assuming `planpilot` is available without checking — always run preflight (step 5a) first
-- Running `<verified-planpilot-cmd> init` outside the git repo root — auto-detection of target and plan paths will fail
+- Running `uvx planpilot init` outside the git repo root — auto-detection of target and plan paths will fail
 - Not committing `planpilot.json` to git — config must be tracked for reproducible syncs
 - Writing `planpilot.json` by hand with invalid field combinations (e.g. both `unified` and `epics` in `plan_paths`)
 
