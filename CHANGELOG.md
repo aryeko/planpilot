@@ -2,6 +2,297 @@
 
 <!-- version list -->
 
+## v2.4.0 (2026-02-22)
+
+### Bug Fixes
+
+- Add missing sync map line to README dry-run output
+  ([#86](https://github.com/aryeko/planpilot/pull/86),
+  [`d2017c7`](https://github.com/aryeko/planpilot/commit/d2017c7fae846c90917ce2316a0e16c0675f4b5f))
+
+- Address PR review comments from CodeRabbit ([#85](https://github.com/aryeko/planpilot/pull/85),
+  [`d45f184`](https://github.com/aryeko/planpilot/commit/d45f18419b7dcc9bf0ffd68a32f203bf75039d5c))
+
+- Address PR review findings and checks ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Avoid redundant label reconciliation updates ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Enforce markdown link integrity in CI ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Fetch full git history for gitleaks scan ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Quote GitHub search labels for robust discovery
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Reconcile relations and harden workflows/docs ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Reconcile relations, harden workflows, and tighten docs governance
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Reconcile sync relations and harden workflows ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Resolve workflow lint regressions ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Use main branch for skill install URLs ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **ci**: Checkout branch ref to avoid detached HEAD in release
+  ([#92](https://github.com/aryeko/planpilot/pull/92),
+  [`8fd0e19`](https://github.com/aryeko/planpilot/commit/8fd0e1994c38ccee7c3c431c89530eb9beeb2cbd))
+
+- **ci**: Revert accidental scripts/commit-msg change
+  ([#92](https://github.com/aryeko/planpilot/pull/92),
+  [`8fd0e19`](https://github.com/aryeko/planpilot/commit/8fd0e1994c38ccee7c3c431c89530eb9beeb2cbd))
+
+- **docs**: Fix clean diagram order and add map sync zero-candidates case
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **docs**: Fix label→marker terminology and clarify plugin distribution
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **docs**: Fix stale skill URLs and marketplace add format
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **docs**: MD040 language specifier and path consistency
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Add schema, sync version on release, fix phrasing
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Pip source, commands key, email, version 2.3.0
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **skills**: Correct copy errors in install doc and spec
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Warn against absolute paths in specs
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+### Chores
+
+- Add .worktrees to gitignore ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Add workflow linting and docs governance guidance
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Harden CI toolchain and workflow reliability ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Improve OSS adoption and update package author
+  ([#86](https://github.com/aryeko/planpilot/pull/86),
+  [`d2017c7`](https://github.com/aryeko/planpilot/commit/d2017c7fae846c90917ce2316a0e16c0675f4b5f))
+
+- Refresh lockfile for pyproject updates ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Repo audit and docs refresh ([#85](https://github.com/aryeko/planpilot/pull/85),
+  [`d45f184`](https://github.com/aryeko/planpilot/commit/d45f18419b7dcc9bf0ffd68a32f203bf75039d5c))
+
+- **ci**: Bump github/codeql-action ([#79](https://github.com/aryeko/planpilot/pull/79),
+  [`ad6e6df`](https://github.com/aryeko/planpilot/commit/ad6e6df795390a0f537f9f7a4527f202a748b09d))
+
+- **ci**: Bump github/codeql-action from 4.32.3 to 4.32.4
+  ([#89](https://github.com/aryeko/planpilot/pull/89),
+  [`fbeea61`](https://github.com/aryeko/planpilot/commit/fbeea61757ef3d00e117ffec4e5fded214403122))
+
+- **ci**: Bump gitleaks/gitleaks-action from 2.3.6 to 2.3.9
+  ([#83](https://github.com/aryeko/planpilot/pull/83),
+  [`facda1c`](https://github.com/aryeko/planpilot/commit/facda1ce1235758e5ccc8983e9da5c33f83892f8))
+
+- **ci**: Bump python-semantic-release/publish-action
+  ([#80](https://github.com/aryeko/planpilot/pull/80),
+  [`a095857`](https://github.com/aryeko/planpilot/commit/a095857aa7a447c7481f3bda20631e0f5d90fda3))
+
+- **ci**: Bump python-semantic-release/python-semantic-release
+  ([#82](https://github.com/aryeko/planpilot/pull/82),
+  [`2c1652d`](https://github.com/aryeko/planpilot/commit/2c1652d5437b46f4869581a88d29a77ef753fc72))
+
+- **deps**: Bump poethepoet from 0.40.0 to 0.41.0
+  ([#81](https://github.com/aryeko/planpilot/pull/81),
+  [`6e379c8`](https://github.com/aryeko/planpilot/commit/6e379c8079f37fa3877e2f2578ca6071fafd2ff9))
+
+- **deps**: Bump rich from 14.3.2 to 14.3.3 ([#91](https://github.com/aryeko/planpilot/pull/91),
+  [`bcda40b`](https://github.com/aryeko/planpilot/commit/bcda40bb59b2a41615de61a316e0d6b608652e2c))
+
+- **deps**: Bump ruff from 0.15.0 to 0.15.1 ([#84](https://github.com/aryeko/planpilot/pull/84),
+  [`043c364`](https://github.com/aryeko/planpilot/commit/043c364c72121e12fe7752a4d5ecf1ec4db42fb6))
+
+- **deps**: Bump ruff from 0.15.1 to 0.15.2 ([#90](https://github.com/aryeko/planpilot/pull/90),
+  [`8309cac`](https://github.com/aryeko/planpilot/commit/8309cac94b154032680cc75aede2ec77f06c0067))
+
+### Documentation
+
+- Add claude plugin design doc ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Add claude plugin implementation plan ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Add CLAUDE.md with architecture and development guidance
+  ([#85](https://github.com/aryeko/planpilot/pull/85),
+  [`d45f184`](https://github.com/aryeko/planpilot/commit/d45f18419b7dcc9bf0ffd68a32f203bf75039d5c))
+
+- Add docs index completeness plan ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Add documentation architecture and update policy
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Add plugin guide, update design docs, remove plan artifacts
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Add post-execution verification report ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Add second post-execution verification report ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Add skill test artifacts and design docs ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- Add workflow and contributor verification references
+  ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Align SDK docs and add map-sync/clean design guides
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Execute full docs architecture and reference overhaul
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Harden docs integrity checks and refresh documentation IA
+  ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Improve docs index completeness and discoverability
+  ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Organize example artifacts into subdirectories
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- Refresh architecture references and add operator guides
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Remove outdated plans ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Reorganize examples into workflow subdirectories
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- Restore plans archive index for docs link integrity
+  ([#78](https://github.com/aryeko/planpilot/pull/78),
+  [`63bac09`](https://github.com/aryeko/planpilot/commit/63bac09b0f7be146a4aebc33983ae29af04ea229))
+
+- Update all references from roadmap-to-github-project to plan-sync
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Update plugin plan with marketplace.json task ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- Update README skill install for all three skills
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Fix review feedback — paths, ordering, and consistency
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Update agent install for all three skills
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Update install guide for all three skills
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+### Features
+
+- **examples**: Add planpilot.json to full-workflow for reproducibility
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **plugin**: Add Claude Code plugin (skills, commands, marketplace)
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Add marketplace.json for self-hosted distribution
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Add planpilot:prd, planpilot:spec, planpilot:sync commands
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Add plugin.json manifest ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **plugin**: Rename roadmap-to-github-project skill to plan-sync
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+- **skills**: Add create-prd and create-tech-spec skills
+  ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Add create-prd skill ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+- **skills**: Add create-tech-spec skill ([#87](https://github.com/aryeko/planpilot/pull/87),
+  [`57848f5`](https://github.com/aryeko/planpilot/commit/57848f52128f9b5ded9527d590dd6abd1bc206ac))
+
+### Refactoring
+
+- Finalize core ownership migration and harden release pipeline
+  ([#75](https://github.com/aryeko/planpilot/pull/75),
+  [`00832c4`](https://github.com/aryeko/planpilot/commit/00832c47e23f8be4dc1e7c601150af5346431c87))
+
+- Simplify relation cache priming and clarify clean flow docs
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- **plugin**: Move plugin files into Python package
+  ([#88](https://github.com/aryeko/planpilot/pull/88),
+  [`f01efa4`](https://github.com/aryeko/planpilot/commit/f01efa4f0c121ad4c3c29e7e9e0f05bc1f2d3dc9))
+
+### Testing
+
+- Add coverage for relation reconciliation branches
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+- Raise modified-file coverage in provider paths
+  ([#76](https://github.com/aryeko/planpilot/pull/76),
+  [`0f09d41`](https://github.com/aryeko/planpilot/commit/0f09d41d4c7cf7dbbd25af8102dae612ca11efb6))
+
+
 ## v2.3.0 (2026-02-12)
 
 ### Bug Fixes
