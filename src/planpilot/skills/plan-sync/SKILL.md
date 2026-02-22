@@ -17,7 +17,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- `planpilot` CLI installed and on PATH (see [INSTALL.md](https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md))
+- `planpilot` CLI accessible — via `uvx planpilot` (zero-install), a global install, or the Claude plugin wrapper (see [INSTALL.md](https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md))
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use

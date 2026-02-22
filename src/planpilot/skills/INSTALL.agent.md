@@ -36,6 +36,8 @@ If not found, install it:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+> **Note:** Piping to `sh` without checksum verification is the officially recommended method but carries inherent supply-chain risk. For a verified install, see [uv GitHub releases](https://github.com/astral-sh/uv/releases) for SHA-256 hashes.
+
 ```bash
 source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
 ```

@@ -48,6 +48,8 @@ If `uv` is not installed:
 curl -LsSf https://astral.sh/uv/install.sh | sh
 ```
 
+> **Note:** Piping to `sh` without checksum verification is the officially recommended method but carries inherent supply-chain risk. For a verified install, download the binary directly from [uv GitHub releases](https://github.com/astral-sh/uv/releases) and verify the SHA-256 hash before running.
+
 Then install planpilot:
 
 ```bash
