@@ -14,11 +14,10 @@ Documentation hub for architecture, module contracts, operator workflows, and re
 6. **[Map Sync Design](./design/map-sync.md)** — Plan ID discovery/selection and local reconciliation semantics
 7. **[Clean Workflow Design](./design/clean.md)** — Metadata-scoped discovery and deterministic deletion strategy
 8. **[Documentation Architecture](./design/documentation-architecture.md)** — Doc IA, ownership map, and update rules
-9. **[Security and Quality Hardening Plan](./design/security-quality-hardening-plan.md)** — Follow-up plan for GitHub security and quality findings
-10. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
-11. **[Plugin and Skills Guide](./guides/plugin-skills-guide.md)** — Plugin install, skill chain walkthrough (PRD → spec → sync)
-12. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
-13. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
+9. **[How It Works](./how-it-works.md)** — User-facing sync behavior, idempotency, and dry-run/apply semantics
+10. **[Plugin and Skills Guide](./guides/plugin-skills-guide.md)** — Plugin install, skill chain walkthrough (PRD → spec → sync)
+11. **[E2E Testing](./testing/e2e.md)** — Offline E2E test design, coverage matrix, usage, and extension rules
+12. **[Plan Schemas](./reference/plan-schemas.md)** — Plan file shapes and examples
 
 ### Quick reference
 
