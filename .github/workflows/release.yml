@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Generate GitHub App token
         id: app-token
-        uses: actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3 # v2
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         with:
           app-id: ${{ secrets.RELEASE_APP_ID }}
           private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
@@ -120,7 +120,7 @@ jobs:
           path: dist/
 
       - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           repository-url: https://test.pypi.org/legacy/
           attestations: true
@@ -149,7 +149,7 @@ jobs:
           path: dist/
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@ed0c53931b1dc9bd32cbe73a98c7f6766f8a527e # release/v1
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0
         with:
           attestations: true
 
