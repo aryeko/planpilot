@@ -19,7 +19,8 @@ flowchart TD
     BUMP -->|No| DONE[Done — no release]
     BUMP -->|Yes| VER[Bump version in\npyproject.toml + __init__.py]
     VER --> CL[Update CHANGELOG.md]
-    CL --> TAG[Create git tag]
+    CL --> SURF[Sync plugin manifests,\nmarketplaces, docs,\nand runtime pins]
+    SURF --> TAG[Create git tag]
     TAG --> BUILD[Build package — poetry build]
     BUILD --> TESTPYPI[Publish to TestPyPI\nwith attestations]
     TESTPYPI --> SMOKE{Smoke test\npasses?}
@@ -33,7 +34,8 @@ flowchart TD
 
 1. **CI gate** — the release workflow only runs after CI succeeds on `main` (lint, tests, package checks; commitlint is enforced on PRs).
 2. **Recursion guard** — release commits (`chore(release): X.Y.Z`) are skipped to prevent infinite loops. This is defense-in-depth; `GITHUB_TOKEN` pushes don't trigger workflows by design.
-3. **TestPyPI gate** — if the package fails to publish or fails the smoke test, PyPI publish and GitHub Release are blocked.
+3. **Release-surface guard** — plugin manifests, marketplace entries, root payload directories, docs examples, and the `uvx --from planpilot==X.Y.Z planpilot` runtime pin must match the semantic-release version before build/publish.
+4. **TestPyPI gate** — if the package fails to publish or fails the smoke test, PyPI publish and GitHub Release are blocked.
 
 ### Smoke test
 
@@ -42,6 +44,16 @@ The smoke test (`scripts/smoke-test.sh`) runs after TestPyPI publish and validat
 - **Installability** — `pip install planpilot==X.Y.Z` from TestPyPI (with retries for index lag)
 - **Import + version** — verifies `planpilot.__version__` matches the released version
 - **CLI entry point** — `planpilot --help` exits cleanly
+
+### Plugin and runtime version sync
+
+Claude and Codex plugins are installed from the GitHub repository root. The shared `plan-sync` skill runs the CLI through the exact PyPI artifact:
+
+```bash
+uvx --from planpilot==2.5.0 planpilot
+```
+
+`poetry run poe check` includes `poetry run poe release-surfaces`, which validates that plugin manifests, marketplace entries, root payload directories, docs examples, and runtime pins all match `pyproject.toml`. During release, semantic-release bumps the configured version variables and `release.yml` runs `scripts/check_release_surfaces.py --fix` before build/publish.
 
 ### Attestations
 
@@ -81,6 +93,7 @@ Before merging a release-worthy PR:
 ```bash
 poetry run poe docs-links
 poetry run poe workflow-lint
+poetry run poe release-surfaces
 poetry run pytest -v
 poetry run ruff check .
 poetry run ruff format --check .

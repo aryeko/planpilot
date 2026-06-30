@@ -1,6 +1,6 @@
 ---
 name: plan-sync
-description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — planpilot available via plugin wrapper or manual install (uv/pipx/pip3), no source tree required.
+description: Use when a user has PRD/spec/roadmap files and wants .plans artifacts generated and synced to GitHub Issues + a Projects v2 board in one guided flow. Standalone — uses the pinned planpilot CLI runtime through uvx, with exact-version local fallbacks allowed.
 ---
 
 # Plan Sync
@@ -17,7 +17,7 @@ Before any action, list available skills and invoke all that apply. If installed
 
 ## Prerequisites
 
-- `planpilot` CLI accessible — via `uvx planpilot` (zero-install), a global install, or the Claude plugin wrapper (see [INSTALL.md](https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md))
+- `planpilot` CLI accessible — preferably through the pinned zero-install command `uvx --from planpilot==2.5.0 planpilot`; a local `planpilot` or `python3 -m planpilot` fallback is allowed only when it reports the exact same version
 - `gh` CLI installed and authenticated (scopes: `repo`, `project`)
 
 ## When to Use
@@ -459,13 +459,13 @@ Run preflight **before** config check — you need a working `planpilot` to run 
 
 Try each invocation in order until one succeeds:
 
-1. `uvx planpilot --version` → set `PLANPILOT_CMD="uvx planpilot"`
-2. `planpilot --version` → set `PLANPILOT_CMD="planpilot"`
-3. `python3 -m planpilot --version` → set `PLANPILOT_CMD="python3 -m planpilot"`
+1. `uvx --from planpilot==2.5.0 planpilot --version` → output must be `planpilot 2.5.0`; set `PLANPILOT_CMD="uvx --from planpilot==2.5.0 planpilot"`
+2. `planpilot --version` → output must be `planpilot 2.5.0`; set `PLANPILOT_CMD="planpilot"`
+3. `python3 -m planpilot --version` → output must be `planpilot 2.5.0`; set `PLANPILOT_CMD="python3 -m planpilot"`
 
-If all three fail, STOP and direct the user to install planpilot — see https://github.com/aryeko/planpilot/blob/main/src/planpilot/skills/INSTALL.md.
+If all three fail or only mismatched versions are available, STOP and direct the user to install or run the pinned release — see https://github.com/aryeko/planpilot/blob/main/skills/INSTALL.md.
 
-Record which command succeeded as `PLANPILOT_CMD` — use it for all subsequent planpilot invocations in this session.
+Record which exact-version command succeeded as `PLANPILOT_CMD` — use it for all subsequent planpilot invocations in this session.
 
 #### 5b) Verify GitHub auth
 
@@ -489,7 +489,7 @@ If the user agrees, run the interactive init wizard. **You MUST run this from th
 - `detect_plan_paths()` scans `.plans/` and `plans/` for existing plan files to pre-fill paths.
 - Outside a git repo, both detections are disabled and every value must be entered manually.
 
-Use the invocation form that succeeded in preflight (step 5a). Examples use `planpilot` — substitute `uvx planpilot`, `python3 -m planpilot`, etc. if that's what worked.
+Use the exact-version invocation form that succeeded in preflight (step 5a). Examples use `$PLANPILOT_CMD`; do not substitute an unverified local command.
 
 ```bash
 cd <repo-root>

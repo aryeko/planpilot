@@ -18,7 +18,7 @@ flowchart LR
 | Workflow | Trigger | Purpose | Key gate |
 |---|---|---|---|
 | `ci.yml` | PRs + pushes to `main` | Lint, typecheck, tests, E2E, package checks | Fails fast on quality regressions |
-| `release.yml` | `workflow_run` after CI success on `main` | Semantic versioning + TestPyPI/PyPI publish + GitHub release | Requires successful CI and release-commit recursion guard |
+| `release.yml` | `workflow_run` after CI success on `main` | Semantic versioning + plugin/runtime release-surface sync + TestPyPI/PyPI publish + GitHub release | Requires successful CI, release-commit recursion guard, and release-surface guard |
 | `test-release.yml` | Manual dispatch | Preview semantic-release result without publishing | No-op semantic release mode |
 | `secrets.yml` | PRs + pushes to `main` | Secret scanning with gitleaks | Detects leaked credentials early |
 | `codeql.yml` | PRs, pushes to `main`, weekly schedule | Static security analysis | Uploads security alerts to GitHub Security tab |
@@ -30,6 +30,7 @@ flowchart LR
 - Ruff lint + format check
 - Docs local-link integrity (`poetry run poe docs-links`): scans all root-level `*.md` files and `docs/**/*.md`; exits 0 (success) when no broken links are found, exits 1 (failure) when broken links are detected; external URLs and anchor-only fragments are ignored; no dry-run mode
 - Mypy type-check (`poetry run poe typecheck`)
+- Release-surface guard (`poetry run poe release-surfaces`): verifies plugin manifests, marketplace entries, root payload directories, docs examples, and the `uvx --from planpilot==X.Y.Z planpilot` runtime pin match `pyproject.toml`
 - Unit/integration test matrix across Python 3.11-3.13
 - E2E suite job
 - Build + package metadata validation
@@ -43,11 +44,12 @@ flowchart TD
     B -->|no| C[python-semantic-release]
     C --> D{new version?}
     D -->|no| X
-    D -->|yes| E[build artifacts]
-    E --> F[publish TestPyPI]
-    F --> G[smoke test]
-    G -->|pass| H[publish PyPI]
-    H --> I[create GitHub release]
+    D -->|yes| E[sync plugin/runtime\nrelease surfaces]
+    E --> F[build artifacts]
+    F --> G[publish TestPyPI]
+    G --> H[smoke test]
+    H -->|pass| I[publish PyPI]
+    I --> J[create GitHub release]
 ```
 
 The release job mints a short-lived GitHub App token with

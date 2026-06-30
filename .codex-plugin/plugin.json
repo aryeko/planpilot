@@ -1,0 +1,27 @@
+{
+  "name": "planpilot",
+  "version": "2.5.0",
+  "description": "Reusable planning workflows for PRDs, technical specs, and GitHub Issues + Projects v2 sync.",
+  "skills": "./skills/",
+  "author": {
+    "name": "Arye Kogan",
+    "email": "aryekogan@gmail.com",
+    "url": "https://github.com/aryeko/planpilot"
+  },
+  "homepage": "https://github.com/aryeko/planpilot",
+  "repository": "https://github.com/aryeko/planpilot",
+  "license": "MIT",
+  "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
+  "interface": {
+    "displayName": "planpilot",
+    "shortDescription": "Create PRDs, specs, and synced GitHub project plans.",
+    "longDescription": "planpilot provides reusable Codex skills for product planning workflows: create a PRD from an idea, turn a PRD into a technical specification, and sync structured plan artifacts to GitHub Issues and Projects v2 through the pinned planpilot CLI runtime.",
+    "developerName": "Arye Kogan",
+    "category": "Productivity",
+    "capabilities": ["Planning", "GitHub Issues", "GitHub Projects", "Agent Skills"],
+    "websiteURL": "https://github.com/aryeko/planpilot",
+    "defaultPrompt": [
+      "Use planpilot to create PRDs, draft specs, or sync GitHub project plans."
+    ]
+  }
+}
