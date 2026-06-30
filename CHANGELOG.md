@@ -2,6 +2,86 @@
 
 <!-- version list -->
 
+## v2.6.0 (2026-06-30)
+
+### Chores
+
+- Address security quality triage ([#136](https://github.com/aryeko/planpilot/pull/136),
+  [`3d26bf4`](https://github.com/aryeko/planpilot/commit/3d26bf4b2b86ebd69e6fac4bf3d08cd1a6dc0840))
+
+- **ci**: Bump actions/create-github-app-token from 2.2.1 to 3.1.1
+  ([#115](https://github.com/aryeko/planpilot/pull/115),
+  [`4ff4499`](https://github.com/aryeko/planpilot/commit/4ff4499308894dafa74955a3dc69af0896a8fd59))
+
+- **ci**: Bump actions/download-artifact from 7.0.0 to 8.0.0
+  ([#96](https://github.com/aryeko/planpilot/pull/96),
+  [`a659e78`](https://github.com/aryeko/planpilot/commit/a659e789fbf9614560cdf0e64f965d7804bd845e))
+
+- **ci**: Bump actions/download-artifact from 8.0.0 to 8.0.1
+  ([#103](https://github.com/aryeko/planpilot/pull/103),
+  [`308ea3d`](https://github.com/aryeko/planpilot/commit/308ea3dd488c4c56c7e41ee63518f30bc013f641))
+
+- **ci**: Bump actions/upload-artifact from 6.0.0 to 7.0.0
+  ([#97](https://github.com/aryeko/planpilot/pull/97),
+  [`8816b65`](https://github.com/aryeko/planpilot/commit/8816b6599e896521493b21ace4d73f61f14929c2))
+
+- **ci**: Bump actions/upload-artifact from 7.0.0 to 7.0.1
+  ([#116](https://github.com/aryeko/planpilot/pull/116),
+  [`39fd299`](https://github.com/aryeko/planpilot/commit/39fd2993dfeedafe33c118db48fdc74bdd169f60))
+
+- **ci**: Bump codecov/codecov-action from 5.5.2 to 6.0.0
+  ([#110](https://github.com/aryeko/planpilot/pull/110),
+  [`623ee0c`](https://github.com/aryeko/planpilot/commit/623ee0c9e6ebd905b1d7c859b6c11028a6fbb773))
+
+- **ci**: Bump github/codeql-action from 4.32.4 to 4.32.6
+  ([#100](https://github.com/aryeko/planpilot/pull/100),
+  [`e64ebb1`](https://github.com/aryeko/planpilot/commit/e64ebb17a9f552af66c7233431dbea98d27a1339))
+
+- **ci**: Bump github/codeql-action from 4.32.6 to 4.35.1
+  ([#109](https://github.com/aryeko/planpilot/pull/109),
+  [`2bde902`](https://github.com/aryeko/planpilot/commit/2bde9028be295a6e73f9fef3874472e2607f5b33))
+
+- **deps**: Bump mypy from 1.19.1 to 1.20.0 ([#112](https://github.com/aryeko/planpilot/pull/112),
+  [`9a1b243`](https://github.com/aryeko/planpilot/commit/9a1b2436a71652cbd1fb08d94456ef3b54d7e952))
+
+- **deps**: Bump poethepoet from 0.41.0 to 0.42.1
+  ([#98](https://github.com/aryeko/planpilot/pull/98),
+  [`74887a4`](https://github.com/aryeko/planpilot/commit/74887a4371eb9d60b361483877b137ecb30413b4))
+
+- **deps**: Bump poethepoet from 0.42.1 to 0.44.0
+  ([#119](https://github.com/aryeko/planpilot/pull/119),
+  [`5b9cb89`](https://github.com/aryeko/planpilot/commit/5b9cb891cff90ca22c8452d853eaf00e6c016239))
+
+- **deps**: Bump pytest-cov from 7.0.0 to 7.1.0
+  ([#108](https://github.com/aryeko/planpilot/pull/108),
+  [`4d2142e`](https://github.com/aryeko/planpilot/commit/4d2142e2e3e2fcf9ede4338917d983cba17895df))
+
+- **deps**: Bump rich from 14.3.3 to 14.3.4 ([#118](https://github.com/aryeko/planpilot/pull/118),
+  [`b15d752`](https://github.com/aryeko/planpilot/commit/b15d752ef71bc393d848d59d835396e1a21efc00))
+
+- **deps**: Bump ruff from 0.15.2 to 0.15.5 ([#101](https://github.com/aryeko/planpilot/pull/101),
+  [`ed69118`](https://github.com/aryeko/planpilot/commit/ed691180f24b678b5d9f1867f3f7de1a1047d57d))
+
+- **deps**: Bump ruff from 0.15.5 to 0.15.10 ([#117](https://github.com/aryeko/planpilot/pull/117),
+  [`2c10729`](https://github.com/aryeko/planpilot/commit/2c10729110f0a38407a0e467b11a0a7f97dc3cee))
+
+- **deps**: Consolidate dependency updates ([#134](https://github.com/aryeko/planpilot/pull/134),
+  [`ee7856f`](https://github.com/aryeko/planpilot/commit/ee7856f354d53faad8146bdcd4fbbe7f634b34b0))
+
+### Documentation
+
+- Canonicalize agent guidance ([#135](https://github.com/aryeko/planpilot/pull/135),
+  [`a6b0018`](https://github.com/aryeko/planpilot/commit/a6b0018836fbc6841ba6d26520fe26d895de53e5))
+
+- Remove hardening plan artifact ([#136](https://github.com/aryeko/planpilot/pull/136),
+  [`3d26bf4`](https://github.com/aryeko/planpilot/commit/3d26bf4b2b86ebd69e6fac4bf3d08cd1a6dc0840))
+
+### Features
+
+- Rebuild agent plugin distribution ([#137](https://github.com/aryeko/planpilot/pull/137),
+  [`ef779dd`](https://github.com/aryeko/planpilot/commit/ef779dd241e480a4079edeec97c988e76784d85d))
+
+
 ## v2.5.0 (2026-02-22)
 
 ### Bug Fixes
