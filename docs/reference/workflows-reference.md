@@ -50,6 +50,11 @@ flowchart TD
     H --> I[create GitHub release]
 ```
 
+The release job mints a short-lived GitHub App token with
+`actions/create-github-app-token`. The app client ID is stored as the
+repository Actions variable `RELEASE_APP_CLIENT_ID`; the private key remains in
+the `RELEASE_APP_PRIVATE_KEY` secret.
+
 ## Related
 
 - [Release Guide](../../RELEASE.md)

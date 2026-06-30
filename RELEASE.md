@@ -100,10 +100,10 @@ The `main` branch is protected:
 
 Because branch protection blocks direct pushes to `main`, the release workflow uses a [GitHub App](https://docs.github.com/en/apps) (`planpilot-release`) to push the version bump commit and tag. The app mints a short-lived installation token at the start of each run via [`actions/create-github-app-token`](https://github.com/actions/create-github-app-token) — no long-lived PATs to rotate.
 
-| Secret | What it holds |
+| Actions setting | What it holds |
 |--------|--------------|
-| `RELEASE_APP_ID` | GitHub App ID |
-| `RELEASE_APP_PRIVATE_KEY` | App private key (`.pem`) |
+| Variable `RELEASE_APP_CLIENT_ID` | GitHub App client ID |
+| Secret `RELEASE_APP_PRIVATE_KEY` | App private key (`.pem`) |
 
 The app has minimal permissions (Contents: Read & Write) and is installed only on this repo. Release commits appear as `planpilot-release[bot]` in the git log. All other jobs use `GITHUB_TOKEN`.
 

@@ -319,8 +319,6 @@ def test_init_defaults_writes_config(monkeypatch: pytest.MonkeyPatch, tmp_path: 
     monkeypatch.setattr("planpilot.cli.detect_target", lambda: "myorg/myrepo")
     monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
 
-    import json
-
     args = argparse.Namespace(command="init", output=str(output), defaults=True)
     exit_code = _run_init(args)
 
@@ -336,8 +334,6 @@ def test_init_defaults_no_git_uses_placeholder(monkeypatch: pytest.MonkeyPatch, 
 
     monkeypatch.setattr("planpilot.cli.detect_target", lambda: None)
     monkeypatch.setattr("planpilot.cli.detect_plan_paths", lambda: None)
-
-    import json
 
     args = argparse.Namespace(command="init", output=str(output), defaults=True)
     exit_code = _run_init(args)

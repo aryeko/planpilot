@@ -14,33 +14,41 @@ class Item(ABC):
 
     @property
     @abstractmethod
-    def id(self) -> str: ...  # pragma: no cover
+    def id(self) -> str:  # pragma: no cover
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def key(self) -> str: ...  # pragma: no cover
+    def key(self) -> str:  # pragma: no cover
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def url(self) -> str: ...  # pragma: no cover
+    def url(self) -> str:  # pragma: no cover
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def title(self) -> str: ...  # pragma: no cover
+    def title(self) -> str:  # pragma: no cover
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def body(self) -> str: ...  # pragma: no cover
+    def body(self) -> str:  # pragma: no cover
+        raise NotImplementedError
 
     @property
     @abstractmethod
-    def item_type(self) -> PlanItemType | None: ...  # pragma: no cover
+    def item_type(self) -> PlanItemType | None:  # pragma: no cover
+        raise NotImplementedError
 
     @abstractmethod
-    async def set_parent(self, parent: Item) -> None: ...  # pragma: no cover
+    async def set_parent(self, parent: Item) -> None:  # pragma: no cover
+        raise NotImplementedError
 
     @abstractmethod
-    async def add_dependency(self, blocker: Item) -> None: ...  # pragma: no cover
+    async def add_dependency(self, blocker: Item) -> None:  # pragma: no cover
+        raise NotImplementedError
 
     @abstractmethod
     async def reconcile_relations(self, *, parent: Item | None, blockers: list[Item]) -> None:  # pragma: no cover

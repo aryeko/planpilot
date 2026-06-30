@@ -18,4 +18,5 @@ class RenderContext(BaseModel):
 
 class BodyRenderer(ABC):
     @abstractmethod
-    def render(self, item: PlanItem, context: RenderContext) -> str: ...  # pragma: no cover
+    def render(self, item: PlanItem, context: RenderContext) -> str:  # pragma: no cover
+        raise NotImplementedError
