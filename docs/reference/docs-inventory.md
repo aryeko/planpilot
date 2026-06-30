@@ -28,6 +28,7 @@ flowchart TD
 | `docs/design/repository-layout.md` | Source layout and ownership map |
 | `docs/design/codemap.md` | Runtime package map and dependency direction |
 | `docs/design/documentation-architecture.md` | Documentation IA and maintenance rules |
+| `docs/design/security-quality-hardening-plan.md` | Follow-up plan for GitHub security and quality findings |
 
 ## Module specs (`docs/modules/`)
 

@@ -38,13 +38,57 @@ _run_clean = clean_command.run_clean
 _resolve_selected_plan_id = map_sync_command.resolve_selected_plan_id
 _run_map_sync = map_sync_command.run_map_sync
 
+__all__ = [
+    "AuthenticationError",
+    "ConfigError",
+    "PlanPilot",
+    "_check_classic_scopes",
+    "_default_board_url_for_target",
+    "_default_board_url_with_owner_type",
+    "_format_clean_summary",
+    "_format_map_sync_summary",
+    "_format_summary",
+    "_github_headers",
+    "_package_version",
+    "_resolve_init_token",
+    "_resolve_selected_plan_id",
+    "_run_clean",
+    "_run_init",
+    "_run_init_defaults",
+    "_run_init_interactive",
+    "_run_map_sync",
+    "_run_sync",
+    "_validate_board_url",
+    "_validate_github_auth_for_init",
+    "_validate_target",
+    "asyncio",
+    "build_parser",
+    "clean_command",
+    "create_plan_stubs",
+    "detect_plan_paths",
+    "detect_target",
+    "init_command",
+    "load_config",
+    "logging",
+    "main",
+    "map_sync_command",
+    "scaffold_config",
+    "sync_command",
+    "validate_board_url",
+    "validate_github_auth_for_init",
+    "write_config",
+]
+
 
 class _InitProgress(Protocol):
-    def phase_start(self, phase: str, total: int | None = None) -> None: ...
+    def phase_start(self, phase: str, total: int | None = None) -> None:
+        raise NotImplementedError
 
-    def phase_done(self, phase: str) -> None: ...
+    def phase_done(self, phase: str) -> None:
+        raise NotImplementedError
 
-    def phase_error(self, phase: str, error: BaseException) -> None: ...
+    def phase_error(self, phase: str, error: BaseException) -> None:
+        raise NotImplementedError
 
 
 def _owner_from_target(target: str) -> str:
