@@ -1,6 +1,6 @@
 # Plugin and Skills Guide
 
-planpilot ships a Claude Code plugin and three agent skills that form a complete product planning workflow: write a feature idea, get a structured PRD, turn it into a technical spec, then sync the resulting epics/stories/tasks to GitHub Issues + Projects v2.
+planpilot ships Claude Code and Codex plugins plus three shared agent skills that form a complete product planning workflow: write a feature idea, get a structured PRD, turn it into a technical spec, then sync the resulting epics/stories/tasks to GitHub Issues + Projects v2.
 
 ## Skill chain overview
 
@@ -14,17 +14,17 @@ flowchart LR
 
 Each step is independent — you can enter the chain at any point.
 
-| Skill | Command | Use when |
-|-------|---------|----------|
+| Skill | Claude command | Use when |
+|-------|----------------|----------|
 | `create-prd` | `/planpilot:prd` | You have a feature idea and need a structured PRD |
 | `create-tech-spec` | `/planpilot:spec` | You have a PRD and need a codebase-aware technical spec |
 | `plan-sync` | `/planpilot:sync` | You have a PRD/spec and want `.plans` JSON + GitHub sync |
 
 ---
 
-## Install: Claude Code Plugin (recommended)
+## Install: Claude Code Plugin
 
-The plugin is installed from GitHub source. The `planpilot` CLI is available automatically via the bundled wrapper — no separate install needed:
+The plugin is installed from GitHub source and exposes the shared skills plus Claude slash commands:
 
 ```bash
 claude plugin marketplace add aryeko/planpilot
@@ -39,6 +39,25 @@ Then invoke skills with prefixed commands:
 /planpilot:sync    # Generate .plans JSON and sync to GitHub
 ```
 
+The `plan-sync` skill invokes the released CLI through the exact PyPI runtime pin:
+
+```bash
+uvx --from planpilot==2.5.0 planpilot --version
+```
+
+---
+
+## Install: Codex Plugin
+
+The Codex plugin uses the same GitHub source and exposes the shared skills:
+
+```bash
+codex plugin marketplace add aryeko/planpilot
+codex plugin add planpilot@planpilot
+```
+
+Codex does not consume Claude-only slash command or hook metadata. The shared `plan-sync` skill still uses `uvx --from planpilot==2.5.0 planpilot` for the CLI runtime.
+
 ---
 
 ## Install: Agent self-install
@@ -46,10 +65,10 @@ Then invoke skills with prefixed commands:
 Tell your agent (any platform supporting filesystem skills):
 
 ```text
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
 ```
 
-The agent installs `planpilot` (via `uv tool install`, `pipx`, or `pip3`) and copies all three skill files automatically.
+The agent installs the exact released `planpilot` runtime (via `uv tool install`, `pipx`, or `pip3`) and copies all three skill files automatically.
 
 ---
 
@@ -58,12 +77,12 @@ The agent installs `planpilot` (via `uv tool install`, `pipx`, or `pip3`) and co
 ```bash
 for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```
 
-Full instructions: [`src/planpilot/skills/INSTALL.md`](../../src/planpilot/skills/INSTALL.md)
+Full instructions: [`skills/INSTALL.md`](../../skills/INSTALL.md)
 
 ---
 
@@ -94,7 +113,8 @@ Invoke `/planpilot:sync` and point it at your PRD or spec. The skill generates `
 | Problem | Fix |
 |---------|-----|
 | Commands not registered | Reinstall: `claude plugin install planpilot@planpilot` |
-| `planpilot` not found after plugin install | Run `uv tool install planpilot` or `pipx install planpilot` manually |
+| Codex skills not available | Reinstall: `codex plugin add planpilot@planpilot` |
+| CLI runtime unavailable | Verify `uvx --from planpilot==2.5.0 planpilot --version`; local `planpilot` or `python3 -m planpilot` fallbacks must print `planpilot 2.5.0` |
 | Sync fails with auth error | Check `auth` field in `planpilot.json`; run `planpilot init` to regenerate |
 | Skill not invoked by agent | Verify skill files exist at `~/.agents/skills/*/SKILL.md` |
 

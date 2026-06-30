@@ -82,6 +82,12 @@ jobs:
           changelog: "true"
           build: "false"
 
+      - name: Verify plugin and runtime release surfaces
+        if: steps.psr.outputs.released == 'true'
+        run: |
+          poetry run python scripts/check_release_surfaces.py --fix
+          git diff --exit-code
+
       - name: Build package
         if: steps.psr.outputs.released == 'true'
         run: poetry build

@@ -42,10 +42,10 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 source "$HOME/.local/bin/env" 2>/dev/null || export PATH="$HOME/.local/bin:$PATH"
 ```
 
-Then install planpilot:
+Install the exact planpilot release:
 
 ```bash
-uv tool install planpilot
+uv tool install "planpilot==2.5.0"
 ```
 
 If this succeeds, skip to Step 3.
@@ -79,7 +79,7 @@ If `pipx` is **not found**, install it:
 After installing pipx, you may need to open a new shell or `source ~/.bashrc` / `source ~/.zshrc` for PATH to update.
 
 ```bash
-pipx install planpilot
+pipx install "planpilot==2.5.0"
 ```
 
 If this succeeds, skip to Step 3.
@@ -87,7 +87,7 @@ If this succeeds, skip to Step 3.
 **Option C — via `pip3` (last resort):**
 
 ```bash
-pip3 install planpilot
+pip3 install "planpilot==2.5.0"
 ```
 
 If this fails, STOP and tell the user the error output.
@@ -98,7 +98,7 @@ If this fails, STOP and tell the user the error output.
 planpilot --version
 ```
 
-If this fails, STOP and report the failure to the user.
+If this fails or does not print `planpilot 2.5.0`, STOP and report the failure to the user.
 
 ## Step 4: Install the skills
 
@@ -109,7 +109,7 @@ mkdir -p ~/.agents/skills/plan-sync
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/plan-sync/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/plan-sync/SKILL.md" \
   -o ~/.agents/skills/plan-sync/SKILL.md
 ```
 
@@ -120,7 +120,7 @@ mkdir -p ~/.agents/skills/create-prd
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-prd/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-prd/SKILL.md" \
   -o ~/.agents/skills/create-prd/SKILL.md
 ```
 
@@ -131,7 +131,7 @@ mkdir -p ~/.agents/skills/create-tech-spec
 ```
 
 ```bash
-curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/create-tech-spec/SKILL.md" \
+curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/create-tech-spec/SKILL.md" \
   -o ~/.agents/skills/create-tech-spec/SKILL.md
 ```
 
@@ -167,13 +167,13 @@ If the user asks to update planpilot:
 
 ```bash
 # If installed via uv
-uv tool upgrade planpilot
+uv tool install --force "planpilot==2.5.0"
 
 # If installed via pipx
-pipx upgrade planpilot
+pipx install --force "planpilot==2.5.0"
 
 # If installed via pip3
-pip3 install --upgrade planpilot
+pip3 install --upgrade "planpilot==2.5.0"
 ```
 
 ## Step 7: Report to user

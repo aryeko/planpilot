@@ -65,12 +65,13 @@ format = "ruff format ."
 format-check = "ruff format --check ."
 workflow-lint = "./scripts/actionlint.sh"
 docs-links = "python scripts/check_markdown_links.py"
+release-surfaces = "python scripts/check_release_surfaces.py"
 test = "pytest -v --ignore=tests/e2e"
 test-e2e = "pytest -v tests/e2e/test_cli_e2e.py"
 coverage = "pytest -v --cov-report=html:.coverage/html"
 coverage-e2e = "pytest -v tests/e2e/test_cli_e2e.py --cov-report=term-missing --cov-report=xml:.coverage/coverage-e2e.xml"
 typecheck = "mypy src/planpilot"
-check = ["lint", "format-check", "typecheck", "test"]
+check = ["lint", "format-check", "typecheck", "release-surfaces", "test"]
 
 [tool.poe.tasks.gen-schema]
 help = "Introspect GitHub GraphQL API and download schema"
@@ -144,7 +145,20 @@ exclude = "(^src/planpilot/core/providers/github/github_gql/)"
 
 [tool.semantic_release]
 version_toml = ["pyproject.toml:tool.poetry.version"]
-version_variables = ["src/planpilot/__init__.py:__version__", "src/planpilot/.claude-plugin/plugin.json:version"]
+version_variables = [
+    "src/planpilot/__init__.py:__version__",
+    ".claude-plugin/plugin.json:version",
+    ".claude-plugin/marketplace.json:version",
+    ".codex-plugin/plugin.json:version",
+    ".agents/plugins/marketplace.json:version",
+    "skills/plan-sync/SKILL.md:planpilot",
+    "skills/INSTALL.md:planpilot",
+    "skills/INSTALL.agent.md:planpilot",
+    "README.md:planpilot",
+    "RELEASE.md:planpilot",
+    "docs/guides/plugin-skills-guide.md:planpilot",
+    "docs/reference/plugin-reference.md:planpilot",
+]
 commit_parser = "conventional"
 commit_message = "chore(release): {version}"
 tag_format = "v{version}"

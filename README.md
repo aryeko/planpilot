@@ -129,11 +129,17 @@ planpilot ships three agent skills that form a complete product workflow:
 
 ### Claude Code Plugin
 
-Install the planpilot plugin directly in Claude Code (the planpilot CLI is installed automatically from PyPI):
+Install the planpilot plugin directly in Claude Code from the GitHub marketplace source:
 
 ```bash
 claude plugin marketplace add aryeko/planpilot
 claude plugin install planpilot@planpilot
+```
+
+The plugin ships the shared skills and Claude slash commands. The `plan-sync` skill runs the released CLI through the exact PyPI runtime pin:
+
+```bash
+uvx --from planpilot==2.5.0 planpilot --version
 ```
 
 Then use:
@@ -141,12 +147,23 @@ Then use:
 - `/planpilot:spec` — create a tech spec from a PRD
 - `/planpilot:sync` — generate `.plans` JSON and sync to GitHub
 
+### Codex Plugin
+
+Install the same GitHub plugin source for Codex:
+
+```bash
+codex plugin marketplace add aryeko/planpilot
+codex plugin add planpilot@planpilot
+```
+
+Codex exposes the reusable skills. Claude-specific slash commands stay in the Claude plugin manifest.
+
 ### Agent Self-Install
 
 Tell your agent:
 
 ```text
-Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/INSTALL.agent.md
+Fetch and follow instructions from https://raw.githubusercontent.com/aryeko/planpilot/main/skills/INSTALL.agent.md
 ```
 
 The agent will install `planpilot` and all three skills automatically.
@@ -158,12 +175,12 @@ Install skills to the open discovery path used by agent platforms that support f
 ```bash
 for skill in create-prd create-tech-spec plan-sync; do
   mkdir -p ~/.agents/skills/$skill
-  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/src/planpilot/skills/$skill/SKILL.md" \
+  curl -fsSL "https://raw.githubusercontent.com/aryeko/planpilot/main/skills/$skill/SKILL.md" \
     -o ~/.agents/skills/$skill/SKILL.md
 done
 ```
 
-Full standalone instructions: [`src/planpilot/skills/INSTALL.md`](src/planpilot/skills/INSTALL.md)
+Full standalone instructions: [`skills/INSTALL.md`](skills/INSTALL.md)
 
 ## Quickstart
 

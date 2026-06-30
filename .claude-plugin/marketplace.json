@@ -1,6 +1,7 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
   "name": "planpilot",
+  "description": "Agent planning plugins for PRDs, technical specs, and GitHub Issues + Projects v2 sync.",
   "owner": {
     "name": "Arye Kogan",
     "email": "aryekogan@gmail.com"
@@ -8,7 +9,7 @@
   "plugins": [
     {
       "name": "planpilot",
-      "version": "2.4.1",
+      "version": "2.5.0",
       "description": "Claude Code skills and commands for planning workflows: create PRDs, tech specs, and sync plans to GitHub Issues + Projects v2",
       "license": "MIT",
       "homepage": "https://github.com/aryeko/planpilot",
@@ -16,10 +17,7 @@
       "category": "workflow",
       "keywords": ["planning", "github", "roadmap", "issues", "projects", "prd", "spec"],
       "tags": ["planning", "github-projects", "roadmap", "prd", "tech-spec", "skills", "commands"],
-      "source": {
-        "source": "github",
-        "repo": "aryeko/planpilot"
-      }
+      "source": "./"
     }
   ]
 }
